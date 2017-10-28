@@ -131,18 +131,18 @@ int PointMaps::addNewMap(const std::string& name)
    bool duplicate = true;
    while (duplicate) {
       duplicate = false;
-      for (size_t i = 0; i < size(); i++) {
-         if (at(i).getName() == myname) {
+      for (size_t i = 0; i < maps_vector.size(); i++) {
+         if (maps_vector.at(i).getName() == myname) {
             duplicate = true;
             myname = dXstring::formatString(counter++,name + " %d");
             break;
          }  
       }
    }
-   push_back(PointMap(myname)); 
-   tail().setSpacePixel(m_spacepix); 
-   m_displayed_map = size() - 1; 
-   return size() - 1; 
+   maps_vector.push_back(PointMap(myname)); 
+   maps_vector.back().setSpacePixel(m_spacepix); 
+   m_displayed_map = maps_vector.size() - 1; 
+   return maps_vector.size() - 1; 
 }
 
 bool PointMaps::read(ifstream& stream, int version)
@@ -151,9 +151,9 @@ bool PointMaps::read(ifstream& stream, int version)
    int count;
    stream.read((char *) &count, sizeof(count));
    for (int i = 0; i < count; i++) {
-      push_back(PointMap());
-      tail().setSpacePixel( (SuperSpacePixel *) this );
-      tail().read( stream, version );
+      maps_vector.push_back(PointMap());
+      maps_vector.back().setSpacePixel( (SuperSpacePixel *) this );
+      maps_vector.back().read( stream, version );
    }
    return true;
 }
@@ -162,10 +162,10 @@ bool PointMaps::write(ofstream& stream, int version, bool displayedmaponly)
 {
    if (!displayedmaponly) {
       stream.write((char *) &m_displayed_map, sizeof(m_displayed_map));
-      int count = size();
+      int count = maps_vector.size();
       stream.write((char *) &count, sizeof(count));
       for (int i = 0; i < count; i++) {
-         at(i).write( stream, version );
+         maps_vector.at(i).write( stream, version );
       }
    }
    else {
@@ -177,7 +177,7 @@ bool PointMaps::write(ofstream& stream, int version, bool displayedmaponly)
       dummy = 1;
       stream.write((char *) &dummy, sizeof(dummy));
       //
-      at(m_displayed_map).write(stream, version);
+      maps_vector.at(m_displayed_map).write(stream, version);
    }
    return true;
 }

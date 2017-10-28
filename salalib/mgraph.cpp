@@ -736,7 +736,7 @@ void MetaGraph::removeDisplayedMap()
    switch (m_view_class & VIEWFRONT) {
    case VIEWVGA:
       PointMaps::removeMap(ref);
-      if (PointMaps::size() == 0) {
+      if (PointMaps::maps_vector.size() == 0) {
          setViewClass(SHOWHIDEVGA);
          m_state &= ~POINTMAPS;
       }
@@ -2129,7 +2129,7 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
          }
          gatelist.clear();
          if (desttype == VIEWVGA) {
-            m_data_maps.getMap(sourcelayer).pointInPolyList(PointMaps::at(destlayer).getPoint(table_out.getRowKey(i)).m_location,gatelist);
+            m_data_maps.getMap(sourcelayer).pointInPolyList(PointMaps::maps_vector.at(destlayer).getPoint(table_out.getRowKey(i)).m_location,gatelist);
          }
          else if (desttype == VIEWAXIAL) {
             m_data_maps.getMap(sourcelayer).shapeInPolyList(m_shape_graphs.getMap(destlayer).getAllShapes().search(table_out.getRowKey(i)),gatelist);
@@ -2177,11 +2177,11 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             }
             gatelist.clear();
             if (desttype == VIEWDATA) {
-               m_data_maps.getMap(destlayer).pointInPolyList(PointMaps::at(sourcelayer).getPoint(table_in.getRowKey(i)).m_location,gatelist);
+               m_data_maps.getMap(destlayer).pointInPolyList(PointMaps::maps_vector.at(sourcelayer).getPoint(table_in.getRowKey(i)).m_location,gatelist);
             }
             else if (desttype == VIEWAXIAL) {
                // note, "axial" could be convex map, and hence this would be a valid operation
-               m_shape_graphs.getMap(destlayer).pointInPolyList(PointMaps::at(sourcelayer).getPoint(table_in.getRowKey(i)).m_location,gatelist);
+               m_shape_graphs.getMap(destlayer).pointInPolyList(PointMaps::maps_vector.at(sourcelayer).getPoint(table_in.getRowKey(i)).m_location,gatelist);
             }
             double thisval = table_in.getValue(i,col_in);
             for (size_t j = 0; j < gatelist.size(); j++) {
@@ -2239,8 +2239,8 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
 
    // display new data in the relevant layer
    if (desttype == VIEWVGA) {
-      PointMaps::at(destlayer).overrideDisplayedAttribute(-2);
-      PointMaps::at(destlayer).setDisplayedAttribute(col_out);
+      PointMaps::maps_vector.at(destlayer).overrideDisplayedAttribute(-2);
+      PointMaps::maps_vector.at(destlayer).setDisplayedAttribute(col_out);
    }
    else if (desttype == VIEWAXIAL) {
       m_shape_graphs.getMap(destlayer).overrideDisplayedAttribute(-2);
@@ -2580,7 +2580,7 @@ AttributeTable& MetaGraph::getAttributeTable(int type, int layer)
    }
    switch (type & VIEWFRONT) {
    case VIEWVGA:
-      tab = (layer == -1) ? &(getDisplayedPointMap().getAttributeTable()) : &(PointMaps::at(layer).getAttributeTable());
+      tab = (layer == -1) ? &(getDisplayedPointMap().getAttributeTable()) : &(PointMaps::maps_vector.at(layer).getAttributeTable());
       break;
    case VIEWAXIAL:
       tab = (layer == -1) ? &(m_shape_graphs.getDisplayedMap().getAttributeTable()) : &(m_shape_graphs.getMap(layer).getAttributeTable());
@@ -2600,7 +2600,7 @@ const AttributeTable& MetaGraph::getAttributeTable(int type, int layer) const
    }
    switch (type) {
    case VIEWVGA:
-      tab = layer == -1 ? &(getDisplayedPointMap().getAttributeTable()) : &(PointMaps::at(layer).getAttributeTable());
+      tab = layer == -1 ? &(getDisplayedPointMap().getAttributeTable()) : &(PointMaps::maps_vector.at(layer).getAttributeTable());
       break;
    case VIEWAXIAL:
       tab = layer == -1 ? &(m_shape_graphs.getDisplayedMap().getAttributeTable()) : &(m_shape_graphs.getMap(layer).getAttributeTable());
@@ -2829,16 +2829,16 @@ int MetaGraph::read( const std::string& filename )
          return DEPRECATED_VERSION;
       }
       if (version < VERSION_POINT_MAPS) {
-         PointMaps::push_back(PointMap());
+         PointMaps::maps_vector.push_back(PointMap());
          if (temp_state & 0x0001) { // 0x0001 was "GRAPH"
-            PointMaps::tail().m_processed = true;
+            PointMaps::maps_vector.back().m_processed = true;
             temp_state &= ~0x0001;
          }
          if (temp_state & 0x0080) { // 0x0080 was "BOUNDARYGRAPH"
-            PointMaps::tail().m_boundarygraph = true;
+            PointMaps::maps_vector.back().m_boundarygraph = true;
             temp_state &= ~0x0080;
          }
-         PointMaps::tail().read( stream, version );
+         PointMaps::maps_vector.back().read( stream, version );
          setDisplayedPointMapRef(0);
       }
       else {
@@ -2861,7 +2861,7 @@ int MetaGraph::read( const std::string& filename )
          }
       }
       // record on state of actual point map:
-      PointMaps::tail().m_processed = true;
+      PointMaps::maps_vector.back().m_processed = true;
 
       if (!stream.eof()) {
          stream.read( &type, 1 );         
@@ -2881,7 +2881,7 @@ int MetaGraph::read( const std::string& filename )
       // now replace with shape maps, but only if layer exists:
       temp_state &= ~DATAMAPS;
       // converter requires a point map to work on:
-      if (PointMaps::size()) {
+      if (PointMaps::maps_vector.size()) {
          // returns 0 if there are actually no objects in the shapemaps to convert,
          int conv_ok = convertDataLayersToShapeMap(dl,getDisplayedPointMap());
          if (conv_ok == 1) {
@@ -3100,8 +3100,8 @@ int MetaGraph::convertAttributes( ifstream& stream, int version )
       return 0;
    }
 
-   for (i = 0; i < PointMaps::size(); i++) {
-      PointMap& map = PointMaps::at(i);
+   for (i = 0; i < PointMaps::maps_vector.size(); i++) {
+      PointMap& map = PointMaps::maps_vector.at(i);
       for (int j = 0; j < map.m_cols; j++) {
          for (int k = 0; k < map.m_rows; k++) {
             // Note: block used to be the noderef
@@ -3160,7 +3160,7 @@ int MetaGraph::convertVirtualMem( ifstream& stream, int version )
    int size;
    stream.read( (char *) &size, sizeof( size ) );
 
-   PointMap& map = PointMaps::tail();
+   PointMap& map = PointMaps::maps_vector.back();
    for (int i = 0; i < size; i++) {
       nodes.read(stream);
       bins.read(stream);

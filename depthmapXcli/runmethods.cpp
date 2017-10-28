@@ -146,7 +146,7 @@ namespace dm_runmethods
         }
 
         std::cout << "ok\nSetting up grid... " << std::flush;
-        if (!mGraph->PointMaps::size() || mGraph->getDisplayedPointMap().isProcessed()) {
+        if (!mGraph->PointMaps::maps_vector.size() || mGraph->getDisplayedPointMap().isProcessed()) {
            // this can happen if there are no displayed maps -- so flag new map required:
             mGraph->addNewMap();
         }

@@ -1413,7 +1413,7 @@ void MainWindow::SetGraphTreeChecks()
                 int editable = MetaGraph::NOT_EDITABLE;
                 switch (entry.m_type) {
                     case 0:
-                        if (graph->PointMaps::at(entry.m_cat).isProcessed()) {
+                        if (graph->PointMaps::maps_vector.at(entry.m_cat).isProcessed()) {
                             editable = MetaGraph::NOT_EDITABLE;
                         }
                         else {
@@ -1519,8 +1519,8 @@ void MainWindow::MakeGraphTree()
             m_treeroots[0] = hItem;
         }
         QTreeWidgetItem* hItem = m_treeroots[0]->child(0);
-        for (size_t i = 0; i < m_treeDoc->m_meta_graph->PointMaps::size(); i++) {
-            QString name = QString(m_treeDoc->m_meta_graph->PointMaps::at(i).getName().c_str());
+        for (size_t i = 0; i < m_treeDoc->m_meta_graph->PointMaps::maps_vector.size(); i++) {
+            QString name = QString(m_treeDoc->m_meta_graph->PointMaps::maps_vector.at(i).getName().c_str());
             if (hItem == NULL) {
                 hItem = m_indexWidget->addNewFolder(name, m_treeroots[0]);
                 hItem->setCheckState(0, Qt::Unchecked);

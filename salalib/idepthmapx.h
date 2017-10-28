@@ -53,7 +53,7 @@ public:
    IShapeMap *makeSegmentMapFromAxialMap(IComm *comm, IShapeMap *axialmap, const char *newmapname, double stubremoval);
    //
    int getIVGAMapCount() const
-   { return m_graph->PointMaps::size(); }
+   { return m_graph->PointMaps::maps_vector.size(); }
    IVGAMap *getFirstIVGAMap();
    IVGAMap *getNextIVGAMap();
    //

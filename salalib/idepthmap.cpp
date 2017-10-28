@@ -124,7 +124,7 @@ bool IGraphFile::save(const char *filename)
    // there's a little issue with the state variable which needs to be written
    // ...this is an explicit set before save according to what's in the file:
    int state = graph->getState();
-   if (graph->PointMaps::size() > 0) {
+   if (graph->PointMaps::maps_vector.size() > 0) {
       state |= MetaGraph::POINTMAPS;
    }
    if (graph->m_data_maps.getMapCount() > 0) {

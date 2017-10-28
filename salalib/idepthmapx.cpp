@@ -87,8 +87,8 @@ IVGAMap *IGraphOrganizer::getIVGAMap(PointMap *map)
 IVGAMap *IGraphOrganizer::getIVGAMap(int i)
 {
    IVGAMap *p_ivga = NULL;
-   if (i >= 0 && size_t(i) < m_graph->PointMaps::size()) {
-      p_ivga = getIVGAMap(&(m_graph->PointMaps::at(i)));
+   if (i >= 0 && size_t(i) < m_graph->PointMaps::maps_vector.size()) {
+      p_ivga = getIVGAMap(&(m_graph->PointMaps::maps_vector.at(i)));
    }
    return p_ivga;
 }
@@ -181,8 +181,8 @@ int IGraphOrganizer::getMapRef(IVGAMap *map)
    PointMap *basemap = m_ivga_maps[n];
    //
    // look for it...
-   for (size_t i = 0; i < m_graph->PointMaps::size(); i++) {
-      if (&(m_graph->PointMaps::at(i)) == basemap) {
+   for (size_t i = 0; i < m_graph->PointMaps::maps_vector.size(); i++) {
+      if (&(m_graph->PointMaps::maps_vector.at(i)) == basemap) {
          return i;
       }
    }
