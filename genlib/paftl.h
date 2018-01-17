@@ -1417,12 +1417,7 @@ ostream& psubvec<T>::write( ostream& stream )
 // Helper class keyvaluepair...
 
 template <class T1, class T2> class keyvaluepair {
-   // Quick mod - TV
-#if defined(_WIN32)
-protected:
-#else
 public:
-#endif
    T1 m_key;
    T2 m_value;
 public:
@@ -1433,12 +1428,6 @@ public:
    T2& value() { return m_value; }
    const T2& value() const { return m_value; }
 
-   // Quick mod - TV
-#if defined (_WIN32)
-   friend bool operator == <T1,T2>(const keyvaluepair<T1,T2>& a, const keyvaluepair<T1,T2>& b);
-   friend bool operator <  <T1,T2>(const keyvaluepair<T1,T2>& a, const keyvaluepair<T1,T2>& b);
-   friend bool operator >  <T1,T2>(const keyvaluepair<T1,T2>& a, const keyvaluepair<T1,T2>& b);
-#endif
    istream& read( istream& stream );
    ostream& write( ostream& stream );
 };
