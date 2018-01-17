@@ -204,9 +204,8 @@ void GLView::loadAxes() {
 }
 
 void GLView::loadDrawingGLObjects() {
-    m_pDoc.m_meta_graph->setLock(this);
+    auto lock = m_pDoc.m_meta_graph->getLock();
     m_visibleDrawingLines.loadLineData(m_pDoc.m_meta_graph->getVisibleDrawingLines(), m_foreground);
-    m_pDoc.m_meta_graph->releaseLock(this);
 }
 
 void GLView::resizeGL(int w, int h)
