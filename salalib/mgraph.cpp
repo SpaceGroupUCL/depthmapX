@@ -46,7 +46,6 @@
 MetaGraph::MetaGraph()
 { 
    m_state = 0; 
-   m_lock = NULL;
    m_view_class = VIEWNONE;
    m_file_version = -1; // <- if unsaved, file version is -1
 

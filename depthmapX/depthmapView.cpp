@@ -336,7 +336,8 @@ void QDepthmapView::paintEvent(QPaintEvent *)
       return;
    }*/
 
-   if (!m_pDoc.m_meta_graph->setLock(this)) {
+   auto lock = pDoc.m_meta_graph->getLock();
+   if (!lock.aquiredLock()) {
       return;
    }
 
@@ -468,8 +469,6 @@ void QDepthmapView::paintEvent(QPaintEvent *)
    }
 
    m_drawing = false;
-   m_pDoc.m_meta_graph->releaseLock(this);
-
    QPainter screenPainter(this);
    screenPainter.drawPixmap(0,0,width(),height(),*m_pixmap);
 }

@@ -362,7 +362,7 @@ void Q3DView::ReloadLineData()
 
    if (pDoc->m_meta_graph && pDoc->m_meta_graph->getState() & MetaGraph::LINEDATA) {
       // should really check communicator is not open...
-      pDoc->m_meta_graph->setLock(this);
+      auto lock = pDoc->m_meta_graph->getLock();
       while (m_lock_draw) {
          //sleep(1);
       }
@@ -429,7 +429,6 @@ void Q3DView::ReloadLineData()
       }
 
       m_lock_draw = false;
-      pDoc->m_meta_graph->releaseLock(this);
    }
 
    // note: as affects region, will also affect point data:

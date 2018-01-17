@@ -260,12 +260,12 @@ void QPlotView::PrintOutput(QPainter *pDC, QGraphDoc *pDoc)
 bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) 
 {
 // this is going to need a timer at somepoint, but for now, it's all very easy to start off:
-   if (!pDoc->m_meta_graph->setLock(this)) {
+   auto lock = pDoc->m_meta_graph->getLock();
+    if (!lock.aquiredLock()) {
       return false;
    }
 
    if (pDoc->m_communicator || !pDoc->m_meta_graph->viewingProcessed()) {
-      pDoc->m_meta_graph->releaseLock(this);
       return false;
    }
 
@@ -498,8 +498,6 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw)
    pDC->drawText(QPointF(sizey.width()/2, height+miny_pos), ylabel);
 
    pDC->setPen(oldpen);
-
-   pDoc->m_meta_graph->releaseLock(this);
 
    return true;
 }

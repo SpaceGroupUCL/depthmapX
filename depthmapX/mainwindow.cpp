@@ -1763,7 +1763,8 @@ void MainWindow::MakeAttributeList()
     if (graph == NULL) {
         return;
     }
-    if (graph->setLock(this)) {
+    auto lock = graph->getLock();
+    if (lock.aquiredLock()) {
 
         // just doing this the simple way to start off with
         // (when you add new attributes, list is cleared and re
@@ -1784,7 +1785,6 @@ void MainWindow::MakeAttributeList()
                 //}
             }
         }
-        graph->releaseLock(this);
     }
 
     SetAttributeChecks();
@@ -2236,49 +2236,51 @@ void MainWindow::RedoPlotViewMenu(QGraphDoc* pDoc)
    int view_class = pDoc->m_meta_graph->getViewClass() & (MetaGraph::VIEWVGA | MetaGraph::VIEWAXIAL | MetaGraph::VIEWDATA);
    int curr_j = 0;
 
-   if (pDoc->m_meta_graph->setLock(this)) {
-      m_view_map_entries.clear();
-      if (view_class == MetaGraph::VIEWVGA) {
-         PointMap& map = pDoc->m_meta_graph->getDisplayedPointMap();
-         int displayed_ref = map.getDisplayedAttribute();
+   {
+       auto lock = pDoc->m_meta_graph->getLock();
+       if (lock.aquiredLock()) {
+          m_view_map_entries.clear();
+          if (view_class == MetaGraph::VIEWVGA) {
+             PointMap& map = pDoc->m_meta_graph->getDisplayedPointMap();
+             int displayed_ref = map.getDisplayedAttribute();
 
-         const AttributeTable& table = map.getAttributeTable();
-         m_view_map_entries.add(0, "Ref Number");
-         for (int i = 0; i < table.getColumnCount(); i++) {
-            m_view_map_entries.add(i+1, table.getColumnName(i));
-            if (map.getDisplayedAttribute() == i) {
-               curr_j = i + 1;
-            }
-         }
-      }
-      else if (view_class == MetaGraph::VIEWAXIAL) {
-         // using attribute tables is very, very simple...
-         const ShapeGraph& map = pDoc->m_meta_graph->getDisplayedShapeGraph();
-         const AttributeTable& table = map.getAttributeTable();
-         m_view_map_entries.add(0, "Ref Number");
-         curr_j = 0;
-         for (int i = 0; i < table.getColumnCount(); i++) {
-            m_view_map_entries.add(i+1, table.getColumnName(i));
-            if (map.getDisplayedAttribute() == i) {
-               curr_j = i + 1;
-            }
-         }
-      }
-      else if (view_class == MetaGraph::VIEWDATA) {
-         // using attribute tables is very, very simple...
-         const ShapeMap& map = pDoc->m_meta_graph->getDisplayedDataMap();
-         const AttributeTable& table = map.getAttributeTable();
-         m_view_map_entries.add(0, "Ref Number");
-         curr_j = 0;
-         for (int i = 0; i < table.getColumnCount(); i++) {
-            m_view_map_entries.add(i+1, table.getColumnName(i));
-            if (map.getDisplayedAttribute() == i) {
-               curr_j = i + 1;
-            }
-         }
-      }
-      pDoc->m_meta_graph->releaseLock(this);
-   }
+             const AttributeTable& table = map.getAttributeTable();
+             m_view_map_entries.add(0, "Ref Number");
+             for (int i = 0; i < table.getColumnCount(); i++) {
+                m_view_map_entries.add(i+1, table.getColumnName(i));
+                if (map.getDisplayedAttribute() == i) {
+                   curr_j = i + 1;
+                }
+             }
+          }
+          else if (view_class == MetaGraph::VIEWAXIAL) {
+             // using attribute tables is very, very simple...
+             const ShapeGraph& map = pDoc->m_meta_graph->getDisplayedShapeGraph();
+             const AttributeTable& table = map.getAttributeTable();
+             m_view_map_entries.add(0, "Ref Number");
+             curr_j = 0;
+             for (int i = 0; i < table.getColumnCount(); i++) {
+                m_view_map_entries.add(i+1, table.getColumnName(i));
+                if (map.getDisplayedAttribute() == i) {
+                   curr_j = i + 1;
+                }
+             }
+          }
+          else if (view_class == MetaGraph::VIEWDATA) {
+             // using attribute tables is very, very simple...
+             const ShapeMap& map = pDoc->m_meta_graph->getDisplayedDataMap();
+             const AttributeTable& table = map.getAttributeTable();
+             m_view_map_entries.add(0, "Ref Number");
+             curr_j = 0;
+             for (int i = 0; i < table.getColumnCount(); i++) {
+                m_view_map_entries.add(i+1, table.getColumnName(i));
+                if (map.getDisplayedAttribute() == i) {
+                   curr_j = i + 1;
+                }
+             }
+          }
+       }
+    }
 
    int t, cur_sel = 0;
    x_coord->clear();

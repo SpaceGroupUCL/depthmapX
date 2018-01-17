@@ -36,6 +36,8 @@
 #include <salalib/axialmap.h>
 #include <salalib/datalayer.h>   // datalayers deprecated
 
+#include <mutex>
+
 // for agent engine interface
 #include <salalib/nagent.h>
 #include <salalib/importtypedefs.h>
@@ -60,7 +62,6 @@ public:
 protected:
    int m_file_version;
    int m_state;
-   void *m_lock;
 public:
    // some display options now set at file level
    bool m_showgrid;
@@ -78,21 +79,31 @@ public:
       // note, if unsaved, m_file_version is -1
       return m_file_version;
    }
-   bool setLock(void *who) 
-   { 
-      if (m_lock == 0) {
-         m_lock = who;
-         return true;
-      }
-      return false;
-   }
-   bool releaseLock(void *who)
+
+
+
+private:
+   std::recursive_mutex mLock;
+
+public:
+
+   // RAII helper to lock/unlock access to the meta graph
+   class MGraphLocker
    {
-      if (m_lock != who) {
-         return false;
-      }
-      m_lock = NULL;
-      return true;
+   public:
+       MGraphLocker(std::recursive_mutex &lock) : mLock(lock)
+       {
+           mAquired = lock.try_lock();
+       }
+       bool aquiredLock() const { return mAquired;}
+       ~MGraphLocker(){mLock.unlock();}
+   private:
+       bool mAquired;
+       std::recursive_mutex& mLock;
+   };
+
+   MGraphLocker getLock(){
+       return MGraphLocker(mLock);
    }
    //
    void copyLineData(const SuperSpacePixel& meta);
