@@ -260,8 +260,8 @@ void QPlotView::PrintOutput(QPainter *pDC, QGraphDoc *pDoc)
 bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) 
 {
 // this is going to need a timer at somepoint, but for now, it's all very easy to start off:
-   auto lock = pDoc->m_meta_graph->getLock();
-    if (!lock.aquiredLock()) {
+   auto lock = pDoc->m_meta_graph->getLockDeferred();
+    if (!lock.try_lock()) {
       return false;
    }
 

@@ -86,25 +86,14 @@ private:
    std::recursive_mutex mLock;
 
 public:
-
-   // RAII helper to lock/unlock access to the meta graph
-   class MGraphLocker
-   {
-   public:
-       MGraphLocker(std::recursive_mutex &lock) : mLock(lock)
-       {
-           mAquired = lock.try_lock();
-       }
-       bool aquiredLock() const { return mAquired;}
-       ~MGraphLocker(){mLock.unlock();}
-   private:
-       bool mAquired;
-       std::recursive_mutex& mLock;
-   };
-
-   MGraphLocker getLock(){
-       return MGraphLocker(mLock);
+    std::unique_lock<std::recursive_mutex> getLock(){
+       return std::unique_lock<recursive_mutex>(mLock);
    }
+
+    std::unique_lock<std::recursive_mutex> getLockDeferred(){
+        return std::unique_lock<std::recursive_mutex>(mLock, std::defer_lock_t());
+    }
+
    //
    void copyLineData(const SuperSpacePixel& meta);
    void copyPointMap(const PointMap& meta);

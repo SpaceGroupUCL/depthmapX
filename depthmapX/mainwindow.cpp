@@ -1763,8 +1763,8 @@ void MainWindow::MakeAttributeList()
     if (graph == NULL) {
         return;
     }
-    auto lock = graph->getLock();
-    if (lock.aquiredLock()) {
+    auto lock = graph->getLockDeferred();
+    if (lock.try_lock()) {
 
         // just doing this the simple way to start off with
         // (when you add new attributes, list is cleared and re
@@ -2237,8 +2237,8 @@ void MainWindow::RedoPlotViewMenu(QGraphDoc* pDoc)
    int curr_j = 0;
 
    {
-       auto lock = pDoc->m_meta_graph->getLock();
-       if (lock.aquiredLock()) {
+       auto lock = pDoc->m_meta_graph->getLockDeferred();
+       if (lock.try_lock()) {
           m_view_map_entries.clear();
           if (view_class == MetaGraph::VIEWVGA) {
              PointMap& map = pDoc->m_meta_graph->getDisplayedPointMap();

@@ -336,9 +336,9 @@ void QDepthmapView::paintEvent(QPaintEvent *)
       return;
    }*/
 
-   auto lock = m_pDoc.m_meta_graph->getLock();
-   if (!lock.aquiredLock()) {
-      return;
+   auto lock = m_pDoc.m_meta_graph->getLockDeferred();
+   if (!lock.try_lock()){
+       return;
    }
 
    m_drawing = true;
