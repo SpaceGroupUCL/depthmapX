@@ -59,7 +59,6 @@ Q3DView::Q3DView(QWidget *parent, QGraphDoc* doc)
 {
    m_points = NULL;
    m_pointcount = 0;
-   m_lock_draw = false;
    m_mouse_mode = ID_3D_ROT;//resouce
    m_mouse_mode_on = 0;
    m_key_mode_on = 0;
@@ -235,10 +234,10 @@ void Q3DView::initializeGL()
 
 void Q3DView::DrawScene()
 {
-   if (m_lock_draw) {
-      return;
-   }
-   m_lock_draw = true;
+    std::unique_lock<std::mutex> lock(m_draw_mutex, std::try_to_lock);
+    if (!lock.owns_lock()){
+        return;
+    }
    
    makeCurrent();
 
@@ -323,8 +322,6 @@ void Q3DView::DrawScene()
 #else
     ;
 #endif
-
-   m_lock_draw = false;
 }
 
 void Q3DView::Reshape(int x, int y)
@@ -362,11 +359,8 @@ void Q3DView::ReloadLineData()
 
    if (pDoc->m_meta_graph && pDoc->m_meta_graph->getState() & MetaGraph::LINEDATA) {
       // should really check communicator is not open...
-      auto lock = pDoc->m_meta_graph->getLock();
-      while (m_lock_draw) {
-         //sleep(1);
-      }
-      m_lock_draw = true;
+      auto mgraphLock = pDoc->m_meta_graph->getLock();
+      std::unique_lock<std::mutex> drawLock(m_draw_mutex);
 
       SuperSpacePixel& superspacepix = *(pDoc->m_meta_graph);
 
@@ -427,8 +421,6 @@ void Q3DView::ReloadLineData()
             m_points[i*3+2] = 0.0;
          }
       }
-
-      m_lock_draw = false;
    }
 
    // note: as affects region, will also affect point data:
@@ -530,13 +522,10 @@ void Q3DView::OnToolsAgentLoadProgram()
    
    if (!filename.empty()) {
       m_animating = false;
-      while (m_lock_draw) {
-         //sleep(1);
-      }
-      m_lock_draw = true;
+      std::unique_lock<std::mutex> lock(m_draw_mutex);
+
       m_agents.clear();
       m_mannequins.clear();
-      m_lock_draw = false;
       if (!m_agent_program.open(filename)) {
 		  QMessageBox::warning(this, tr("depthmapX"), tr("Unable to understand agent program"), QMessageBox::Ok, QMessageBox::Ok);
       }
@@ -572,9 +561,7 @@ void Q3DView::OnLButtonDown(unsigned int nFlags, QPoint point)
 {
     m_right_mouse = false;
 
-   while (m_lock_draw) {
-//      Sleep(1);
-   }
+    std::unique_lock<std::mutex> lock(m_draw_mutex);
 
    switch (m_mouse_mode) {
    case ID_3D_PAN: case ID_3D_ROT: case ID_3D_ZOOM:
@@ -609,9 +596,7 @@ void Q3DView::OnRButtonDown(unsigned int nFlags, QPoint point)
 {
    m_right_mouse = true;
 
-   while (m_lock_draw) {
-//      Sleep(1);
-   }
+   std::unique_lock<std::mutex> lock(m_draw_mutex);
 
    m_mouse_origin = point;
 }
@@ -742,11 +727,7 @@ void Q3DView::CreateAgent(QPoint point)
       return;
    }
 
-   while (m_lock_draw) {
-      //sleep(1);
-   }
-   m_lock_draw = true;
-
+   std::unique_lock<std::mutex> lock(m_draw_mutex);
    bool animating = m_animating;
    m_animating = false;
 
@@ -793,7 +774,6 @@ void Q3DView::CreateAgent(QPoint point)
    }
 
    m_animating |= animating;
-   m_lock_draw = false;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -1151,15 +1131,11 @@ void Q3DView::OnToolsImportTraces()
    
    if (!filename.empty()) {
       m_animating = false;
-      while (m_lock_draw) {
-         //sleep(1);
-      }
-      m_lock_draw = true;
+      std::unique_lock<std::mutex> lock(m_draw_mutex);
       m_agents.clear();
       m_traces.clear();
       m_mannequins.clear();
-      m_lock_draw = false;
-      //
+            //
       ifstream file(filename.c_str());
       // Eva's XMLs do not have the header yet:
       xmlelement traceset;

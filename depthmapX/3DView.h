@@ -106,7 +106,7 @@ public:
    QPainter *m_pDC;
    //
    bool m_quick_draw;
-   bool m_lock_draw;
+   std::mutex m_draw_mutex;
    bool m_animating;
    bool m_drawtrails;
    bool m_fill;
