@@ -2638,8 +2638,8 @@ bool ShapeMap::read( istream& stream, int version, bool drawinglayer )
    for (int k = 0; k < count; k++) {
       int key;
       stream.read((char *) &key, sizeof(key));
-      int index = m_objects.add(key, SalaObject());
-      m_objects.value(index).read(stream,version);
+      m_objects.insert(std::make_pair(key, SalaObject()));
+      m_objects.end()->second.read(stream,version);
    }
    // read attribute data
    m_attributes.read(stream,version);
@@ -2716,10 +2716,10 @@ bool ShapeMap::write( ofstream& stream, int version )
    // write object data (currently unused)
    count = m_objects.size();
    stream.write((char *) &count, sizeof(count));
-   for (int k = 0; k < count; k++) {
-      int key = m_objects.key(k);
+   for (auto obj: m_objects) {
+      int key = obj.first;
       stream.write((char *) &key, sizeof(key));
-      m_objects.value(k).write(stream);
+      obj.second.write(stream);
    }
    // write attribute data
    m_attributes.write(stream,version);

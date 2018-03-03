@@ -215,7 +215,7 @@ protected:
    mutable bool m_bsp_tree;
    //
    pqmap<int,SalaShape> m_shapes;
-   pqmap<int,SalaObject> m_objects;   // THIS IS UNUSED! Meant for each object to have many shapes
+   std::map<int,SalaObject> m_objects;   // THIS IS UNUSED! Meant for each object to have many shapes
    //
    prefvec<SalaEvent> m_undobuffer;
    //
