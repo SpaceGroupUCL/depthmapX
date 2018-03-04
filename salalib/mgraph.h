@@ -157,7 +157,6 @@ public:
    //
    // some compatibility with older version horrors:
    int convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& pointmap);
-   void convertShapeGraphToShapeMap(const ShapeGraph& axialmap);
    //
    int loadMifMap(Communicator *comm, istream& miffile, istream& midfile);
    bool makeAllLineMap( Communicator *communicator, const Point2f& seed );

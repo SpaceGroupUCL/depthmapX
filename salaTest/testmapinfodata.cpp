@@ -131,21 +131,21 @@ TEST_CASE("Complete proper MapInfo file", "")
     std::stringstream midstream(middata);
     REQUIRE(mapinfodata.import(mifstream, midstream, shapeMap) == MINFO_OK);
 
-    pqmap<int, SalaShape> shapes = shapeMap.getAllShapes();
+    std::map<int, SalaShape> shapes = shapeMap.getAllShapes();
     REQUIRE(shapes.size() == 3);
-    REQUIRE(shapes[0].isLine());
-    REQUIRE(shapes[0].getLine().ax() == Approx(534014.29).epsilon(EPSILON));
-    REQUIRE(shapes[0].getLine().ay() == Approx(182533.33).epsilon(EPSILON));
-    REQUIRE(shapes[0].getLine().bx() == Approx(535008.52).epsilon(EPSILON));
-    REQUIRE(shapes[0].getLine().by() == Approx(182764.11).epsilon(EPSILON));
-    REQUIRE(shapes[1].isLine());
-    REQUIRE(shapes[1].getLine().ax() == Approx(533798.68).epsilon(EPSILON));
-    REQUIRE(shapes[1].getLine().ay() == Approx(183094.69).epsilon(EPSILON));
-    REQUIRE(shapes[1].getLine().bx() == Approx(534365.48).epsilon(EPSILON));
-    REQUIRE(shapes[1].getLine().by() == Approx(183159.01).epsilon(EPSILON));
-    REQUIRE(shapes[2].isPoint());
-    REQUIRE(shapes[2].getPoint().x == Approx(534014.29).epsilon(EPSILON));
-    REQUIRE(shapes[2].getPoint().y == Approx(182533.33).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 0)->second.isLine());
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 0)->second.getLine().ax() == Approx(534014.29).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 0)->second.getLine().ay() == Approx(182533.33).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 0)->second.getLine().bx() == Approx(535008.52).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 0)->second.getLine().by() == Approx(182764.11).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 1)->second.isLine());
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 1)->second.getLine().ax() == Approx(533798.68).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 1)->second.getLine().ay() == Approx(183094.69).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 1)->second.getLine().bx() == Approx(534365.48).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 1)->second.getLine().by() == Approx(183159.01).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 2)->second.isPoint());
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 2)->second.getPoint().x == Approx(534014.29).epsilon(EPSILON));
+    REQUIRE(depthmapX::getMapAtIndex(shapes, 2)->second.getPoint().y == Approx(182533.33).epsilon(EPSILON));
 
     AttributeTable att = shapeMap.getAttributeTable();
     REQUIRE(att.getColumnCount() == 2);

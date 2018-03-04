@@ -512,7 +512,7 @@ int MetaGraph::makeIsovist(Communicator *communicator, const Point2f& p, double 
       ShapeMap& map = m_data_maps.getMap(shapelayer);
       // false: closed polygon, true: isovist
       int polyref = map.makePolyShape(iso.getPolygon(),false);  
-      map.getAllShapes().search(polyref).setCentroid(p);
+      map.getAllShapes().find(polyref)->second.setCentroid(p);
       map.overrideDisplayedAttribute(-2);
       map.setDisplayedAttribute(-1);
       setViewClass(SHOWSHAPETOP);
@@ -564,9 +564,9 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
    bool first = true;
    if (makeBSPtree(communicator)) {
       std::set<int> selset = map->getSelSet();
-      pqmap<int,SalaShape>& shapes = map->getAllShapes();
+      std::map<int,SalaShape>& shapes = map->getAllShapes();
       for (auto& sel: selset) {
-         SalaShape& path = shapes.value(sel);
+         const SalaShape& path = depthmapX::getMapAtIndex(shapes, sel)->second;
          if (path.isLine() || path.isPolyLine()) {
             if (first) {
                retvar = 1;
@@ -593,7 +593,7 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
                }
                iso.makeit(m_bsp_root,start,SuperSpacePixel::m_region, angles.first, angles.second);
                int polyref = isovists->makePolyShape(iso.getPolygon(),false);  
-               isovists->getAllShapes().search(polyref).setCentroid(start);
+               isovists->getAllShapes().find(polyref)->second.setCentroid(start);
                AttributeTable& table = isovists->getAttributeTable();
                int row = table.getRowid(polyref);
                iso.setData(table,row, simple_version);
@@ -608,7 +608,7 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
                   }
                   iso.makeit(m_bsp_root,start,SuperSpacePixel::m_region, angles.first, angles.second);
                   int polyref = isovists->makePolyShape(iso.getPolygon(),false);  
-                  isovists->getAllShapes().search(polyref).setCentroid(start);
+                  isovists->getAllShapes().find(polyref)->second.setCentroid(start);
                   AttributeTable& table = isovists->getAttributeTable();
                   int row = table.getRowid(polyref);
                   iso.setData(table,row, simple_version);
@@ -646,8 +646,11 @@ bool MetaGraph::makeBSPtree(Communicator *communicator)
       for (size_t j = 0; j < SuperSpacePixel::at(i).size(); j++) {
          // chooses the first editable layer it can find:
          if (SuperSpacePixel::at(i).at(j).isShown()) {
-            for (size_t k = 0; k < SuperSpacePixel::at(i).at(j).getAllShapes().size(); k++) {
-               SalaShape& shape = SuperSpacePixel::at(i).at(j).getAllShapes().at(k);
+             auto refShapes = SuperSpacePixel::at(i).at(j).getAllShapes();
+             int k = -1;
+             for (auto refShape: refShapes) {
+                 k++;
+                 SalaShape& shape = refShape.second;
                // I'm not sure what the tagging was meant for any more, 
                // tagging at the moment tags the *polygon* it was original attached to
                // must check it is not a zero length line:
@@ -954,8 +957,9 @@ bool MetaGraph::convertToData(Communicator *comm, std::string layer_name, bool k
          for (size_t i = 0; i < SuperSpacePixel::size(); i++) {
             for (size_t j = 0; j < SuperSpacePixel::at(i).size(); j++) {
                if (SuperSpacePixel::at(i).at(j).isShown()) {
-                  for (size_t k = 0; k < SuperSpacePixel::at(i).at(j).getAllShapes().size(); k++) {
-                     int key = destmap.makeShape(SuperSpacePixel::at(i).at(j).getAllShapes().at(k));
+                  auto refShapes = SuperSpacePixel::at(i).at(j).getAllShapes();
+                  for (auto refShape: refShapes) {
+                     int key = destmap.makeShape(refShape.second);
                      table.setValue(table.getRowid(key),layercol,float(j+1));
                      count++;
                   }
@@ -1942,50 +1946,6 @@ int MetaGraph::convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& poi
    return retvar;
 }
 
-// similar (but much, much easier than above -- relies on order of index order of
-// axial lines being the same as as the created poly index order and both attribute 
-// tables -- should be since the map is in indexed order, as is its attribute table)
-
-// DEPRECATED: only need to switch map type flag
-
-void MetaGraph::convertShapeGraphToShapeMap(const ShapeGraph& axialmap)
-{
-   int x = m_data_maps.addMap("Axial Gates",ShapeMap::DATAMAP);
-   ShapeMap& shapemap = m_data_maps.getMap(x);
-
-   // use the dangermouse all polygon grabber:
-   const pqmap<int,SalaShape>& polys = axialmap.getAllShapes();
-   shapemap.init(axialmap.getShapeCount(),axialmap.getRegion());
-   size_t i;
-   for (i = 0; i < axialmap.getShapeCount(); i++) {
-      if (polys[i].isLine()) {   // it ought to be since we're starting with an axial map!
-         shapemap.makeLineShape(polys[i].getLine());
-      }
-   }
-
-   // now convert attributes and we're done!
-   const AttributeTable& table_in = axialmap.getAttributeTable();
-   AttributeTable& table_out = shapemap.getAttributeTable();
-
-   for (i = 0; i < size_t(table_in.getColumnCount()); i++) {
-      table_out.insertColumn(table_in.getColumnName(i));
-   }
-   
-   int counter = 0;
-   for (i = 0; i < size_t(table_in.getRowCount()); i++) {
-      if (polys[i].isLine()) {   // check needs to be maintained so indices match
-         for (int j = 0; j < table_in.getColumnCount(); j++) {
-            table_out.setValue(counter,j,table_in.getValue(i,j));
-         }
-         counter++;  // in case 'i' skips over a few non-line objects
-      }
-   }
-
-   shapemap.overrideDisplayedAttribute(-2);
-   shapemap.setDisplayedAttribute(-1);
-}
-
-
 // the tidy(ish) version: still needs to be at top level and switch between layers
 
 bool MetaGraph::pushValuesToLayer(int desttype, int destlayer, int push_func, bool count_col)
@@ -2067,14 +2027,16 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             m_data_maps.getMap(sourcelayer).pointInPolyList(PointMaps::at(destlayer).getPoint(table_out.getRowKey(i)).m_location,gatelist);
          }
          else if (desttype == VIEWAXIAL) {
-            m_data_maps.getMap(sourcelayer).shapeInPolyList(m_shape_graphs.getMap(destlayer).getAllShapes().search(table_out.getRowKey(i)),gatelist);
+            auto shapeMap = m_shape_graphs.getMap(destlayer).getAllShapes();
+            m_data_maps.getMap(sourcelayer).shapeInPolyList(depthmapX::getMapAtIndex(shapeMap, table_out.getRowKey(i))->second,gatelist);
          }
          else if (desttype == VIEWDATA) {
             if (sourcelayer == destlayer) {
                // error: pushing to same map
                return false;
             }
-            m_data_maps.getMap(sourcelayer).shapeInPolyList(m_data_maps.getMap(destlayer).getAllShapes().search(table_out.getRowKey(i)),gatelist);
+            auto dataMap = m_data_maps.getMap(destlayer).getAllShapes();
+            m_data_maps.getMap(sourcelayer).shapeInPolyList(depthmapX::getMapAtIndex(dataMap, table_out.getRowKey(i))->second,gatelist);
          }
          double val = -1.0;
          int count = 0;
@@ -2139,10 +2101,12 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             }
             gatelist.clear();
             if (desttype == VIEWDATA) {
-               m_data_maps.getMap(destlayer).shapeInPolyList(m_shape_graphs.getMap(sourcelayer).getAllShapes().search(table_in.getRowKey(i)),gatelist);
+               auto dataMap = m_shape_graphs.getMap(sourcelayer).getAllShapes();
+               m_data_maps.getMap(destlayer).shapeInPolyList(depthmapX::getMapAtIndex(dataMap, table_in.getRowKey(i))->second,gatelist);
             }
             else if (desttype == VIEWAXIAL) {
-               m_shape_graphs.getMap(destlayer).shapeInPolyList(m_shape_graphs.getMap(sourcelayer).getAllShapes().search(table_in.getRowKey(i)),gatelist);
+                auto shapeMap = m_shape_graphs.getMap(sourcelayer).getAllShapes();
+               m_shape_graphs.getMap(destlayer).shapeInPolyList(depthmapX::getMapAtIndex(shapeMap, table_in.getRowKey(i))->second,gatelist);
             }
             double thisval = table_in.getValue(i,col_in);
             for (size_t j = 0; j < gatelist.size(); j++) {

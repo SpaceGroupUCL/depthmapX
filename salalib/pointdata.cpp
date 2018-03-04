@@ -442,8 +442,9 @@ bool PointMap::fillLines()
    for (size_t file = 0; file < m_spacepix->size(); file++) {
       for (size_t layer = 0; layer < m_spacepix->at(file).size(); layer++) {
          if (m_spacepix->at(file).at(layer).isShown()) {
-            for (size_t k = 0; k < m_spacepix->at(file).at(layer).getAllShapes().size(); k++) {
-               SalaShape& shape = m_spacepix->at(file).at(layer).getAllShapes().at(k);
+            auto refShapes = m_spacepix->at(file).at(layer).getAllShapes();
+            for (auto refShape: refShapes) {
+               SalaShape& shape = refShape.second;
                if (shape.isLine()) {
                   fillLine(shape.getLine());
                }
@@ -494,8 +495,9 @@ bool PointMap::blockLines()
       for (size_t j = 0; j < m_spacepix->at(i).size(); j++) {
          // chooses the first editable layer it can find:
          if (m_spacepix->at(i).at(j).isShown()) {
-            for (size_t k = 0; k < m_spacepix->at(i).at(j).getAllShapes().size(); k++) {
-               SalaShape& shape = m_spacepix->at(i).at(j).getAllShapes().at(k);
+             auto refShapes = m_spacepix->at(i).at(j).getAllShapes();
+             for (auto refShape: refShapes) {
+                 SalaShape& shape = refShape.second;
                if (shape.isLine()) {
                   blockLine(count++,shape.getLine());
                }
@@ -3354,9 +3356,9 @@ bool PointMap::mergePixels(PixelRef a, PixelRef b)
 
 void PointMap::mergeFromShapeMap(const ShapeMap& shapemap)
 {
-   const pqmap<int,SalaShape>& polygons = shapemap.getAllShapes();
-   for (size_t i = 0; i < polygons.size(); i++) {
-      const SalaShape& poly = polygons[i];
+   const std::map<int,SalaShape>& polygons = shapemap.getAllShapes();
+   for (auto polygon: polygons) {
+      const SalaShape& poly = polygon.second;
       if (poly.isLine()) {
          PixelRef a = pixelate(poly.getLine().start());
          PixelRef b = pixelate(poly.getLine().end());

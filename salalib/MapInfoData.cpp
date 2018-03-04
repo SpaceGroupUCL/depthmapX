@@ -291,10 +291,12 @@ bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const ShapeMap&
 
    miffile.precision(16);
 
-   for (size_t i = 0; i < map.m_shapes.size(); i++) {
+   int i = -1;
+   for (auto shape: map.m_shapes) {
+      i++;
       // note, attributes must align for this:
       if (map.getAttributeTable().isVisible(i)) {
-         const SalaShape& poly = map.m_shapes[i];
+         const SalaShape& poly = shape.second;
          if (poly.isPoint()) {
             miffile << "POINT " << poly.getPoint().x << " " << poly.getPoint().y << endl;
             miffile << "    SYMBOL (32,0,10)" << endl;

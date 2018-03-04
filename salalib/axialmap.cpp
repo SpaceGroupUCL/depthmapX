@@ -32,6 +32,7 @@
 #include "MapInfoData.h"
 
 #include "genlib/stringutils.h"
+#include "genlib/containerutils.h"
 
 #ifndef _WIN32
 #define _finite finite
@@ -617,9 +618,9 @@ bool ShapeGraphs::makeAllLineMap(Communicator *comm, SuperSpacePixel& superspace
             else {
                region = runion(region,superspacepix.at(i).at(j).getRegion());
             }
-
-            for (size_t k = 0; k < superspacepix.at(i).at(j).getAllShapes().size(); k++) {
-               SalaShape& shape = superspacepix.at(i).at(j).getAllShapes().at(k);
+            auto refShapes = superspacepix.at(i).at(j).getAllShapes();
+            for (auto refShape: refShapes) {
+                SalaShape& shape = refShape.second;
                if (shape.isLine()) {
                   lines.push_back(shape.getLine());
                }
@@ -785,9 +786,9 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
    // also, a list of radial lines cut by each axial line
    pqmap<int,pvecint> ax_radial_cuts;
    pqmap<int,pvecint> ax_seg_cuts;
-   for (i = 0; i < at(m_all_line_map).m_shapes.size(); i++) {
-      ax_radial_cuts.add(at(m_all_line_map).m_shapes.key(i),pvecint());
-      ax_seg_cuts.add(at(m_all_line_map).m_shapes.key(i),pvecint());
+   for (auto shape: at(m_all_line_map).m_shapes) {
+      ax_radial_cuts.add(shape.first, pvecint());
+      ax_seg_cuts.add(shape.first, pvecint());
    }
 
    // make divisions -- this is the slow part and the comm updates
@@ -869,7 +870,7 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
    size_t k;
    for (k = 0; k < at(m_all_line_map).m_shapes.size(); k++) {
       if (!minimiser.removed(k)) {
-         lines_s.push_back( at(m_all_line_map).m_shapes[k].getLine() );
+         lines_s.push_back( at(m_all_line_map).m_shapes.find(k)->second.getLine() );
       }
    }
 
@@ -878,7 +879,7 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
    // make new lines here (assumes line map has only lines
    for (k = 0; k < at(m_all_line_map).m_shapes.size(); k++) {
       if (!minimiser.removed(k)) {
-         lines_m.push_back( at(m_all_line_map).m_shapes[k].getLine() );
+         lines_m.push_back( at(m_all_line_map).m_shapes.find(k)->second.getLine() );
       }
    }
 
@@ -977,7 +978,7 @@ void AxialMinimiser::removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
       m_vps[y].index = y;
       double length = m_axialconns[y].m_connections.size();
       m_vps[y].value1 = (int) length;
-      length = m_alllinemap->m_shapes[y].getLine().length();
+      length = m_alllinemap->m_shapes.find(y)->second.getLine().length();
       m_vps[y].value2 = (float) length;
    }
 
@@ -1107,7 +1108,7 @@ void AxialMinimiser::fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
       if (!m_removed[y] && !m_vital[y]) {
          m_vps[livecount].index = (int) y;
          m_vps[livecount].value1 = (int) m_axialconns[y].m_connections.size();
-         m_vps[livecount].value2 = (float) m_alllinemap->m_shapes[y].getLine().length();
+         m_vps[livecount].value2 = (float) m_alllinemap->m_shapes.find(y)->second.getLine().length();
          livecount++;
       }
    }
@@ -1184,7 +1185,7 @@ void AxialMinimiser::fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
 
 bool AxialMinimiser::checkVital(int checkindex, pvecint& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines)
 {
-   pqmap<int,SalaShape>& axiallines = m_alllinemap->m_shapes;
+   std::map<int,SalaShape>& axiallines = m_alllinemap->m_shapes;
 
    bool presumedvital = true;
    int nonvitalcount = 0, vitalsegs = 0;
@@ -1255,8 +1256,9 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
             else {
                region = runion(region,superspacepix.at(i).at(j).getRegion());
             }
-            for (size_t k = 0; k < superspacepix.at(i).at(j).getAllShapes().size(); k++) {
-               SalaShape& shape = superspacepix.at(i).at(j).getAllShapes().at(k);
+            auto refShapes = superspacepix.at(i).at(j).getAllShapes();
+            for (auto refShape: refShapes) {
+                SalaShape& shape = refShape.second;
                if (shape.isLine()) {
                   lines.add(count,shape.getLine());
                   layers.add(count,j);
@@ -1370,9 +1372,9 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
    // add all visible layers to the set of polygon lines...
 
    int count = 0;
-   for (size_t i = 0; i < shapemap.getAllShapes().size(); i++) {
-      int key = shapemap.getAllShapes().key(i);
-      const SalaShape& poly = shapemap.getAllShapes().at(i);
+   for (auto shape: shapemap.getAllShapes()) {
+      int key = shape.first;
+      const SalaShape& poly = shape.second;
       if (poly.isLine()) {
          lines.add(count,poly.getLine());
          keys.add(count,key);
@@ -1465,8 +1467,9 @@ int ShapeGraphs::convertDrawingToConvex(Communicator *comm, const std::string& n
    for (i = 0; i < superspacepix.size(); i++) {
       for (size_t j = 0; j < superspacepix.at(i).size(); j++) {
          if (superspacepix.at(i).at(j).isShown()) {
-            for (size_t k = 0; k < superspacepix.at(i).at(j).getAllShapes().size(); k++) {
-               SalaShape& shape = superspacepix.at(i).at(j).getAllShapes().at(k);
+             auto refShapes = superspacepix.at(i).at(j).getAllShapes();
+             for (auto refShape: refShapes) {
+                 SalaShape& shape = refShape.second;
                if (shape.isPolygon()) {
                   usermap.makeShape(shape);
                   usermap.m_connectors.push_back( Connector() );
@@ -1505,9 +1508,11 @@ int ShapeGraphs::convertDataToConvex(Communicator *comm, const std::string& name
    int conn_col = usermap.m_attributes.insertLockedColumn("Connectivity");
 
    pvecint lookup;
-
-   for (size_t k = 0; k < shapemap.getAllShapes().size(); k++) {
-      SalaShape& shape = shapemap.getAllShapes().at(k);
+   auto refShapes = shapemap.getAllShapes();
+   int k = -1;
+   for (auto refShape: refShapes) {
+      k++;
+      SalaShape& shape = refShape.second;
       if (shape.isPolygon()) {
          int n = usermap.makeShape(shape);
          usermap.m_connectors.push_back( Connector() );
@@ -1571,8 +1576,9 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
                region = runion(region,superspacepix.at(i).at(j).getRegion());
             }
 
-            for (size_t k = 0; k < superspacepix.at(i).at(j).getAllShapes().size(); k++) {
-               SalaShape& shape = superspacepix.at(i).at(j).getAllShapes().at(k);
+            auto refShapes = superspacepix.at(i).at(j).getAllShapes();
+            for (auto refShape: refShapes) {
+                SalaShape& shape = refShape.second;
                if (shape.isLine()) {
                   lines.add(count,shape.getLine());
                   layers.add(count,j);
@@ -1673,9 +1679,9 @@ int ShapeGraphs::convertDataToSegment(Communicator *comm, const std::string& nam
    // add all visible layers to the set of polygon lines...
 
    int count = 0;
-   for (size_t i = 0; i < shapemap.getAllShapes().size(); i++) {
-      int key = shapemap.getAllShapes().key(i);
-      const SalaShape& poly = shapemap.getAllShapes().at(i);
+   for (auto shape: shapemap.getAllShapes()) {
+      int key = shape.first;
+      const SalaShape& poly = shape.second;
       if (poly.isLine()) {
          lines.add(count,poly.getLine());
          keys.add(count,key);
@@ -1933,14 +1939,16 @@ void ShapeGraph::makeConnections(const prefvec<pvecint>& keyvertices)
    int conn_col = m_attributes.insertLockedColumn("Connectivity");
    int leng_col = m_attributes.insertLockedColumn("Line Length");
 
-   for (size_t i = 0; i < m_shapes.size(); i++) {
-      int key = m_shapes.key(i);
+   int i = -1;
+   for (auto shape: m_shapes) {
+      i++;
+      int key = shape.first;
       int rowid = m_attributes.insertRow(key);
       // all indices should match...
       m_connectors.push_back( Connector() );
       int connectivity = getLineConnections( key, m_connectors[i].m_connections, TOLERANCE_B*__max(m_region.height(),m_region.width()));
       m_attributes.setValue(rowid, conn_col, (float) connectivity );
-      m_attributes.setValue(rowid, leng_col, (float) m_shapes[i].getLine().length() );
+      m_attributes.setValue(rowid, leng_col, (float) shape.second.getLine().length() );
       if (keyvertices.size()) {
          // note: depends on lines being recorded in same order as keyvertices...
          m_keyvertices.push_back( keyvertices[i] );
@@ -1981,8 +1989,8 @@ bool ShapeGraph::outputMifPolygons(ostream& miffile, ostream& midfile) const
 {
    // take lines from lines layer and make into regions (using the axial polygons)
    prefvec<Line> lines;
-   for (size_t i = 0; i < m_shapes.size(); i++) {
-      lines.push_back(m_shapes[i].getLine());
+   for (auto shape: m_shapes) {
+      lines.push_back(shape.second.getLine());
    }
    AxialPolygons polygons;
    polygons.init(lines, m_region);
@@ -2006,8 +2014,10 @@ void ShapeGraph::outputNet(ostream& netfile) const
    Point2f offset = Point2f((maxdim - m_region.width())/(2.0*maxdim),(maxdim - m_region.height())/(2.0*maxdim));
    if (isSegmentMap()) {
       netfile << "*Vertices " << m_shapes.size() * 2 << endl;
-      for (size_t i = 0; i < m_shapes.size(); i++) {
-         Line li = m_shapes[i].getLine();
+      int i = -1;
+      for (auto shape: m_shapes) {
+         i++;
+         Line li = shape.second.getLine();
          Point2f p1 = li.start();
          Point2f p2 = li.end();
          p1.x = offset.x + (p1.x - m_region.bottom_left.x) / maxdim;
@@ -2040,8 +2050,10 @@ void ShapeGraph::outputNet(ostream& netfile) const
    }
    else {
       netfile << "*Vertices " << m_shapes.size() << endl;
-      for (size_t i = 0; i < m_shapes.size(); i++) {
-         Point2f p = m_shapes[i].getCentroid();
+      int i = -1;
+      for (auto shape: m_shapes) {
+         i++;
+         Point2f p = shape.second.getCentroid();
          p.x = offset.x + (p.x - m_region.bottom_left.x) / maxdim;
          p.y = 1.0 - (offset.y + (p.y - m_region.bottom_left.y) / maxdim);
          netfile << (i + 1) << " \"" << i << "\" " << p.x << " " << p.y << endl;
@@ -2088,7 +2100,7 @@ void ShapeGraph::makeDivisions(const prefvec<PolyConnector>& polyconnections, co
                continue;
             }
             testedshapes.add(shape.m_shape_ref);
-            const Line& line = m_shapes.search(shape.m_shape_ref).getLine();
+            const Line& line = m_shapes.find(shape.m_shape_ref)->second.getLine();
             //
             if (intersect_region(line, polyconnections[i].line, tolerance * line.length()) ) {
                switch ( intersect_line_distinguish(line, polyconnections[i].line, tolerance * line.length()) ) {
@@ -2149,7 +2161,7 @@ void ShapeGraph::cutLines(const prefvec<Line>& lines, pqmap<int,pvecint>& axcuts
                continue;
             }
             testedshapes.add(shape.m_shape_ref);
-            const Line& line = m_shapes.search(shape.m_shape_ref).getLine();
+            const Line& line = m_shapes.find(shape.m_shape_ref)->second.getLine();
             //
             if (intersect_region(line, lines[i], TOLERANCE_B * line.length()) ) {
                if (intersect_line(line, lines[i], TOLERANCE_B * line.length())) {
@@ -2939,21 +2951,21 @@ void ShapeGraph::unlinkFromShapeMap(const ShapeMap& shapemap)
    // find lines in rough vincinity of unlink point, and check for the closest
    // pair to unlink:
 
-   const pqmap<int,SalaShape>& polygons = shapemap.getAllShapes();
-   for (size_t i = 0; i < polygons.size(); i++) {
+   const std::map<int,SalaShape>& polygons = shapemap.getAllShapes();
+   for (auto polygon: polygons) {
       // just use the points:
-      if (polygons[i].isPoint()) {
+      if (polygon.second.isPoint()) {
          pqvector<Point2f> closepoints;
          prefvec<IntPair> intersections;
-         PixelRef pix = pixelate(polygons[i].getPoint());
+         PixelRef pix = pixelate(polygon.second.getPoint());
          pqvector<ShapeRef>& pix_shapes = m_pixel_shapes[pix.x][pix.y];
          size_t j;
          for (j = 0; j < pix_shapes.size(); j++) {
             for (size_t k = j + 1; k < pix_shapes.size(); k++) {
-               size_t a = m_shapes.searchindex(pix_shapes[j].m_shape_ref);
-               size_t b = m_shapes.searchindex(pix_shapes[k].m_shape_ref);
-               if (a != paftl::npos && b != paftl::npos && m_shapes[a].isLine() && m_shapes[b].isLine() && m_connectors[a].m_connections.searchindex(b) != -1) {
-                  closepoints.push_back( intersection_point(m_shapes[a].getLine(), m_shapes[b].getLine(), TOLERANCE_A) );
+               int a = depthmapX::findIndexFromKey(m_shapes, (int) pix_shapes[j].m_shape_ref);
+               int b = depthmapX::findIndexFromKey(m_shapes, (int) pix_shapes[k].m_shape_ref);
+               if (a != -1 && b != -1 && m_shapes.find(a)->second.isLine() && m_shapes.find(b)->second.isLine() && m_connectors[a].m_connections.searchindex(b) != -1) {
+                  closepoints.push_back( intersection_point(m_shapes.find(a)->second.getLine(), m_shapes.find(b)->second.getLine(), TOLERANCE_A) );
                   intersections.push_back( IntPair((int)a,(int)b) );
                }
             }
@@ -2961,8 +2973,8 @@ void ShapeGraph::unlinkFromShapeMap(const ShapeMap& shapemap)
          double mindist = -1.0;
          int minpair = -1;
          for (j = 0; j < closepoints.size(); j++) {
-            if (minpair == -1 || dist(polygons[i].getPoint(),closepoints[j]) < mindist) {
-               mindist = dist(polygons[i].getPoint(),closepoints[j]);
+            if (minpair == -1 || dist(polygon.second.getPoint(),closepoints[j]) < mindist) {
+               mindist = dist(polygon.second.getPoint(),closepoints[j]);
                minpair = j;
             }
          }
@@ -2996,10 +3008,10 @@ void ShapeGraph::makeNewSegMap()
    // now make a connection set from the ends of lines:
    prefvec<Connector> connectionset;
    pmap<int,Line> lineset;
-   for (size_t m = 0; m < m_shapes.size(); m++) {
-      if (m_shapes[m].isLine()) {
+   for (auto shape: m_shapes) {
+      if (shape.second.isLine()) {
          connectionset.push_back(Connector());
-         lineset.add(m_shapes.key(m),m_shapes[m].getLine());
+         lineset.add(shape.first,shape.second.getLine());
       }
    }
 
@@ -3028,7 +3040,7 @@ void ShapeGraph::makeNewSegMap()
             }
          }
       }
-      PixelRef pix2 = pixelate(m_shapes[seg_a].getLine().t_end());
+      PixelRef pix2 = pixelate(m_shapes.find(seg_a)->second.getLine().t_end());
       pqvector<ShapeRef> &shapes2 = m_pixel_shapes[pix2.x][pix2.y];
       for (size_t j2 = 0; j2 < shapes2.size(); j2++) {
          size_t seg_b = lineset.searchindex(shapes2[j2].m_shape_ref);
@@ -3076,10 +3088,10 @@ void ShapeGraph::makeSegmentMap(prefvec<Line>& lineset, prefvec<Connector>& conn
    // this code relies on the polygon order being the same as the connections
 
    for (size_t i = 0; i < m_connectors.size(); i++) {
-      if (!m_shapes[i].isLine()) {
+      if (!m_shapes.find(i)->second.isLine()) {
          continue;
       }
-      const Line& line = m_shapes[i].getLine();
+      const Line& line = m_shapes.find(i)->second.getLine();
       pmap<double,int> breaks;
       int axis = line.width() >= line.height() ? XAXIS : YAXIS;
       // we need the breaks ordered from start to end of the line
@@ -3091,8 +3103,8 @@ void ShapeGraph::makeSegmentMap(prefvec<Line>& lineset, prefvec<Connector>& conn
       for (size_t j = 0; j < connections.size(); j++) {
          // find the intersection point and add...
          // note: more than one break at the same place allowed
-         if (i != connections[j] && m_shapes[connections[j]].isLine()) {
-            breaks.add( parity * line.intersection_point( m_shapes[connections[j]].getLine(), axis, TOLERANCE_A ), connections[j], paftl::ADD_DUPLICATE );
+         if (i != connections[j] && m_shapes.find(connections[j])->second.isLine()) {
+            breaks.add( parity * line.intersection_point( m_shapes.find(connections[j])->second.getLine(), axis, TOLERANCE_A ), connections[j], paftl::ADD_DUPLICATE );
          }
       }
       // okay, now we have a list from one end of the other of lines this line connects with
@@ -3229,12 +3241,14 @@ void ShapeGraph::initSegmentAttributes(prefvec<Connector>& connectionset)
    int ref_col = m_attributes.insertLockedColumn("Axial Line Ref");
    int leng_col = m_attributes.insertLockedColumn("Segment Length");
 
-   for (size_t i = 0; i < m_shapes.size(); i++) {
-      int key = m_shapes.key(i);
+   int i = -1;
+   for (auto shape: m_shapes) {
+       i++;
+      int key = shape.first;
       int rowid = m_attributes.insertRow(key);
       //
       m_attributes.setValue(rowid, ref_col, (float) connectionset[i].m_segment_axialref );
-      m_attributes.setValue(rowid, leng_col, (float) m_shapes[i].getLine().length() );
+      m_attributes.setValue(rowid, leng_col, (float) shape.second.getLine().length() );
    }
 }
 

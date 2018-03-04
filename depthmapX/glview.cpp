@@ -379,7 +379,7 @@ void GLView::mouseReleaseEvent(QMouseEvent *event)
                     if (m_pDoc.m_meta_graph->getViewClass() & MetaGraph::VIEWVGA) {
                         selectionCentre = m_pDoc.m_meta_graph->getDisplayedPointMap().depixelate(*selectedSet.begin());
                     } else if (m_pDoc.m_meta_graph->getViewClass() & MetaGraph::VIEWAXIAL) {
-                        selectionCentre = m_pDoc.m_meta_graph->getDisplayedShapeGraph().getAllShapes()[*selectedSet.begin()].getCentroid();
+                        selectionCentre = m_pDoc.m_meta_graph->getDisplayedShapeGraph().getAllShapes().find(*selectedSet.begin())->second.getCentroid();
                     }
                 }
                 m_tempFirstPoint = selectionCentre;
@@ -425,7 +425,7 @@ void GLView::mouseReleaseEvent(QMouseEvent *event)
                     }
                 } else if (m_pDoc.m_meta_graph->getViewClass() & MetaGraph::VIEWAXIAL) {
                     const auto& selectedSet = m_pDoc.m_meta_graph->getSelSet();
-                    Point2f selectionCentre = m_pDoc.m_meta_graph->getDisplayedShapeGraph().getAllShapes()[*selectedSet.begin()].getCentroid();
+                    Point2f selectionCentre = m_pDoc.m_meta_graph->getDisplayedShapeGraph().getAllShapes().find(*selectedSet.begin())->second.getCentroid();
                     m_tempFirstPoint = selectionCentre;
                     m_tempSecondPoint = selectionCentre;
                     m_mouseMode = MOUSE_MODE_UNJOIN | MOUSE_MODE_SECOND_POINT;

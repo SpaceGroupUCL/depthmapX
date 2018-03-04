@@ -374,8 +374,10 @@ void Q3DView::ReloadLineData()
                else {
                   m_region = runion(m_region,superspacepix.at(i).at(j).getRegion());
                }
-               for (int k = 0; k < superspacepix.at(i).at(j).getAllShapes().size(); k++) {
-                  SalaShape& shape = superspacepix.at(i).at(j).getAllShapes().at(k);
+
+               auto refShapes = superspacepix.at(i).at(j).getAllShapes();
+               for (auto refShape: refShapes) {
+                  SalaShape& shape = refShape.second;
                   if (shape.isLine()) {
                      lines.push_back(shape.getLine());
                   }
