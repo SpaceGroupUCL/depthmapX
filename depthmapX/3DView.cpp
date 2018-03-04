@@ -185,10 +185,10 @@ void Q3DView::timerEvent(QTimerEvent *event)
                      PixelRef pix = pointmap.pixelate(p); // note, take the pix before you scale!
                      p.normalScale(m_region);
                      m_mannequins[i].advance(p);
-                     size_t x = m_pixels.searchindex(pix);
-                     if (x != paftl::npos) {
-                        if (m_pixels[x].m_value < 10) {
-                           m_pixels[x].m_value += 1;
+                     auto iter = depthmapX::getMapAtIndex(m_pixels, pix);
+                     if (iter != m_pixels.end()) {
+                        if (iter->second.m_value < 10) {
+                           iter->second.m_value += 1;
                         }
                      }
                   }
@@ -206,10 +206,10 @@ void Q3DView::timerEvent(QTimerEvent *event)
                //
                // pretty coloured pixels
                PixelRef pix = m_agents[j].getNode();
-               size_t x = m_pixels.searchindex(pix);
-               if (x != paftl::npos) {
-                  if (m_pixels[x].m_value < 10) {
-                     m_pixels[x].m_value += 1;
+               auto iter = depthmapX::getMapAtIndex(m_pixels, pix);
+               if (iter != m_pixels.end()) {
+                  if (iter->second.m_value < 10) {
+                     iter->second.m_value += 1;
                   }
                }
             }
@@ -289,8 +289,8 @@ void Q3DView::DrawScene()
          }
       }
       else {
-         for (size_t i = 0; i < m_pixels.size(); i++) {
-            int& value = m_pixels[i].m_value;
+         for (auto pixel: m_pixels) {
+            int& value = pixel.second.m_value;
             if (value != -1) {
                if (pafrand() % 10000 == 0) {
                   value--;
@@ -298,7 +298,7 @@ void Q3DView::DrawScene()
                PafColor color;
                color.makeAxmanesque(float(value)/10.0f);
                glColor3f(color.redf(),color.greenf(),color.bluef());
-               Point2f& p = m_pixels[i].m_point;
+               Point2f& p = pixel.second.m_point;
                glPushMatrix();
                glTranslatef(p.x,p.y,0.0f);
                glVertexPointer(3, GL_FLOAT, 0, m_rect);
@@ -467,7 +467,7 @@ void Q3DView::ReloadPointData()
          PixelRef pix = table.getRowKey(i);
          Point2f p = map.depixelate(pix);
          p.normalScale(m_region);
-         m_pixels.add(pix,C3DPixelData(p));
+         m_pixels.insert(std::make_pair(pix,C3DPixelData(p)));
       }
    }
    else {
@@ -1199,8 +1199,8 @@ void Q3DView::OnToolsAgentsStop()
          m_mannequins[i].m_nextloc = m_mannequins[i].m_startloc;
       }
    }
-   for (int j = 0; j < m_pixels.size(); j++) {
-      m_pixels[j].m_value = -1;
+   for (auto pixel: m_pixels) {
+      pixel.second.m_value = -1;
    }
 }
 

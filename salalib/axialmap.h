@@ -32,7 +32,7 @@ class AxialPolygons : public SpacePixel
 {
    friend class ShapeGraphs;
 protected:
-   pqmap<Point2f,pqvector<Point2f>> m_vertex_possibles;
+   std::map<Point2f,pqvector<Point2f>> m_vertex_possibles;
    pvecint m_vertex_polys;
    pvecint **m_pixel_polys;
    pqvector<AxialVertex> m_handled_list;
@@ -195,8 +195,7 @@ public:
    virtual ~ShapeGraph() {;}
    void makeConnections(const prefvec<pvecint>& keyvertices = prefvec<pvecint>());
    //void initAttributes();
-   void makeDivisions(const prefvec<PolyConnector>& polyconnections, const pqvector<RadialLine>& radiallines, pqmap<RadialKey,pvecint>& radialdivisions, pqmap<int,pvecint>& axialdividers, Communicator *comm);
-   void cutLines(const prefvec<Line>& lines, pqmap<int,pvecint>& axcuts);
+   void makeDivisions(const prefvec<PolyConnector>& polyconnections, const pqvector<RadialLine>& radiallines, std::map<RadialKey, pvecint> &radialdivisions, std::map<int,pvecint>& axialdividers, Communicator *comm);
    bool integrate(Communicator *comm = NULL, const pvecint& radius = pvecint(), bool choice = false, bool local = false, bool fulloutput = false, int weighting_col = -1, bool simple_version = true);
    bool stepdepth(Communicator *comm = NULL);
    bool analyseAngular(Communicator *comm, const pvecdouble& radius);
@@ -264,7 +263,7 @@ public:
    TidyLines() {;}
    virtual ~TidyLines() {;}
    void tidy(prefvec<Line>& lines, const QtRegion& region);  
-   void quicktidy(pqmap<int,Line>& lines, const QtRegion& region);
+   void quicktidy(std::map<int, Line> &lines, const QtRegion& region);
 };
 
 // helpers... a class to reduce all line maps to fewest line maps
@@ -282,12 +281,12 @@ protected:
    int *m_keyvertexcounts;
    prefvec<Connector> m_axialconns; // <- uses a copy of axial lines as it will remove connections
 public:
-   AxialMinimiser(const ShapeGraph& alllinemap, pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs);
+   AxialMinimiser(const ShapeGraph& alllinemap, std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs);
    ~AxialMinimiser();
-   void removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
-   void fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
+   void removeSubsets(std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
+   void fewestLongest(std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
    // advanced topological testing:
-   bool checkVital(int checkindex,pvecint& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines);
+   bool checkVital(int checkindex,pvecint& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines);
    //
    bool removed(int i) const
    { return m_removed[i]; }

@@ -22,6 +22,7 @@
 #include "genlib/stringutils.h"
 #include <vector>
 #include <set>
+#include <map>
 
 class AttributeTable;
 class PointMap;
@@ -265,7 +266,7 @@ protected:
    SalaCommand *m_parent;
    prefvec<SalaCommand> m_children;
    //
-   pqmap<std::string,int> m_var_names;
+   std::map<std::string,int> m_var_names;
    //
    Command m_command;
    int m_indent;  // vital for program flow due to Pythonesque syntax

@@ -249,7 +249,7 @@ private:
 //////////////////////////////////////////////////////
 //	treeContorl
     QVector<QIcon> m_tree_icon;
-    pqmap<int, std::string> m_view_map_entries;
+    std::map<int, std::string> m_view_map_entries;
 
     pvector<bool> m_attribute_locked;
     pmap<QTreeWidgetItem*, ItemTreeEntry> m_treegraphmap;

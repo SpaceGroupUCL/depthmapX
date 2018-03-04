@@ -116,7 +116,7 @@ public:
    QtRegion m_region;
    float *m_points;
    float m_rect[4][3];
-   pqmap<int,C3DPixelData> m_pixels;
+   std::map<int,C3DPixelData> m_pixels;
    //
    int m_pointcount;
    //

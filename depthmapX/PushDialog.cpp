@@ -15,7 +15,7 @@
 
 #include "PushDialog.h"
 
-CPushDialog::CPushDialog(pqmap<IntPair,std::string>& names, QWidget *parent)
+CPushDialog::CPushDialog(std::map<IntPair, string> &names, QWidget *parent)
 : QDialog(parent)
 {
 	setupUi(this);
@@ -27,8 +27,8 @@ CPushDialog::CPushDialog(pqmap<IntPair,std::string>& names, QWidget *parent)
 
 	m_function = 0;
 
-	for (size_t i = 0; i < names.size(); i++) {
-		m_names.push_back(names.value(i));
+    for (auto name: names) {
+        m_names.push_back(name.second);
 	}
 }
 

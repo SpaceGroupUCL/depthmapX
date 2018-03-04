@@ -40,8 +40,16 @@ typename std::map<K, V>::const_iterator getMapAtIndex(const std::map<K, V> &m, i
 }
 
 template<typename K, typename V>
+typename std::map<K, V>::iterator getMapAtIndex(std::map<K, V> &m, int idx) {
+    auto iter = m.begin();
+    std::advance(iter, idx);
+    return iter;
+}
+
+template<typename K, typename V>
 int findIndexFromKey(const std::map<K, V> &m, K key) {
-    return std::distance(m.begin(), m.find(key));
+    auto iter = m.find(key);
+    return iter == m.end() ? -1 : std::distance(m.begin(), iter);
 }
 
 template<typename K, typename V>

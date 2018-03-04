@@ -88,10 +88,11 @@ AxialPolygons::~AxialPolygons()
 
 AxialVertex AxialPolygons::makeVertex(const AxialVertexKey& vertexkey, const Point2f& openspace)
 {
-   AxialVertex av(vertexkey, m_vertex_possibles.key(vertexkey.m_ref_key), openspace);
+   auto vertPossIter = depthmapX::getMapAtIndex(m_vertex_possibles, vertexkey.m_ref_key);
+   AxialVertex av(vertexkey, vertPossIter->first, openspace);
 
    // n.b., at this point, vertex key m_a and m_b are unfixed
-   pqvector<Point2f>& pointlist = m_vertex_possibles.value(vertexkey.m_ref_key);
+   pqvector<Point2f>& pointlist = vertPossIter->second;
    if (pointlist.size() < 2) {
       return av;
    }
@@ -212,9 +213,9 @@ void AxialPolygons::init(prefvec<Line>& lines, const QtRegion& region)
    // need to init before making pixel polys...
    makePixelPolys();
    // now also add lines
-   for (i = 0; i < m_vertex_possibles.size(); i++) {
-      for (size_t j = 0; j < m_vertex_possibles.value(i).size(); j++) {
-         addLine(Line(m_vertex_possibles.key(i),m_vertex_possibles.value(i).at(j)));
+   for (auto vertexPoss: m_vertex_possibles) {
+      for (size_t j = 0; j < vertexPoss.second.size(); j++) {
+         addLine(Line(vertexPoss.first,vertexPoss.second.at(j)));
       }
    }
    sortPixelLines();
@@ -240,7 +241,7 @@ void AxialPolygons::makeVertexPossibles(const prefvec<Line>& lines, const prefve
    for (i = 0; i < lines.size(); i++) {
       if (found[0][i] == -1) {
          pointlookup.push_back(lines[i].start());
-         m_vertex_possibles.add(pointlookup.tail(),pqvector<Point2f>());
+         m_vertex_possibles.insert(std::make_pair(pointlookup.tail(),pqvector<Point2f>()));
          m_vertex_polys.push_back(-1); // <- n.b., dummy entry for now, maintain with vertex possibles
          found[0][i] = pointlookup.size() - 1;
          for (size_t j = 0; j < connectionset[i].m_back_segconns.size(); j++) {
@@ -251,7 +252,7 @@ void AxialPolygons::makeVertexPossibles(const prefvec<Line>& lines, const prefve
       }
       if (found[1][i] == -1) {
          pointlookup.push_back(lines[i].end());
-         m_vertex_possibles.add(pointlookup.tail(),pqvector<Point2f>());
+         m_vertex_possibles.insert(std::make_pair(pointlookup.tail(),pqvector<Point2f>()));
          m_vertex_polys.push_back(-1); // <- n.b., dummy entry for now, maintain with vertex possibles
          found[1][i] = pointlookup.size() - 1;
          for (size_t j = 0; j < connectionset[i].m_forward_segconns.size(); j++) {
@@ -266,13 +267,13 @@ void AxialPolygons::makeVertexPossibles(const prefvec<Line>& lines, const prefve
       if (found[0][i] == -1 || found[1][i] == -1) {
          throw 1;
       }
-      size_t index0 = m_vertex_possibles.searchindex(pointlookup.at(found[0][i]));
-      size_t index1 = m_vertex_possibles.searchindex(pointlookup.at(found[1][i]));
-      if (index0 == paftl::npos || index1 == paftl::npos) {
+      auto index0 = m_vertex_possibles.find(pointlookup.at(found[0][i]));
+      auto index1 = m_vertex_possibles.find(pointlookup.at(found[1][i]));
+      if (index0 == m_vertex_possibles.end() || index1 == m_vertex_possibles.end()) {
          throw 2;
       }
-      m_vertex_possibles.value(index0).add(pointlookup.at(found[1][i]));
-      m_vertex_possibles.value(index1).add(pointlookup.at(found[0][i]));
+      index0->second.add(pointlookup.at(found[1][i]));
+      index1->second.add(pointlookup.at(found[0][i]));
    }
    delete [] found[0];
    delete [] found[1];
@@ -285,11 +286,11 @@ void AxialPolygons::makeVertexPossibles(const prefvec<Line>& lines, const prefve
          addlist.push_back(i);
          while (addlist.size()) {
             m_vertex_polys[addlist.tail()] = current_poly;
-            pqvector<Point2f>& connections = m_vertex_possibles.value(addlist.tail());
+            pqvector<Point2f>& connections = depthmapX::getMapAtIndex(m_vertex_possibles, addlist.tail())->second;
             addlist.pop_back();
             for (size_t j = 0; j < connections.size(); j++) {
-               size_t index = m_vertex_possibles.searchindex(connections[j]);
-               if (index == paftl::npos) {
+               int index = depthmapX::findIndexFromKey(m_vertex_possibles, connections[j]);
+               if (index == -1) {
                   throw 3;
                }
                if (m_vertex_polys[index] == -1) {
@@ -319,8 +320,10 @@ void AxialPolygons::makePixelPolys()
       m_pixel_polys[i] = new pvecint[m_rows];
    }
    // now register the vertices in each pixel...
-   for (size_t j = 0; j < m_vertex_possibles.size(); j++) {
-      PixelRef pix = pixelate(m_vertex_possibles.key(j));
+   int j = -1;
+   for (auto vertPoss: m_vertex_possibles) {
+      j++;
+      PixelRef pix = pixelate(vertPoss.first);
       m_pixel_polys[pix.x][pix.y].push_back(j);
    }
 }
@@ -343,7 +346,7 @@ AxialVertexKey AxialPolygons::seedVertex(const Point2f& seed)
    while (!foundvertex) {
       for (size_t i = 0; i < m_pixel_polys[seedref.x][seedref.y].size(); i++) {
          int vertexref = m_pixel_polys[seedref.x][seedref.y][i];
-         const Point2f& trialpoint = m_vertex_possibles.key(vertexref);
+         const Point2f& trialpoint = depthmapX::getMapAtIndex(m_vertex_possibles, vertexref)->first;
          if (!intersect_exclude(Line(seed,trialpoint))) {
             // yay... ...but wait... we need to see if it's a proper polygon vertex first...
             seedvertex = vertexref;
@@ -399,12 +402,14 @@ void AxialPolygons::makeAxialLines(pqvector<AxialVertex>& openvertices, prefvec<
 
    m_handled_list.add(vertex);
 
-   for (size_t i = 0; i < m_vertex_possibles.size(); i++) {
+   int i = -1;
+   for (auto vertPoss: m_vertex_possibles) {
+      i++;
       if (i == vertex.m_ref_key) {
          continue;
       }
       bool possible = false, stubpossible = false;
-      Point2f p = m_vertex_possibles.key(i) - vertex.m_point;
+      Point2f p = vertPoss.first - vertex.m_point;
       if (vertex.m_convex) {
          if (det(vertex.m_a,p) > 0 && det(vertex.m_b,p) > 0) {
             possible = true;
@@ -420,7 +425,7 @@ void AxialPolygons::makeAxialLines(pqvector<AxialVertex>& openvertices, prefvec<
          }
       }
       if (possible || stubpossible) {
-         Line line(m_vertex_possibles.key(i),vertex.m_point);
+         Line line(vertPoss.first,vertex.m_point);
          if (!intersect_exclude(line)) {
             AxialVertex next_vertex = makeVertex(AxialVertexKey(i),vertex.m_point);
             if (next_vertex.m_initialised && m_handled_list.searchindex(next_vertex) == paftl::npos) {
@@ -443,7 +448,7 @@ void AxialPolygons::makeAxialLines(pqvector<AxialVertex>& openvertices, prefvec<
                   poly_connections.push_back( PolyConnector(shortline, (RadialKey)radialshort) );
                   radial_lines.add(radialshort);
                   if (!vertex.m_convex && possible) {
-                     Line longline = Line(m_vertex_possibles.key(i),line.t_end());
+                     Line longline = Line(vertPoss.first,line.t_end());
                      RadialLine radiallong(radialshort);
                      radiallong.segend = shortline_segend ? 0 : 1;
                      poly_connections.push_back( PolyConnector(longline, (RadialKey)radiallong) );
@@ -503,34 +508,36 @@ void AxialPolygons::makePolygons(prefvec<pqvector<Point2f>>& polygons)
       handled_list.push_back(pvecint());
    }
 
-   for (size_t i = 0; i < m_vertex_possibles.size(); i++) {
-      if (m_vertex_possibles.value(i).size() == 1) {
+   int i = -1;
+   for (auto vertPoss: m_vertex_possibles) {
+      i++;
+      if (vertPoss.second.size() == 1) {
          continue;
       }
-      for (size_t j = 0; j < m_vertex_possibles.value(i).size(); j++) {
+      for (size_t j = 0; j < vertPoss.second.size(); j++) {
          if (handled_list[i].findindex(j) != paftl::npos) {
             continue;
          }
          handled_list[i].push_back(j);
-         Point2f& key = m_vertex_possibles.key(i);
+         const Point2f& key = vertPoss.first;
          pqvector<Point2f> polygon;
          polygon.push_back(key);
-         Point2f curr = m_vertex_possibles.value(i).at(j);
+         Point2f curr = vertPoss.second.at(j);
          Point2f last = key;
          bool good = true;
          while (curr != key) {
-            size_t n = m_vertex_possibles.searchindex(curr);
+            auto vertPossIter = m_vertex_possibles.find(curr);
             polygon.push_back(curr);
             // hunt down left most
             int winner = -1, wayback = -1;
             double minangle = 2 * M_PI;
-            for (size_t k = 0; k < m_vertex_possibles.value(n).size(); k++) {
-               Point2f next = m_vertex_possibles.value(n).at(k);
+            for (size_t k = 0; k < vertPossIter->second.size(); k++) {
+               Point2f next = vertPossIter->second.at(k);
                if (last != next) {
                   double thisangle = angle(last,curr,next);
                   if (thisangle < minangle) {
                      // check not going to a dead end:
-                     if (m_vertex_possibles.search(m_vertex_possibles.value(n).at(k)).size() > 1) {
+                     if (m_vertex_possibles.find(vertPossIter->second.at(k))->second.size() > 1) {
                         minangle = thisangle;
                         winner = k;
                      }
@@ -544,9 +551,9 @@ void AxialPolygons::makePolygons(prefvec<pqvector<Point2f>>& polygons)
                // this happens when you follow a false trail -- go back the way you came!
                winner = wayback;
             }
-            handled_list[n].push_back(winner);
+            handled_list[std::distance(m_vertex_possibles.begin(), vertPossIter)].push_back(winner);
             last = curr;
-            curr = m_vertex_possibles.value(n).at(winner);
+            curr = vertPossIter->second.at(winner);
          }
          if (good) {
             polygons.push_back(polygon);
@@ -777,18 +784,18 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
    pafsrand((unsigned int)time(NULL));
 
    // make one rld for each radial line...
-   pqmap<RadialKey,pvecint> radialdivisions;
+   std::map<RadialKey,pvecint> radialdivisions;
    size_t i;
    for (i = 0; i < m_radial_lines.size(); i++) {
-      radialdivisions.add( (RadialKey) m_radial_lines[i], pvecint() );
+      radialdivisions.insert(std::make_pair( (RadialKey) m_radial_lines[i], pvecint() ));
    }
 
    // also, a list of radial lines cut by each axial line
-   pqmap<int,pvecint> ax_radial_cuts;
-   pqmap<int,pvecint> ax_seg_cuts;
+   std::map<int,pvecint> ax_radial_cuts;
+   std::map<int,pvecint> ax_seg_cuts;
    for (auto shape: at(m_all_line_map).m_shapes) {
-      ax_radial_cuts.add(shape.first, pvecint());
-      ax_seg_cuts.add(shape.first, pvecint());
+      ax_radial_cuts.insert(std::make_pair(shape.first, pvecint()));
+      ax_seg_cuts.insert(std::make_pair(shape.first, pvecint()));
    }
 
    // make divisions -- this is the slow part and the comm updates
@@ -801,7 +808,7 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
    }
 
    // a little further setting up is still required...
-   pqmap<RadialKey,RadialSegment> radialsegs;
+   std::map<RadialKey,RadialSegment> radialsegs;
 
    // now make radial segments from the radial lines... (note, start at 1)
    for (i = 1; i < m_radial_lines.size(); i++) {
@@ -812,9 +819,9 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
          else {
             // Quick mod - TV
 #if defined(_WIN32)
-            radialsegs.add( (RadialKey)m_radial_lines[i], (RadialKey)m_radial_lines[i-1]);
+            radialsegs.insert(std::make_pair( (RadialKey)m_radial_lines[i], (RadialKey)m_radial_lines[i-1]));
 #else
-            radialsegs.add( (RadialKey)m_radial_lines[i], (RadialSegment)m_radial_lines[i-1]);
+            radialsegs.insert(std::make_pair( (RadialKey)m_radial_lines[i], (RadialSegment)m_radial_lines[i-1]));
 #endif
          }
       }
@@ -822,15 +829,18 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
 
    // and segment divisors from the axial lines...
    for (i = 0; i < at(m_all_line_map).m_shapes.size(); i++) {
-      for (size_t j = 1; j < ax_radial_cuts[i].size(); j++) {
+      auto axIter = depthmapX::getMapAtIndex(ax_radial_cuts, i);
+      auto axSeg = depthmapX::getMapAtIndex(ax_seg_cuts, i)->second;
+      for (size_t j = 1; j < axIter->second.size(); j++) {
          // note similarity to loop above
-         RadialKey rk_end = m_radial_lines[ax_radial_cuts[i][j]];
-         RadialKey rk_start = m_radial_lines[ax_radial_cuts[i][j-1]];
+         RadialKey rk_end = m_radial_lines[axIter->second[j]];
+         RadialKey rk_start = m_radial_lines[axIter->second[j-1]];
          if (rk_start.vertex == rk_end.vertex) {
-            size_t index = radialsegs.searchindex(rk_end);
-            if (index != paftl::npos && rk_start == radialsegs[index].radial_b) {
-               radialsegs[index].add(ax_radial_cuts.key(i));
-               ax_seg_cuts[i].add(index);
+            auto radialSegIter = radialsegs.find(rk_end);
+            size_t index = std::distance(radialsegs.begin(), radialSegIter);
+            if (radialSegIter != radialsegs.end() && rk_start == radialSegIter->second.radial_b) {
+               radialSegIter->second.add(axIter->first);
+               axSeg.add(index);
             }
          }
       }
@@ -936,7 +946,7 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-AxialMinimiser::AxialMinimiser(const ShapeGraph& alllinemap, pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs)
+AxialMinimiser::AxialMinimiser(const ShapeGraph& alllinemap, std::map<int, pvecint> &axsegcuts, std::map<RadialKey, RadialSegment> &radialsegs)
 {
    m_alllinemap = (ShapeGraph *) &alllinemap;
 
@@ -958,7 +968,7 @@ AxialMinimiser::~AxialMinimiser()
 
 // Alan and Bill's algo...
 
-void AxialMinimiser::removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds,  pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts)
+void AxialMinimiser::removeSubsets(std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey,pvecint>& rlds,  pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts)
 {
    bool removedflag = true;
    int counterrors = 0;
@@ -968,9 +978,11 @@ void AxialMinimiser::removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
    for (size_t x = 0; x < radialsegs.size(); x++) {
       m_radialsegcounts[x] = 0;
    }
-   for (size_t y = 0; y < axsegcuts.size(); y++) {
-      for (size_t z = 0; z < axsegcuts[y].size(); z++) {
-         m_radialsegcounts[axsegcuts[y][z]] += 1;
+   int y = -1;
+   for (auto axSegCut: axsegcuts) {
+      y++;
+      for (size_t z = 0; z < axSegCut.second.size(); z++) {
+         m_radialsegcounts[axSegCut.second[z]] += 1;
       }
       m_removed[y] = false;
       m_vital[y] = false;
@@ -1054,14 +1066,15 @@ void AxialMinimiser::removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
             size_t removeindex = ii;
             // now check removing it won't break any topological loops
             bool presumedvital = false;
-            for (size_t k = 0; k < axsegcuts[removeindex].size(); k++) {
-               if (m_radialsegcounts[axsegcuts[removeindex][k]] <= 1) {
+            auto axSegCut = depthmapX::getMapAtIndex(axsegcuts, removeindex)->second;
+            for (size_t k = 0; k < axSegCut.size(); k++) {
+               if (m_radialsegcounts[axSegCut[k]] <= 1) {
                   presumedvital = true;
                   break;
                }
             }
             if (presumedvital) {
-               presumedvital = checkVital(removeindex,axsegcuts[removeindex],radialsegs,rlds,radial_lines);
+               presumedvital = checkVital(removeindex,axSegCut,radialsegs,rlds,radial_lines);
             }
             if (presumedvital) {
                m_vital[removeindex] = true;
@@ -1082,8 +1095,8 @@ void AxialMinimiser::removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
                   }
                }
                removedflag = true;
-               for (k = 0; k < axsegcuts[removeindex].size(); k++) {
-                  m_radialsegcounts[axsegcuts[removeindex][k]] -= 1;
+               for (k = 0; k < axSegCut.size(); k++) {
+                  m_radialsegcounts[axSegCut[k]] -= 1;
                }
                // vital connections
                for (k = 0; k < keyvertexconns[removeindex].size(); k++) {
@@ -1099,7 +1112,7 @@ void AxialMinimiser::removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
 
 // My algo... v. simple... fewest longest
 
-void AxialMinimiser::fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts)
+void AxialMinimiser::fewestLongest(std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey, pvecint> &rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts)
 {
    //m_axialconns = m_alllinemap->m_connectors;
    int livecount = 0;
@@ -1134,14 +1147,15 @@ void AxialMinimiser::fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
       }
       //
       bool presumedvital = false;
-      for (k = 0; k < axsegcuts[j].size(); k++) {
-         if (m_radialsegcounts[axsegcuts[j][k]] <= 1) {
+      auto axSegCut = depthmapX::getMapAtIndex(axsegcuts, j)->second;
+      for (k = 0; k < axSegCut.size(); k++) {
+         if (m_radialsegcounts[axSegCut[k]] <= 1) {
             presumedvital = true;
             break;
          }
       }
       if (presumedvital) {
-         presumedvital = checkVital(j,axsegcuts[j],radialsegs,rlds,radial_lines);
+         presumedvital = checkVital(j,axSegCut,radialsegs,rlds,radial_lines);
       }
       if (!presumedvital) {
          // don't let anything this is connected to go down to zero connections
@@ -1170,8 +1184,8 @@ void AxialMinimiser::fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
                m_affected[affectedconnections[k]] = true;
             }
          }
-         for (k = 0; k < axsegcuts[j].size(); k++) {
-            m_radialsegcounts[axsegcuts[j][k]] -= 1;
+         for (k = 0; k < axSegCut.size(); k++) {
+            m_radialsegcounts[axSegCut[k]] -= 1;
          }
          // vital connections
          for (k = 0; k < keyvertexconns[j].size(); k++) {
@@ -1183,7 +1197,7 @@ void AxialMinimiser::fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKe
 
 ///////////////////////////////////////////////////////////////////////////////////////////
 
-bool AxialMinimiser::checkVital(int checkindex, pvecint& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines)
+bool AxialMinimiser::checkVital(int checkindex, pvecint& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey, pvecint> &rlds, pqvector<RadialLine>& radial_lines)
 {
    std::map<int,SalaShape>& axiallines = m_alllinemap->m_shapes;
 
@@ -1194,10 +1208,11 @@ bool AxialMinimiser::checkVital(int checkindex, pvecint& axsegcuts, pqmap<Radial
       if (m_radialsegcounts[axsegcuts[k]] <= 1) {
          bool nonvitalseg = false;
          vitalsegs++;
-         RadialKey& key = radialsegs.key(axsegcuts[k]);
-         RadialSegment& seg = radialsegs.value(axsegcuts[k]);
-         pvecint& divisorsa = rlds.search(key);
-         pvecint& divisorsb = rlds.search(seg.radial_b);
+         auto radialSegIter = depthmapX::getMapAtIndex(radialsegs, axsegcuts[k]);
+         const RadialKey& key = radialSegIter->first;
+         RadialSegment& seg = radialSegIter->second;
+         pvecint& divisorsa = rlds.find(key)->second;
+         pvecint& divisorsb = rlds.find(seg.radial_b)->second;
          RadialLine& rlinea = radial_lines.search(key);
          RadialLine& rlineb = radial_lines.search(seg.radial_b);
          for (size_t divi = 0; divi < divisorsa.size(); divi++) {
@@ -1240,7 +1255,7 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
    }
 
    QtRegion region;
-   pqmap<int,Line> lines;  // map required for tidy lines, otherwise acts like vector
+   std::map<int,Line> lines;  // map required for tidy lines, otherwise acts like vector
    pmap<int,int> layers;  // this is used to say which layer it originated from
 
    bool recordlayer = false;
@@ -1260,18 +1275,18 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
             for (auto refShape: refShapes) {
                 SalaShape& shape = refShape.second;
                if (shape.isLine()) {
-                  lines.add(count,shape.getLine());
+                  lines.insert(std::make_pair(count,shape.getLine()));
                   layers.add(count,j);
                   count++;
                }
                else if (shape.isPolyLine() || shape.isPolygon()) {
                   for (size_t n = 0; n < shape.size() - 1; n++) {
-                     lines.add(count,Line(shape[n],shape[n+1]));
+                     lines.insert(std::make_pair(count,Line(shape[n],shape[n+1])));
                      layers.add(count,j);
                      count++;
                   }
                   if (shape.isPolygon()) {
-                     lines.add(count,Line(shape.tail(),shape.head()));
+                     lines.insert(std::make_pair(count,Line(shape.tail(),shape.head())));
                      layers.add(count,j);
                      count++;
                   }
@@ -1340,8 +1355,10 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
    if (recordlayer) {
       AttributeTable& table = usermap.getAttributeTable();
       int col = table.insertColumn("Drawing Layer");
-      for (size_t k = 0; k < lines.size(); k++) {
-         table.setValue(k,col,float(layers.search(lines.key(k))));
+      int k = -1;
+      for (auto line: lines) {
+         k++;
+         table.setValue(k,col,float(layers.search(line.first)));
       }
    }
 
@@ -1363,7 +1380,7 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
 
    // add all visible layers to the set of polygon lines...
 
-   pqmap<int,Line> lines;
+   std::map<int,Line> lines;
    pmap<int,int> keys;
 
    //m_region = shapemap.getRegion();
@@ -1376,13 +1393,13 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
       int key = shape.first;
       const SalaShape& poly = shape.second;
       if (poly.isLine()) {
-         lines.add(count,poly.getLine());
+         lines.insert(std::make_pair(count,poly.getLine()));
          keys.add(count,key);
          count++;
       }
       else if (poly.isPolyLine()) {
          for (size_t j = 0; j < poly.size() - 1; j++) {
-            lines.add(count,Line(poly[j],poly[j+1]));
+            lines.insert(std::make_pair(count,Line(poly[j],poly[j+1])));
             keys.add(count,key);
             count++;
          }
@@ -1426,8 +1443,10 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
          for (size_t k = 1; output.getColumnIndex(colname) != -1; k++) 
             colname = dXstring::formatString((int)k,input.getColumnName(i) + " %d");
          int outcol = output.insertColumn(colname);
-         for (size_t j = 0; j < lines.size(); j++) {
-            int inrow = input.getRowid(keys.search(lines.key(j)));
+         int j = -1;
+         for (auto line: lines) {
+            j++;
+            int inrow = input.getRowid(keys.search(line.first));
             output.setValue(j,outcol,input.getValue(inrow,i));
          }
       }
@@ -1558,7 +1577,7 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
       comm->CommPostMessage( Communicator::CURRENT_STEP, 1 );
    }
 
-   pqmap<int,Line> lines;  // pqmap for tidier, does not matter elsewhere...
+   std::map<int,Line> lines;  // pqmap for tidier, does not matter elsewhere...
    pmap<int,int> layers;  // this is used to say which layer it originated from
    bool recordlayer = false;
 
@@ -1580,18 +1599,18 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
             for (auto refShape: refShapes) {
                 SalaShape& shape = refShape.second;
                if (shape.isLine()) {
-                  lines.add(count,shape.getLine());
+                  lines.insert(std::make_pair(count,shape.getLine()));
                   layers.add(count,j);
                   count++;
                }
                else if (shape.isPolyLine() || shape.isPolygon()) {
                   for (size_t n = 0; n < shape.size() - 1; n++) {
-                     lines.add(count,Line(shape[n],shape[n+1]));
+                     lines.insert(std::make_pair(count,Line(shape[n],shape[n+1])));
                      layers.add(count,j);
                      count++;
                   }
                   if (shape.isPolygon()) { // add closing line
-                     lines.add(count,Line(shape.tail(),shape.head()));
+                     lines.insert(std::make_pair(count,Line(shape.tail(),shape.head())));
                      layers.add(count,j);
                      count++;
                   }
@@ -1638,8 +1657,8 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
 
    usermap.init(lines.size(),region);
 
-   for (size_t k = 0; k < lines.size(); k++) {
-      usermap.makeLineShape(lines[k]);
+   for (auto line: lines) {
+      usermap.makeLineShape(line.second);
    }
 
    // make it!
@@ -1649,8 +1668,10 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
    if (recordlayer) {
       AttributeTable& table = usermap.getAttributeTable();
       int col = table.insertColumn("Drawing Layer");
-      for (size_t k = 0; k < lines.size(); k++) {
-         table.setValue(k,col,float(layers.search(lines.key(k))));
+      int k = -1;
+      for (auto line: lines) {
+         k++;
+         table.setValue(k,col,float(layers.search(line.first)));
       }
    }
 
@@ -1669,7 +1690,7 @@ int ShapeGraphs::convertDataToSegment(Communicator *comm, const std::string& nam
       comm->CommPostMessage( Communicator::CURRENT_STEP, 1 );
    }
 
-   pqmap<int,Line> lines;
+   std::map<int,Line> lines;
    pmap<int,int> keys;
 
    // no longer requires m_region
@@ -1683,13 +1704,13 @@ int ShapeGraphs::convertDataToSegment(Communicator *comm, const std::string& nam
       int key = shape.first;
       const SalaShape& poly = shape.second;
       if (poly.isLine()) {
-         lines.add(count,poly.getLine());
+         lines.insert(std::make_pair(count,poly.getLine()));
          keys.add(count,key);
          count++;
       }
       else if (poly.isPolyLine()) {
          for (size_t j = 0; j < poly.size() - 1; j++) {
-            lines.add(count,Line(poly[j],poly[j+1]));
+            lines.insert(std::make_pair(count,Line(poly[j],poly[j+1])));
             keys.add(count,key);
             count++;
          }
@@ -1725,8 +1746,8 @@ int ShapeGraphs::convertDataToSegment(Communicator *comm, const std::string& nam
    }
 
    usermap.init(lines.size(),region);
-   for (size_t k = 0; k < lines.size(); k++) {
-      usermap.makeLineShape(lines[k]);
+   for (auto line: lines) {
+      usermap.makeLineShape(line.second);
    }
 
    // start to be a little bit more efficient about memory now we are hitting the limits
@@ -1749,8 +1770,10 @@ int ShapeGraphs::convertDataToSegment(Communicator *comm, const std::string& nam
          for (int k = 1; output.getColumnIndex(colname) != -1; k++) 
             colname = dXstring::formatString(k,input.getColumnName(i) + " %d");
          int outcol = output.insertColumn(colname);
-         for (size_t j = 0; j < lines.size(); j++) {
-            int inrow = input.getRowid(keys.search(lines.key(j)));
+         int j = -1;
+         for (auto line: lines) {
+            j++;
+            int inrow = input.getRowid(keys.search(line.first));
             output.setValue(j,outcol,input.getValue(inrow,i));
          }
       }
@@ -2073,7 +2096,7 @@ void ShapeGraph::outputNet(ostream& netfile) const
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-void ShapeGraph::makeDivisions(const prefvec<PolyConnector>& polyconnections, const pqvector<RadialLine>& radiallines, pqmap<RadialKey,pvecint>& radialdivisions, pqmap<int,pvecint>& axialdividers, Communicator *comm)
+void ShapeGraph::makeDivisions(const prefvec<PolyConnector>& polyconnections, const pqvector<RadialLine>& radiallines, std::map<RadialKey,pvecint>& radialdivisions, std::map<int, pvecint> &axialdividers, Communicator *comm)
 {
     // Quick mod - TV
 #if defined(_WIN32)
@@ -2089,7 +2112,8 @@ void ShapeGraph::makeDivisions(const prefvec<PolyConnector>& polyconnections, co
    for (size_t i = 0; i < polyconnections.size(); i++) {
       PixelRefVector pixels = pixelateLine(polyconnections[i].line);
       pvecint testedshapes;
-      size_t connindex = radialdivisions.searchindex(polyconnections[i].key);
+      auto connIter = radialdivisions.find(polyconnections[i].key);
+      size_t connindex = std::distance(radialdivisions.begin(), connIter);
       double tolerance = sqrt(TOLERANCE_A);// * polyconnections[i].line.length();
       for (size_t j = 0; j < pixels.size(); j++) {
          PixelRef pix = pixels[j];
@@ -2108,17 +2132,17 @@ void ShapeGraph::makeDivisions(const prefvec<PolyConnector>& polyconnections, co
                   break;
                case 2:
                   {
-                     size_t index = axialdividers.searchindex(shape.m_shape_ref);
+                     size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
                      if (int(index) != shape.m_shape_ref) {
                         throw 1; // for the code to work later this can't be true!
                      }
                      axialdividers[index].add(connindex);
-                     radialdivisions[connindex].add(shape.m_shape_ref);
+                     connIter->second.add(shape.m_shape_ref);
                   }
                   break;
                case 1:
                   {
-                     size_t index = axialdividers.searchindex(shape.m_shape_ref);
+                     size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
                      if (int(index) != shape.m_shape_ref) {
                         throw 1; // for the code to work later this can't be true!
                      }
@@ -2126,7 +2150,7 @@ void ShapeGraph::makeDivisions(const prefvec<PolyConnector>& polyconnections, co
                      // this makes sure actually crosses between the line and the openspace properly
                      if (radiallines[connindex].cuts(line)) {
                         axialdividers[index].add(connindex);
-                        radialdivisions[connindex].add(shape.m_shape_ref);
+                        connIter->second.add(shape.m_shape_ref);
                      }
                   }
                   break;
@@ -2143,32 +2167,6 @@ void ShapeGraph::makeDivisions(const prefvec<PolyConnector>& polyconnections, co
             }
             comm->CommPostMessage( Communicator::CURRENT_RECORD, i );
          }         
-      }
-   }
-}
-
-void ShapeGraph::cutLines(const prefvec<Line>& lines, pqmap<int,pvecint>& axcuts)
-{
-   for (size_t i = 0; i < lines.size(); i ++) {
-      PixelRefVector pixels = pixelateLine(lines[i]);
-      pvecint testedshapes;
-      for (size_t j = 0; j < pixels.size(); j++) {
-         PixelRef pix = pixels[j];
-         pqvector<ShapeRef> &shapes = m_pixel_shapes[pix.x][pix.y];
-         for (size_t k = 0; k < shapes.size(); k++) {
-            ShapeRef& shape = shapes[k];
-            if (testedshapes.searchindex(shape.m_shape_ref) != paftl::npos) {
-               continue;
-            }
-            testedshapes.add(shape.m_shape_ref);
-            const Line& line = m_shapes.find(shape.m_shape_ref)->second.getLine();
-            //
-            if (intersect_region(line, lines[i], TOLERANCE_B * line.length()) ) {
-               if (intersect_line(line, lines[i], TOLERANCE_B * line.length())) {
-                  axcuts.search(shape.m_shape_ref).add(i);
-               }
-            }
-         }
       }
    }
 }
@@ -3083,7 +3081,7 @@ void ShapeGraph::makeNewSegMap()
 void ShapeGraph::makeSegmentMap(prefvec<Line>& lineset, prefvec<Connector>& connectionset, double stubremoval)
 {
    // the first (key) pair is the line / line intersection, second is the pair of associated segments for the first line
-   pqmap<OrderedIntPair,IntPair> segmentlist;
+   std::map<OrderedIntPair,IntPair> segmentlist;
 
    // this code relies on the polygon order being the same as the connections
 
@@ -3169,10 +3167,10 @@ void ShapeGraph::makeSegmentMap(prefvec<Line>& lineset, prefvec<Connector>& conn
             if (keylist[j] < (int)i) {
                // other line already segmented, look up in segment list,
                // and join segments together nicely
-               size_t index = segmentlist.searchindex(OrderedIntPair(keylist[j],i));
-               if (index != paftl::npos) {   // <- if it isn't -1 something has gone badly wrong!
-                  int seg_1 = segmentlist[index].a;
-                  int seg_2 = segmentlist[index].b;
+               auto segIter = segmentlist.find(OrderedIntPair(keylist[j],i));
+               if (segIter != segmentlist.end()) {   // <- if it isn't -1 something has gone badly wrong!
+                  int seg_1 = segIter->second.a;
+                  int seg_2 = segIter->second.b;
                   if (seg_a != -1) {
                      if (seg_1 != -1) {
                         Point2f alpha = lineset[seg_a].start() - lineset[seg_a].end();
@@ -3218,7 +3216,7 @@ void ShapeGraph::makeSegmentMap(prefvec<Line>& lineset, prefvec<Connector>& conn
             else {
                // other line still to be segmented, add ourselves to segment list
                // to be added later
-               segmentlist.add( OrderedIntPair(i,keylist[j]), IntPair(seg_a,seg_b) );
+               segmentlist.insert(std::make_pair( OrderedIntPair(i,keylist[j]), IntPair(seg_a,seg_b) ));
             }
          }
          if (seg_a != -1 && seg_b != -1) {
@@ -4274,53 +4272,53 @@ void TidyLines::tidy(prefvec<Line>& lines, const QtRegion& region)
    removelist.clear();  // always clear this list, it's reused
 }
 
-void TidyLines::quicktidy(pqmap<int,Line>& lines, const QtRegion& region)
+void TidyLines::quicktidy(std::map<int,Line>& lines, const QtRegion& region)
 {
    m_region = region;
 
    double avglen = 0.0;
-   size_t i;
-   for (i = 0; i < lines.size(); i++) {
-      avglen += lines[i].length();
+
+   for (auto line: lines) {
+      avglen += line.second.length();
    }
    avglen /= lines.size();
 
    double tolerance = avglen * 10e-6;
 
-   // simple first pass -- remove very short lines
-   pvecint removelist;
-   for (i = 0; i < lines.size(); i++) {
-      if (lines[i].length() < tolerance) {
-         removelist.add(i);
-      }
+   auto iter = lines.begin(), end = lines.end();
+   for(; iter != end; ) {
+       if (iter->second.length() < tolerance) {
+           iter = lines.erase(iter);
+       } else {
+           ++iter;
+       }
    }
-   if (removelist.size()) {
-      lines.remove_at(removelist);
-   }
-   removelist.clear();  // always clear this list, it's reused
 
    // now load up m_lines...
    initLines(lines.size(),m_region.bottom_left,m_region.top_right);
-   for (i = 0; i < lines.size(); i++) {
-      addLine(lines[i]);
+   for (auto line: lines) {
+      addLine(line.second);
    }
    sortPixelLines();
 
    // and chop duplicate lines:
-   for (i = 0; i < lines.size(); i++) {
-      PixelRef start = pixelate(lines[i].start());
-      for (size_t j = 0; j < m_pixel_lines[start.x][start.y].size(); j++) {
-         int k = m_pixel_lines[start.x][start.y][j];
-         if (k > (int)i && approxeq(m_lines[i].line.start(),m_lines[k].line.start(),tolerance)) {
-            if (approxeq(m_lines[i].line.end(),m_lines[k].line.end(),tolerance)) {
-               removelist.add(i);
-               break;
-            }
-         }
-      }
+
+   iter = lines.begin(), end = lines.end();
+   int i = -1;
+   for(; iter != end; ) {
+       i++;
+       PixelRef start = pixelate(iter->second.start());
+       for (size_t j = 0; j < m_pixel_lines[start.x][start.y].size(); j++) {
+          int k = m_pixel_lines[start.x][start.y][j];
+          if (k > (int)i && approxeq(m_lines[i].line.start(),m_lines[k].line.start(),tolerance)) {
+             if (approxeq(m_lines[i].line.end(),m_lines[k].line.end(),tolerance)) {
+                iter = lines.erase(iter);
+                break;
+             }
+          }
+       }
+       ++iter;
    }
-   lines.remove_at(removelist);
-   removelist.clear();  // always clear this list, it's reused}
 }
 
 /////////////////////////////////////////////////////
