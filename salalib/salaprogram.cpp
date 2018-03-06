@@ -1078,7 +1078,7 @@ void SalaCommand::evaluate(SalaObj& obj, bool& ret, bool& ifhandled)
             if (len != 0) {
                for (int i = 0; i < len; i++) {
                   // reset all my stack (actually, all parent functions should do this!)
-                  for (auto varName: m_var_names) {
+                  for (auto& varName: m_var_names) {
                      m_program->m_var_stack[varName.second].uninit();
                   }
                   m_program->m_var_stack[m_for_iter.data.var] = list.data.list.list->at(i);

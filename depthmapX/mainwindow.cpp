@@ -1419,7 +1419,7 @@ void MainWindow::SetGraphTreeChecks()
     in_FocusGraph = true;
     MetaGraph *graph = m_treeDoc->m_meta_graph;
     int viewclass = graph->getViewClass();
-    for (auto item: m_treegraphmap) {
+    for (auto& item: m_treegraphmap) {
         QTreeWidgetItem* key = item.first;
         ItemTreeEntry entry = item.second;
         int checkstyle = 7;
@@ -1530,7 +1530,7 @@ void MainWindow::SetDrawingTreeChecks()
 {
     MetaGraph *graph = m_treeDoc->m_meta_graph;
     int viewclass = graph->getViewClass();
-    for (auto iter: m_treedrawingmap) {
+    for (auto& iter: m_treedrawingmap) {
         ItemTreeEntry entry = iter.second;
         if (entry.m_subcat != -1) {
             if (graph->getLineLayer(entry.m_cat,entry.m_subcat).isShown()) {
@@ -2290,7 +2290,7 @@ void MainWindow::RedoPlotViewMenu(QGraphDoc* pDoc)
    y_coord->clear();
 
    int i = -1;
-   for (auto view_map_entry: m_view_map_entries) {
+   for (auto& view_map_entry: m_view_map_entries) {
       i++;
       if (curr_j == view_map_entry.first) cur_sel = (int) i;
       x_coord->addItem( QString(view_map_entry.second.c_str()) );

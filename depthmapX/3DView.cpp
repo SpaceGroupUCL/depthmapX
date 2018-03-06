@@ -289,7 +289,7 @@ void Q3DView::DrawScene()
          }
       }
       else {
-         for (auto pixel: m_pixels) {
+         for (auto& pixel: m_pixels) {
             int& value = pixel.second.m_value;
             if (value != -1) {
                if (pafrand() % 10000 == 0) {
@@ -376,7 +376,7 @@ void Q3DView::ReloadLineData()
                }
 
                auto refShapes = superspacepix.at(i).at(j).getAllShapes();
-               for (auto refShape: refShapes) {
+               for (auto& refShape: refShapes) {
                   SalaShape& shape = refShape.second;
                   if (shape.isLine()) {
                      lines.push_back(shape.getLine());
@@ -1199,7 +1199,7 @@ void Q3DView::OnToolsAgentsStop()
          m_mannequins[i].m_nextloc = m_mannequins[i].m_startloc;
       }
    }
-   for (auto pixel: m_pixels) {
+   for (auto& pixel: m_pixels) {
       pixel.second.m_value = -1;
    }
 }

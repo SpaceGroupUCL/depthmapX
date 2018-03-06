@@ -648,7 +648,7 @@ bool MetaGraph::makeBSPtree(Communicator *communicator)
          if (SuperSpacePixel::at(i).at(j).isShown()) {
              auto refShapes = SuperSpacePixel::at(i).at(j).getAllShapes();
              int k = -1;
-             for (auto refShape: refShapes) {
+             for (auto& refShape: refShapes) {
                  k++;
                  SalaShape& shape = refShape.second;
                // I'm not sure what the tagging was meant for any more, 
@@ -958,7 +958,7 @@ bool MetaGraph::convertToData(Communicator *comm, std::string layer_name, bool k
             for (size_t j = 0; j < SuperSpacePixel::at(i).size(); j++) {
                if (SuperSpacePixel::at(i).at(j).isShown()) {
                   auto refShapes = SuperSpacePixel::at(i).at(j).getAllShapes();
-                  for (auto refShape: refShapes) {
+                  for (auto& refShape: refShapes) {
                      int key = destmap.makeShape(refShape.second);
                      table.setValue(table.getRowid(key),layercol,float(j+1));
                      count++;
@@ -1631,7 +1631,7 @@ int MetaGraph::loadRT1(const std::vector<string>& fileset, Communicator *communi
 
    // for each category
    int i = -1;
-   for (auto val: map) {
+   for (auto& val: map) {
       i++;
       SuperSpacePixel::tail().push_back(ShapeMap(val.first));
       SuperSpacePixel::tail().at(i).init(val.second.size(), map.getRegion() );

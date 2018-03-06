@@ -52,7 +52,7 @@ bool sparkSieve2::testblock( const Point2f& point, const std::map<int,Line>& lin
       return true;
    }
 
-   for (auto line: lines)
+   for (auto& line: lines)
    {
       // Note: must check regions intersect before using this intersect_line test -- see notes on intersect_line
       if (intersect_region(l,line.second,tolerance) && intersect_line(l,line.second,tolerance)) {
@@ -67,7 +67,7 @@ bool sparkSieve2::testblock( const Point2f& point, const std::map<int,Line>& lin
 
 void sparkSieve2::block( const std::map<int,Line>& lines, int q )
 {
-   for (auto line: lines) {
+   for (auto& line: lines) {
       double a = tanify(line.second.start(), q);
       double b = tanify(line.second.end(), q);
 

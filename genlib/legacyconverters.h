@@ -78,7 +78,7 @@ namespace genshim
     template<class K, class V> pmap<K, V> toPMap(const std::map<K, V> &m)
     {
         pmap<K, V> pm;
-        for(auto pair: m) { pm.add(pair.first, pair.second); }
+        for (auto& pair: m) { pm.add(pair.first, pair.second); }
         return pm;
     }
 }

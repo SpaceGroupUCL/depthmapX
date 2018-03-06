@@ -239,7 +239,7 @@ void ShapeMap::copy(const ShapeMap& sourcemap, int copyflags)
       m_shapes.clear();
       m_shape_ref = -1;
       init(sourcemap.m_shapes.size(),sourcemap.m_region);
-      for (auto shape: sourcemap.m_shapes) {
+      for (auto& shape: sourcemap.m_shapes) {
          // using makeShape is actually easier than thinking about a total copy:
          makeShape(shape.second, shape.first);
          // note that addShape automatically adds the attribute row
@@ -332,7 +332,7 @@ int ShapeMap::makePointShape(const Point2f& point, bool tempshape)
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -369,7 +369,7 @@ int ShapeMap::makeLineShape(const Line& line, bool through_ui, bool tempshape)
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -453,7 +453,7 @@ int ShapeMap::makePolyShape(const pqvector<Point2f>& points, bool open, bool tem
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -502,7 +502,7 @@ int ShapeMap::makeShape(const SalaShape& poly, int override_shape_ref)
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -561,7 +561,7 @@ int ShapeMap::makeShapeFromPointSet(const PointMap& pointmap)
    // now find pixel with SHAPE_B | SHAPE_L
    PixelRef minpix = NoPixel;
 
-   for (auto relation: relations) {
+   for (auto& relation: relations) {
       if ((relation.second & (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) == (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) {
          if ((minpix == NoPixel) || (relation.first < (int)minpix)) {
             minpix = relation.first;
@@ -574,7 +574,7 @@ int ShapeMap::makeShapeFromPointSet(const PointMap& pointmap)
 
    bool retvar = true;
 
-   for (auto relation: relations) {
+   for (auto& relation: relations) {
       if (relation.second != 0) {
          // more than one shape!
          return -1;
@@ -591,7 +591,7 @@ int ShapeMap::makeShapeFromPointSet(const PointMap& pointmap)
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -613,7 +613,7 @@ bool ShapeMap::convertPointsToPolys(double poly_radius, bool selected_only)
 
    // replace the points with polys
    int i = -1;
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       i++;
       if (selected_only && !m_attributes.isSelected(i)) {
          continue;
@@ -651,7 +651,7 @@ bool ShapeMap::convertPointsToPolys(double poly_radius, bool selected_only)
       // spatially reindex (simplest just to redo everything)
       init(m_shapes.size(),region);
 
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -693,7 +693,7 @@ bool ShapeMap::moveShape(int shaperef, const Line& line, bool undoing)
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -812,7 +812,7 @@ int ShapeMap::polyBegin(const Line& line)
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -876,7 +876,7 @@ bool ShapeMap::polyAppend(const Point2f& point)
    }
    else {
       // pixelate all polys in the pixel new structure:
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          makePolyPixels(shape.first);
       }
    }
@@ -999,7 +999,7 @@ void ShapeMap::shapesCommit()
 {
    init(m_shapes.size(),m_region);
 
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       makePolyPixels(shape.first);
    }
 
@@ -1229,7 +1229,7 @@ void ShapeMap::makePolyPixels(int polyref)
       }
       // erase joined sides, and look for min:
       PixelRef minpix = NoPixel; 
-      for (auto relation: relations) {
+      for (auto& relation: relations) {
          PixelRef pix = relation.first;
          PixelRef nextpix;
          nextpix = pix.right();
@@ -1258,7 +1258,7 @@ void ShapeMap::makePolyPixels(int polyref)
       // go through any that aren't on the outer border: this will be internal edges, and will cause problems
       // for point in polygon algorithms!
 
-      for (auto relation: relations) {
+      for (auto& relation: relations) {
          PixelRef pix = relation.first;
          unsigned char& tags = m_pixel_shapes[pix.x][pix.y].search(polyref).m_tags;
          if (tags == 0x00) {
@@ -1267,7 +1267,7 @@ void ShapeMap::makePolyPixels(int polyref)
       }
       // now, any remaining tags are internal sides, and need to be cleared through fill
       // we could go either direction, but we just go left to right:
-      for (auto relation: relations) {
+      for (auto& relation: relations) {
          PixelRef pix = relation.first;
          if (relation.second & ShapeRef::SHAPE_R) {
             int pos = 0;
@@ -2415,7 +2415,7 @@ void ShapeMap::makeShapeConnections()
       int conn_col = m_attributes.insertLockedColumn("Connectivity");
 
       int i = -1;
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          i++;
          int key = shape.first;
          int rowid = m_attributes.insertRow(key);
@@ -2488,7 +2488,7 @@ bool ShapeMap::setCurSel( QtRegion& r, bool add )
       }
       // actually probably often faster to set flag and later record list:
       int x = -1;
-      for (auto shape: m_shapes) {
+      for (auto& shape: m_shapes) {
          x++;
          if (shape.second.m_selected) {
              if(m_selection_set.insert(x).second) {
@@ -2667,7 +2667,7 @@ bool ShapeMap::read( istream& stream, int version, bool drawinglayer )
    }
    // Now add the pixel shapes pixel map:
    // pixelate all polys in the pixel structure:
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       makePolyPixels(shape.first);
    }
 
@@ -2722,7 +2722,7 @@ bool ShapeMap::write( ofstream& stream, int version )
    // write shape data
    int count = m_shapes.size();
    stream.write((char *) &count, sizeof(count));
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       int key = shape.first;
       stream.write((char *) &key, sizeof(key));
       shape.second.write(stream);
@@ -2730,7 +2730,7 @@ bool ShapeMap::write( ofstream& stream, int version )
    // write object data (currently unused)
    count = m_objects.size();
    stream.write((char *) &count, sizeof(count));
-   for (auto obj: m_objects) {
+   for (auto& obj: m_objects) {
       int key = obj.first;
       stream.write((char *) &key, sizeof(key));
       obj.second.write(stream);
@@ -3393,7 +3393,7 @@ bool ShapeMap::makeBSPtree() const
    }
 
    std::vector<TaggedLine> partitionlines;
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       if (shape.second.isLine()) {
          partitionlines.push_back(TaggedLine(shape.second.getLine(),shape.first));
       }
@@ -3563,7 +3563,7 @@ void ShapeMap::ozlemSpecial2(ShapeMap& buildings)
    pvecint removelist;
 
    size_t i;
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       Line& li = shape.second.m_region;
       int buildingid = (int) m_attributes.getValue(i,myrefcol);
       pvector<ValuePair> cuts;
@@ -3707,7 +3707,7 @@ void ShapeMap::ozlemSpecial3(ShapeMap& all)
    lookupcols.b = all.m_attributes.getColumnIndex("FeatureCode");
 
    int i = -1;
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       i++;
       Line& li = shape.second.m_region;
       pvector<ValuePair> cuts;
@@ -4014,7 +4014,7 @@ void ShapeMap::ozlemSpecial6() // ShapeMap& border)
    int delcol = m_attributes.insertColumn("Delete");
    int dupcol = m_attributes.insertColumn("Duplicate");
    int i = -1;
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       i++;
       bool duplicate = false;
       bool tag_delete = false;
@@ -4062,7 +4062,7 @@ void ShapeMap::ozlemSpecial7(ShapeMap& linemap)
    int linerefcol = m_attributes.insertColumn("Line Ref");
    
    int i = -1;
-   for (auto shape: m_shapes) {
+   for (auto& shape: m_shapes) {
       i++;
       Point2f p = shape.second.getPoint();
       int index = linemap.getClosestLine(p);
@@ -4076,7 +4076,7 @@ void ShapeMap::ozlemSpecial7(ShapeMap& linemap)
 std::vector<SimpleLine> ShapeMap::getAllShapesAsLines() {
     std::vector<SimpleLine> lines;
     std::map<int,SalaShape>& allShapes = getAllShapes();
-    for (auto refShape: allShapes) {
+    for (auto& refShape: allShapes) {
         SalaShape& shape = refShape.second;
         if (shape.isLine()) {
             lines.push_back(SimpleLine(shape.getLine()));
@@ -4098,7 +4098,7 @@ std::vector<std::pair<SimpleLine, PafColor>> ShapeMap::getAllLinesWithColour() {
     const AttributeTable &attributeTable = getAttributeTable();
     std::map<int,SalaShape>& allShapes = getAllShapes();
     int k = -1;
-    for (auto refShape: allShapes) {
+    for (auto& refShape: allShapes) {
         k++;
         SalaShape& shape = refShape.second;
         PafColor color(attributeTable.getDisplayColor(k));
@@ -4119,7 +4119,7 @@ std::map<std::vector<Point2f>, PafColor> ShapeMap::getAllPolygonsWithColour() {
     const AttributeTable &attributeTable = getAttributeTable();
     std::map<int,SalaShape>& allShapes = getAllShapes();
     int k = -1;
-    for (auto refShape: allShapes) {
+    for (auto& refShape: allShapes) {
         k++;
         SalaShape& shape = refShape.second;
         if (shape.isPolygon()) {

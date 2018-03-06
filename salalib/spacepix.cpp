@@ -536,7 +536,7 @@ void SpacePixel::reinitLines(double density)
    }
 
    // now re-add the lines:
-   for (auto line: m_lines) {
+   for (auto& line: m_lines) {
       PixelRefVector list = pixelateLine( line.second.line );
       for (size_t j = 0; j < list.size(); j++) {
          // note: m_pixel_lines will be reordered by sortPixelLines
@@ -1001,7 +1001,7 @@ bool SpacePixel::read( istream& stream, int version )
 
    // now load into structure:
    int n = -1;
-   for (auto line: m_lines) {
+   for (auto& line: m_lines) {
       n++;
 
       PixelRefVector list = pixelateLine( line.second.line );

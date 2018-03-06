@@ -292,7 +292,7 @@ bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const ShapeMap&
    miffile.precision(16);
 
    int i = -1;
-   for (auto shape: map.m_shapes) {
+   for (auto& shape: map.m_shapes) {
       i++;
       // note, attributes must align for this:
       if (map.getAttributeTable().isVisible(i)) {

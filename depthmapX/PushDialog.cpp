@@ -27,7 +27,7 @@ CPushDialog::CPushDialog(std::map<IntPair, string> &names, QWidget *parent)
 
 	m_function = 0;
 
-    for (auto name: names) {
+    for (auto& name: names) {
         m_names.push_back(name.second);
 	}
 }
