@@ -3044,7 +3044,7 @@ void ShapeGraph::makeNewSegMap()
       PixelRef pix2 = pixelate(m_shapes.find(seg_a)->second.getLine().t_end());
       pqvector<ShapeRef> &shapes2 = m_pixel_shapes[pix2.x][pix2.y];
       for (size_t j2 = 0; j2 < shapes2.size(); j2++) {
-         auto seg_b_iter = lineset.find(shapes1[j2].m_shape_ref);
+         auto seg_b_iter = lineset.find(shapes2[j2].m_shape_ref);
          size_t seg_b = std::distance(lineset.begin(), seg_b_iter);
          if (seg_b_iter != lineset.end() && seg_a < seg_b) {
             Point2f alpha = seg_a_line.second.vector();
