@@ -100,15 +100,16 @@ AxialVertex AxialPolygons::makeVertex(const AxialVertexKey& vertexkey, const Poi
    Point2f o = av.m_point - av.m_openspace;
 
    // using an anglemap means that there are now no anti-clockwise vertices...
-   pmap<double,int> anglemap;
+   std::map<double,int> anglemap;
    for (size_t i = 0; i < pointlist.size(); i++) {
-      anglemap.add( angle(openspace,av.m_point,pointlist[i]), i );
+      anglemap.insert(std::make_pair( angle(openspace,av.m_point,pointlist[i]), i ));
    }
 
-   av.m_ref_a = anglemap.head();
-   av.m_ref_a = anglemap.tail();
-   Point2f a = av.m_point - pointlist.at( anglemap.head() );
-   Point2f b = pointlist.at( anglemap.tail() ) - av.m_point;
+   av.m_ref_a = anglemap.begin()->second;
+   // TODO: is this supposed to be av.m_ref_b?
+   av.m_ref_a = anglemap.rbegin()->second;
+   Point2f a = av.m_point - pointlist.at( anglemap.begin()->second );
+   Point2f b = pointlist.at( anglemap.rbegin()->second ) - av.m_point;
    av.m_a = a;
    av.m_b = b;
    a.normalise();
@@ -1255,7 +1256,7 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
 
    QtRegion region;
    std::map<int,Line> lines;  // map required for tidy lines, otherwise acts like vector
-   pmap<int,int> layers;  // this is used to say which layer it originated from
+   std::map<int,int> layers;  // this is used to say which layer it originated from
 
    bool recordlayer = false;
 
@@ -1275,18 +1276,18 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
                 SalaShape& shape = refShape.second;
                if (shape.isLine()) {
                   lines.insert(std::make_pair(count,shape.getLine()));
-                  layers.add(count,j);
+                  layers.insert(std::make_pair(count,j));
                   count++;
                }
                else if (shape.isPolyLine() || shape.isPolygon()) {
                   for (size_t n = 0; n < shape.size() - 1; n++) {
                      lines.insert(std::make_pair(count,Line(shape[n],shape[n+1])));
-                     layers.add(count,j);
+                     layers.insert(std::make_pair(count,j));
                      count++;
                   }
                   if (shape.isPolygon()) {
                      lines.insert(std::make_pair(count,Line(shape.tail(),shape.head())));
-                     layers.add(count,j);
+                     layers.insert(std::make_pair(count,j));
                      count++;
                   }
                }
@@ -1357,7 +1358,7 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
       int k = -1;
       for (auto line: lines) {
          k++;
-         table.setValue(k,col,float(layers.search(line.first)));
+         table.setValue(k,col,float(layers.find(line.first)->second));
       }
    }
 
@@ -1380,7 +1381,7 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
    // add all visible layers to the set of polygon lines...
 
    std::map<int,Line> lines;
-   pmap<int,int> keys;
+   std::map<int,int> keys;
 
    //m_region = shapemap.getRegion();
    QtRegion region = shapemap.getRegion();
@@ -1393,13 +1394,13 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
       const SalaShape& poly = shape.second;
       if (poly.isLine()) {
          lines.insert(std::make_pair(count,poly.getLine()));
-         keys.add(count,key);
+         keys.insert(std::make_pair(count,key));
          count++;
       }
       else if (poly.isPolyLine()) {
          for (size_t j = 0; j < poly.size() - 1; j++) {
             lines.insert(std::make_pair(count,Line(poly[j],poly[j+1])));
-            keys.add(count,key);
+            keys.insert(std::make_pair(count,key));
             count++;
          }
       }
@@ -1445,7 +1446,7 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
          int j = -1;
          for (auto line: lines) {
             j++;
-            int inrow = input.getRowid(keys.search(line.first));
+            int inrow = input.getRowid(keys.find(line.first)->second);
             output.setValue(j,outcol,input.getValue(inrow,i));
          }
       }
@@ -1577,7 +1578,7 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
    }
 
    std::map<int,Line> lines;  // pqmap for tidier, does not matter elsewhere...
-   pmap<int,int> layers;  // this is used to say which layer it originated from
+   std::map<int,int> layers;  // this is used to say which layer it originated from
    bool recordlayer = false;
 
    QtRegion region;
@@ -1599,18 +1600,18 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
                 SalaShape& shape = refShape.second;
                if (shape.isLine()) {
                   lines.insert(std::make_pair(count,shape.getLine()));
-                  layers.add(count,j);
+                  layers.insert(std::make_pair(count,j));
                   count++;
                }
                else if (shape.isPolyLine() || shape.isPolygon()) {
                   for (size_t n = 0; n < shape.size() - 1; n++) {
                      lines.insert(std::make_pair(count,Line(shape[n],shape[n+1])));
-                     layers.add(count,j);
+                     layers.insert(std::make_pair(count,j));
                      count++;
                   }
                   if (shape.isPolygon()) { // add closing line
                      lines.insert(std::make_pair(count,Line(shape.tail(),shape.head())));
-                     layers.add(count,j);
+                     layers.insert(std::make_pair(count,j));
                      count++;
                   }
                }
@@ -1670,7 +1671,7 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
       int k = -1;
       for (auto line: lines) {
          k++;
-         table.setValue(k,col,float(layers.search(line.first)));
+         table.setValue(k,col,float(layers.find(line.first)->second));
       }
    }
 
@@ -2786,14 +2787,14 @@ bool ShapeGraph::readold( istream& stream, int version )
    // read in from old base class
    SpacePixel linemap;
    linemap.read(stream, version);
-   const pmap<int,LineTest>& lines = linemap.getAllLines();
+   const std::map<int,LineTest>& lines = linemap.getAllLines();
 
    m_name = linemap.getName();
 
    // now copy to new base class:
    init(lines.size(),linemap.getRegion());
-   for (size_t i = 0; i < lines.size(); i++) {
-      makeLineShape(lines[i].line);
+   for (auto line: lines) {
+      makeLineShape(line.second.line);
    }
    // n.b., we now have to reclear attributes!
    m_attributes.clear();
@@ -3004,33 +3005,36 @@ void ShapeGraph::makeNewSegMap()
 {
    // now make a connection set from the ends of lines:
    prefvec<Connector> connectionset;
-   pmap<int,Line> lineset;
+   std::map<int,Line> lineset;
    for (auto shape: m_shapes) {
       if (shape.second.isLine()) {
          connectionset.push_back(Connector());
-         lineset.add(shape.first,shape.second.getLine());
+         lineset.insert(std::make_pair(shape.first,shape.second.getLine()));
       }
    }
 
    double maxdim = __max(m_region.width(),m_region.height());
 
-   for (size_t seg_a = 0; seg_a < lineset.size(); seg_a++) {
+   int seg_a = -1;
+   for (auto seg_a_line: lineset) {
+       seg_a++;
       // n.b., vector() is based on t_start and t_end, so we must use t_start and t_end here and throughout
-      PixelRef pix1 = pixelate(lineset[seg_a].t_start());
+      PixelRef pix1 = pixelate(seg_a_line.second.t_start());
       pqvector<ShapeRef> &shapes1 = m_pixel_shapes[pix1.x][pix1.y];
       for (size_t j1 = 0; j1 < shapes1.size(); j1++) {
-         size_t seg_b = lineset.searchindex(shapes1[j1].m_shape_ref);
-         if (seg_b != paftl::npos && seg_a < seg_b) {
-            Point2f alpha = lineset[seg_a].vector();
-            Point2f beta  = lineset[seg_b].vector();
+         auto seg_b_iter = lineset.find(shapes1[j1].m_shape_ref);
+         size_t seg_b = std::distance(lineset.begin(), seg_b_iter);
+         if (seg_b_iter != lineset.end() && seg_a < seg_b) {
+            Point2f alpha = seg_a_line.second.vector();
+            Point2f beta  = seg_b_iter->second.vector();
             alpha.normalise();
             beta.normalise();
-            if (approxeq(lineset[seg_a].t_start(),lineset[seg_b].t_start(),(maxdim*TOLERANCE_B))) {
+            if (approxeq(seg_a_line.second.t_start(),seg_b_iter->second.t_start(),(maxdim*TOLERANCE_B))) {
                float x = float(2.0 * acos(__min(__max(-dot(alpha,beta),-1.0),1.0)) / M_PI);
                connectionset[seg_a].m_back_segconns.add(SegmentRef(1,seg_b),x);
                connectionset[seg_b].m_back_segconns.add(SegmentRef(1,seg_a),x);
             }
-            if (approxeq(lineset[seg_a].t_start(),lineset[seg_b].t_end(),(maxdim*TOLERANCE_B))) {
+            if (approxeq(seg_a_line.second.t_start(),seg_b_iter->second.t_end(),(maxdim*TOLERANCE_B))) {
                float x = float(2.0 * acos(__min(__max(-dot(alpha,-beta),-1.0),1.0)) / M_PI);
                connectionset[seg_a].m_back_segconns.add(SegmentRef(-1,seg_b),x);
                connectionset[seg_b].m_forward_segconns.add(SegmentRef(1,seg_a),x);
@@ -3040,18 +3044,19 @@ void ShapeGraph::makeNewSegMap()
       PixelRef pix2 = pixelate(m_shapes.find(seg_a)->second.getLine().t_end());
       pqvector<ShapeRef> &shapes2 = m_pixel_shapes[pix2.x][pix2.y];
       for (size_t j2 = 0; j2 < shapes2.size(); j2++) {
-         size_t seg_b = lineset.searchindex(shapes2[j2].m_shape_ref);
-         if (seg_b != paftl::npos && seg_a < seg_b) {
-            Point2f alpha = lineset[seg_a].vector();
-            Point2f beta  = lineset[seg_b].vector();
+         auto seg_b_iter = lineset.find(shapes1[j2].m_shape_ref);
+         size_t seg_b = std::distance(lineset.begin(), seg_b_iter);
+         if (seg_b_iter != lineset.end() && seg_a < seg_b) {
+            Point2f alpha = seg_a_line.second.vector();
+            Point2f beta  = seg_b_iter->second.vector();
             alpha.normalise();
             beta.normalise();
-            if (approxeq(lineset[seg_a].t_end(),lineset[seg_b].t_start(),(maxdim*TOLERANCE_B))) {
+            if (approxeq(seg_a_line.second.t_end(),seg_b_iter->second.t_start(),(maxdim*TOLERANCE_B))) {
                float x = float(2.0 * acos(__min(__max(-dot(-alpha,beta),-1.0),1.0)) / M_PI);
                connectionset[seg_a].m_forward_segconns.add(SegmentRef(1,seg_b),x);
                connectionset[seg_b].m_back_segconns.add(SegmentRef(-1,seg_a),x);
             }
-            if (approxeq(lineset[seg_a].t_end(),lineset[seg_b].t_end(),(maxdim*TOLERANCE_B))) {
+            if (approxeq(seg_a_line.second.t_end(),seg_b_iter->second.t_end(),(maxdim*TOLERANCE_B))) {
                float x = float(2.0 * acos(__min(__max(-dot(-alpha,-beta),-1.0),1.0)) / M_PI);
                connectionset[seg_a].m_forward_segconns.add(SegmentRef(-1,seg_b),x);
                connectionset[seg_b].m_forward_segconns.add(SegmentRef(-1,seg_a),x);

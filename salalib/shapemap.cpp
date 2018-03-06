@@ -541,30 +541,30 @@ int ShapeMap::makeShapeFromPointSet(const PointMap& pointmap)
       QtRegion r(pointmap.getRegion().bottom_left - offset,pointmap.getRegion().top_right + offset);
       init(m_shapes.size(),r);
    }
-   pmap<int,int> relations;
+   std::map<int,int> relations;
    for (size_t j = 0; j < selset.size(); j++) {
       PixelRef pix = selset[j];
-      int x = relations.add(pix,ShapeRef::SHAPE_EDGE);
+      auto relation = relations.insert(std::make_pair(pix,ShapeRef::SHAPE_EDGE));
       if (pointmap.includes(pix.right()) && pointmap.getPoint(pix.right()).selected()) {
-         relations.value(x) &= ~ShapeRef::SHAPE_R;
+         relation.second &= ~ShapeRef::SHAPE_R;
       }
       if (pointmap.includes(pix.up()) && pointmap.getPoint(pix.up()).selected()) {
-         relations.value(x) &= ~ShapeRef::SHAPE_T;
+         relation.second &= ~ShapeRef::SHAPE_T;
       }
       if (pointmap.includes(pix.down()) && pointmap.getPoint(pix.down()).selected()) {
-         relations.value(x) &= ~ShapeRef::SHAPE_B;
+         relation.second &= ~ShapeRef::SHAPE_B;
       }
       if (pointmap.includes(pix.left()) && pointmap.getPoint(pix.left()).selected()) {
-         relations.value(x) &= ~ShapeRef::SHAPE_L;
+         relation.second &= ~ShapeRef::SHAPE_L;
       }
    }
    // now find pixel with SHAPE_B | SHAPE_L
    PixelRef minpix = NoPixel;
-   size_t k;
-   for (k = 0; k < relations.size(); k++) {
-      if ((relations.value(k) & (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) == (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) {
-         if ((minpix == NoPixel) || (relations.key(k) < (int)minpix)) {
-            minpix = relations.key(k);
+
+   for (auto relation: relations) {
+      if ((relation.second & (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) == (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) {
+         if ((minpix == NoPixel) || (relation.first < (int)minpix)) {
+            minpix = relation.first;
          }
       }
    }
@@ -574,8 +574,8 @@ int ShapeMap::makeShapeFromPointSet(const PointMap& pointmap)
 
    bool retvar = true;
 
-   for (k = 0; k < relations.size(); k++) {
-      if (relations[k] != 0) {
+   for (auto relation: relations) {
+      if (relation.second != 0) {
          // more than one shape!
          return -1;
       }
@@ -1203,7 +1203,7 @@ void ShapeMap::makePolyPixels(int polyref)
    // first add into pixels, and ensure you have a bl, tr for the set (useful for testing later)
    SalaShape& poly = m_shapes.find(polyref)->second;
    if (poly.isClosed()) {
-      pmap<int,int> relations;
+      std::map<int,int> relations;
       for (size_t k = 0; k < poly.size(); k++) {
          int nextk = (k + 1) % poly.size();
          Line li(poly[k],poly[nextk]);
@@ -1224,42 +1224,42 @@ void ShapeMap::makePolyPixels(int polyref)
                x = m_pixel_shapes[pix.x][pix.y].add(ShapeRef(polyref),paftl::ADD_HERE);
             }
             m_pixel_shapes[pix.x][pix.y][x].m_polyrefs.push_back(k);
-            relations.add(pixels[i],ShapeRef::SHAPE_EDGE);
+            relations.insert(std::make_pair(pixels[i],ShapeRef::SHAPE_EDGE));
          }
       }
       // erase joined sides, and look for min:
       PixelRef minpix = NoPixel; 
-      for (size_t j = 0; j < relations.size(); j++) {
-         PixelRef pix = relations.key(j);
+      for (auto relation: relations) {
+         PixelRef pix = relation.first;
          PixelRef nextpix;
          nextpix = pix.right();
          if (includes(nextpix) && m_pixel_shapes[nextpix.x][nextpix.y].searchindex(ShapeRef(polyref)) != paftl::npos) {
-            relations.value(j) &= ~ShapeRef::SHAPE_R;
+            relation.second &= ~ShapeRef::SHAPE_R;
          }
          nextpix = pix.up();
          if (includes(nextpix) && m_pixel_shapes[nextpix.x][nextpix.y].searchindex(ShapeRef(polyref)) != paftl::npos) {
-            relations.value(j) &= ~ShapeRef::SHAPE_T;
+            relation.second &= ~ShapeRef::SHAPE_T;
          }
          nextpix = pix.down();
          if (includes(nextpix) && m_pixel_shapes[nextpix.x][nextpix.y].searchindex(ShapeRef(polyref)) != paftl::npos) {
-            relations.value(j) &= ~ShapeRef::SHAPE_B;
+            relation.second &= ~ShapeRef::SHAPE_B;
          }
          nextpix = pix.left();
          if (includes(nextpix) && m_pixel_shapes[nextpix.x][nextpix.y].searchindex(ShapeRef(polyref)) != paftl::npos) {
-            relations.value(j) &= ~ShapeRef::SHAPE_L;
+            relation.second &= ~ShapeRef::SHAPE_L;
          }
-         if ((relations.value(j) & (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) == (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) {
-            if ((minpix == NoPixel) || (relations.key(j) < (int)minpix)) {
-               minpix = relations.key(j);
+         if ((relation.second & (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) == (ShapeRef::SHAPE_B | ShapeRef::SHAPE_L)) {
+            if ((minpix == NoPixel) || (relation.first < (int)minpix)) {
+               minpix = relation.first;
             }
          }
       }
       shapePixelBorder(relations,polyref,ShapeRef::SHAPE_L,minpix,minpix,true);
       // go through any that aren't on the outer border: this will be internal edges, and will cause problems
       // for point in polygon algorithms!
-      size_t i;
-      for (i = 0; i < relations.size(); i++) {
-         PixelRef pix = relations.key(i);
+
+      for (auto relation: relations) {
+         PixelRef pix = relation.first;
          unsigned char& tags = m_pixel_shapes[pix.x][pix.y].search(polyref).m_tags;
          if (tags == 0x00) {
             tags |= ShapeRef::SHAPE_INTERNAL_EDGE;
@@ -1267,9 +1267,9 @@ void ShapeMap::makePolyPixels(int polyref)
       }
       // now, any remaining tags are internal sides, and need to be cleared through fill
       // we could go either direction, but we just go left to right:
-      for (i = 0; i < relations.size(); i++) {
-         PixelRef pix = relations.key(i);
-         if (relations.value(i) & ShapeRef::SHAPE_R) {
+      for (auto relation: relations) {
+         PixelRef pix = relation.first;
+         if (relation.second & ShapeRef::SHAPE_R) {
             int pos = 0;
             do {
                PixelRef nextpix = pix.right();
@@ -1337,16 +1337,16 @@ void ShapeMap::makePolyPixels(int polyref)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ShapeMap::shapePixelBorder(pmap<int,int>& relations, int polyref, int side, PixelRef currpix, PixelRef minpix, bool first) 
+void ShapeMap::shapePixelBorder(std::map<int,int>& relations, int polyref, int side, PixelRef currpix, PixelRef minpix, bool first)
 {
    if (!first && currpix == minpix && side == ShapeRef::SHAPE_L) {
       // looped:
       return;
    }
-   size_t rel = relations.searchindex(currpix);
-   if (relations[rel] & side) {
+   auto relation = relations.find(currpix);
+   if (relation->second & side) {
       m_pixel_shapes[currpix.x][currpix.y].search(polyref).m_tags |= side;
-      relations[rel] &= ~side;   // <- clear to check all have been done later
+      relation->second &= ~side;   // <- clear to check all have been done later
       side <<= 1;
       if (side > ShapeRef::SHAPE_T) {
          side = ShapeRef::SHAPE_L;
@@ -1364,16 +1364,16 @@ void ShapeMap::shapePixelBorder(pmap<int,int>& relations, int polyref, int side,
 }
 
 // note that this is almost exactly the same as shapePixelBorder
-void ShapeMap::pointPixelBorder(const PointMap& pointmap, pmap<int,int>& relations, SalaShape& poly, int side, PixelRef currpix, PixelRef minpix, bool first) 
+void ShapeMap::pointPixelBorder(const PointMap& pointmap, std::map<int,int>& relations, SalaShape& poly, int side, PixelRef currpix, PixelRef minpix, bool first)
 {
    if (!first && currpix == minpix && side == ShapeRef::SHAPE_L) {
       // looped:
       return;
    }
-   size_t rel = relations.searchindex(currpix);
-   if (relations[rel] & side) {
+   auto relation = relations.find(currpix);
+   if (relation->second & side) {
       poly.push_back(pointmap.depixelate(currpix)+pointOffset(pointmap,currpix,side));
-      relations[rel] &= ~side;   // <- clear to check all have been done later
+      relation->second &= ~side;   // <- clear to check all have been done later
       side <<= 1;
       if (side > ShapeRef::SHAPE_T) {
          side = ShapeRef::SHAPE_L;
@@ -3837,26 +3837,26 @@ bool ShapeMap::ozlemSpecial4(ValuePair& cut, IntPair& previous, int& state, Attr
 // expects to be the rays layer... check intersection of each ray with *all* O.S. polys
 void ShapeMap::ozlemSpecial5(ShapeMap& buildings)
 {
-   pmap<int,int> exposureranks;
-   exposureranks.add(10172,10);
-   exposureranks.add(10183,9);
-   exposureranks.add(10056,8);
-   exposureranks.add(10054,7);
-   exposureranks.add(10123,6);
-   exposureranks.add(10119,5);
-   exposureranks.add(10111,4);
-   exposureranks.add(10217,3);
-   exposureranks.add(10167,2);
-   exposureranks.add(10089,1);
-   exposureranks.add(10053,0);
-   exposureranks.add(-1,-1);
+   std::map<int,int> exposureranks;
+   exposureranks.insert(std::make_pair(10172,10));
+   exposureranks.insert(std::make_pair(10183,9));
+   exposureranks.insert(std::make_pair(10056,8));
+   exposureranks.insert(std::make_pair(10054,7));
+   exposureranks.insert(std::make_pair(10123,6));
+   exposureranks.insert(std::make_pair(10119,5));
+   exposureranks.insert(std::make_pair(10111,4));
+   exposureranks.insert(std::make_pair(10217,3));
+   exposureranks.insert(std::make_pair(10167,2));
+   exposureranks.insert(std::make_pair(10089,1));
+   exposureranks.insert(std::make_pair(10053,0));
+   exposureranks.insert(std::make_pair(-1,-1));
 
    int inorientcol = m_attributes.getColumnIndex("Orientation");
    int incodecol = m_attributes.getColumnIndex("FeatureCode");
    //
    for (int ii = 0; ii < m_attributes.getRowCount(); ii++) {
       int featcode = (int)m_attributes.getValue(ii,incodecol);
-      if (exposureranks.searchindex(featcode) == paftl::npos) {
+      if (exposureranks.find(featcode) == exposureranks.end()) {
          std::string blah = dXstring::formatString(featcode,"Error: wasn't expecting feature code %d");
          // Quick mod - TV
          // MessageBox(NULL,blah.c_str(),"Error: ozlemSpecial5",MB_OK|MB_ICONEXCLAMATION);
@@ -3942,7 +3942,7 @@ void ShapeMap::ozlemSpecial5(ShapeMap& buildings)
                else {
                   buildings.m_attributes.setValue(browid,outtypecol,3);
                }
-               if (exposureranks.search(exposurelist[0].b) > exposureranks.search(exposurelist[1].b)) {
+               if (exposureranks.find(exposurelist[0].b)->second > exposureranks.find(exposurelist[1].b)->second) {
                   buildings.m_attributes.setValue(browid,outprimcol,(float)exposurelist[0].b);
                   buildings.m_attributes.setValue(browid,outsecocol,(float)exposurelist[1].b);
                }
@@ -3963,11 +3963,11 @@ void ShapeMap::ozlemSpecial5(ShapeMap& buildings)
                            rearexposed = true;
                         }
                      }
-                     if (exposureranks.search(exposurelist[i].b) > exposureranks.search(prim)) {
+                     if (exposureranks.find(exposurelist[i].b)->second > exposureranks.find(prim)->second) {
                         seco = prim;
                         prim = exposurelist[i].b;
                      }
-                     else if (exposureranks.search(exposurelist[i].b) > exposureranks.search(seco)) {
+                     else if (exposureranks.find(exposurelist[i].b)->second > exposureranks.find(seco)->second) {
                         seco = exposurelist[i].b;
                      }
                   }
@@ -3982,11 +3982,11 @@ void ShapeMap::ozlemSpecial5(ShapeMap& buildings)
                   buildings.m_attributes.setValue(browid,outtypecol,4);
                   int prim = -1, seco = -1;
                   for (int i = 0; i < 4; i++) {
-                     if (exposureranks.search(exposurelist[i].b) > exposureranks.search(prim)) {
+                     if (exposureranks.find(exposurelist[i].b)->second > exposureranks.find(prim)->second) {
                         seco = prim;
                         prim = exposurelist[i].b;
                      }
-                     else if (exposureranks.search(exposurelist[i].b) > exposureranks.search(seco)) {
+                     else if (exposureranks.find(exposurelist[i].b)->second > exposureranks.find(seco)->second) {
                         seco = exposurelist[i].b;
                      }
                   }

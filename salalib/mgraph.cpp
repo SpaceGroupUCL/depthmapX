@@ -1892,12 +1892,12 @@ int MetaGraph::convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& poi
 {
    int retvar = 1;
    // check for existence of data:
-   pmap<int,int> conversion_lookup;
+   std::map<int,int> conversion_lookup;
    size_t i;
    for (i = 0; i < size_t(datalayers.getLayerCount()); i++) {
       if (datalayers[i].getObjectCount()) {
          int x = m_data_maps.addMap(datalayers[i].getLayerName(),ShapeMap::DATAMAP);
-         conversion_lookup.add(i,x);
+         conversion_lookup.insert(std::make_pair(i,x));
       }
    }
    // nothing to convert:
@@ -1906,7 +1906,7 @@ int MetaGraph::convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& poi
    }
 
    for (i = 0; i < conversion_lookup.size(); i++) {
-      ShapeMap& shapemap = m_data_maps.getMap(conversion_lookup.value(i));
+      ShapeMap& shapemap = m_data_maps.getMap(depthmapX::getMapAtIndex(conversion_lookup, i)->second);
       int j;
       // add shapes:
       pvecint row_lookup;

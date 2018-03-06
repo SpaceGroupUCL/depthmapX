@@ -256,7 +256,7 @@ public:
    //
    // add shape tools
    void makePolyPixels(int shaperef);
-   void shapePixelBorder(pmap<int,int>& relations, int shaperef, int side, PixelRef currpix, PixelRef minpix, bool first);
+   void shapePixelBorder(std::map<int,int>& relations, int shaperef, int side, PixelRef currpix, PixelRef minpix, bool first);
    // remove shape tools
    void removePolyPixels(int shaperef);
    //
@@ -309,7 +309,7 @@ public:
    Point2f pointOffset(const PointMap& pointmap, int currpix, int side);
    int moveDir(int side);
    //
-   void pointPixelBorder(const PointMap& pointmap, pmap<int,int>& relations, SalaShape& shape, int side, PixelRef currpix, PixelRef minpix, bool first);
+   void pointPixelBorder(const PointMap& pointmap, std::map<int, int> &relations, SalaShape& shape, int side, PixelRef currpix, PixelRef minpix, bool first);
    // quick find of topmost poly from a point (bit too inaccurate!)
    int quickPointInPoly(const Point2f& p) const;
    // slower point in topmost poly test:

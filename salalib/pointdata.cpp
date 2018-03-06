@@ -918,14 +918,14 @@ void PointMap::outputNet(ostream& netfile)
 {
    // this is a bid of a faff, as we first have to get the point locations, 
    // then the connections from a lookup table... ickity ick ick...
-   pmap<PixelRef,PixelRefVector> graph;
+   std::map<PixelRef,PixelRefVector> graph;
    for (int i = 0; i < m_cols; i++) {
       for (int j = 0; j < m_rows; j++) {
          if (m_points[i][j].filled() && m_points[i][j].m_node) {
             PixelRef pix(i,j);
             PixelRefVector connections;
             m_points[i][j].m_node->contents(connections);
-            graph.add(pix,connections);
+            graph.insert(std::make_pair(pix,connections));
          }
       }
    }
@@ -933,16 +933,17 @@ void PointMap::outputNet(ostream& netfile)
    double maxdim = __max(m_region.width(),m_region.height());
    Point2f offset = Point2f((maxdim - m_region.width())/(2.0*maxdim),(maxdim - m_region.height())/(2.0*maxdim));
    for (size_t j = 0; j < graph.size(); j++) {
-      Point2f p = depixelate(graph.key(j));
+      auto graphKey = depthmapX::getMapAtIndex(graph, j)->first;
+      Point2f p = depixelate(graphKey);
       p.x = offset.x + (p.x - m_region.bottom_left.x) / maxdim;
       p.y = 1.0 - (offset.y + (p.y - m_region.bottom_left.y) / maxdim);
-      netfile << (j+1) << " \"" << graph.key(j) << "\" " << p.x << " " << p.y << endl;
+      netfile << (j+1) << " \"" << graphKey << "\" " << p.x << " " << p.y << endl;
    }
    netfile << "*Edges" << endl;
    for (size_t k = 0; k < graph.size(); k++) {
-      PixelRefVector& list = graph.value(k);
+      PixelRefVector& list = depthmapX::getMapAtIndex(graph, k)->second;
       for (size_t m = 0; m < list.size(); m++) {
-         size_t n = graph.searchindex(list[m]);
+         size_t n = depthmapX::findIndexFromKey(graph, list[m]);
          if (n != paftl::npos && k < n) {
             netfile << (k+1) << " " << (n+1) << " 1" << endl;
          }

@@ -28,6 +28,7 @@
 #include "salalib/pixelref.h"
 #include "salalib/pafcolor.h"
 #include "genlib/paftl.h"
+#include <map>
 
 class SalaShape;
 
@@ -125,7 +126,7 @@ protected:
 //   double m_pixel_width;
    //
    int m_ref;
-   pmap<int,LineTest> m_lines;
+   std::map<int,LineTest> m_lines;
    //
    // for screen drawing
    mutable int *m_display_lines;
@@ -179,7 +180,7 @@ public:
    QtRegion& getRegion() const
       { return (QtRegion&) m_region; }
    //
-   const pmap<int,LineTest>& getAllLines() const // Danger! Use solely to look at the raw line data
+   const std::map<int,LineTest>& getAllLines() const // Danger! Use solely to look at the raw line data
       { return m_lines; }
    //
    // For easy layer manipulation:
