@@ -37,30 +37,30 @@ void VgaParser::parse(int argc, char *argv[])
     for ( int i = 1; i < argc;  )
     {
 
-        if ( strcmp ("-vm", argv[i]) == 0)
+        if ( std::strcmp ("-vm", argv[i]) == 0)
         {
             if (_vgaMode != VgaMode::NONE)
             {
                 throw CommandLineException("-vm can only be used once, modes are mutually exclusive");
             }
             ENFORCE_ARGUMENT("-vm", i)
-            if ( strcmp(argv[i], "isovist") == 0 )
+            if ( std::strcmp(argv[i], "isovist") == 0 )
             {
                 _vgaMode = VgaMode::ISOVIST;
             }
-            else if ( strcmp(argv[i], "visibility") == 0 )
+            else if ( std::strcmp(argv[i], "visibility") == 0 )
             {
                 _vgaMode = VgaMode::VISBILITY;
             }
-            else if ( strcmp(argv[i], "metric") == 0 )
+            else if ( std::strcmp(argv[i], "metric") == 0 )
             {
                 _vgaMode = VgaMode::METRIC;
             }
-            else if ( strcmp(argv[i], "angular") == 0 )
+            else if ( std::strcmp(argv[i], "angular") == 0 )
             {
                 _vgaMode = VgaMode::ANGULAR;
             }
-            else if ( strcmp(argv[i], "thruvision") == 0)
+            else if ( std::strcmp(argv[i], "thruvision") == 0)
             {
                 _vgaMode = VgaMode::THRU_VISION;
             }
@@ -69,15 +69,15 @@ void VgaParser::parse(int argc, char *argv[])
                 throw CommandLineException(std::string("Invalid VGA mode: ") + argv[i]);
             }
         }
-        else if ( strcmp(argv[i], "-vg") == 0 )
+        else if ( std::strcmp(argv[i], "-vg") == 0 )
         {
             _globalMeasures = true;
         }
-        else if ( strcmp(argv[i], "-vl") == 0 )
+        else if ( std::strcmp(argv[i], "-vl") == 0 )
         {
             _localMeasures = true;
         }
-        else if (strcmp(argv[i], "-vr") == 0)
+        else if (std::strcmp(argv[i], "-vr") == 0)
         {
             ENFORCE_ARGUMENT("-vr", i)
             _radius = argv[i];

@@ -17,6 +17,7 @@
 #include "exceptions.h"
 #include "imodeparserfactory.h"
 #include "parsingutils.h"
+#include "version.h"
 #include <iostream>
 #include <cstring>
 #include <algorithm>
@@ -25,6 +26,7 @@ using namespace depthmapX;
 
 void CommandLineParser::printHelp(){
     std::cout << "Usage: depthmapXcli -m <mode> -f <filename> -o <output file> [-s] [mode options]\n"
+              << "       depthmapXcli -v prints the current version\n"
               << "       depthmapXcli -h prints this help text\n"
               << "-s enables simple mode\n"
               << "-t <times.csv> enables output of runtimes as csv file\n"
@@ -36,6 +38,9 @@ void CommandLineParser::printHelp(){
               std::cout << std::flush;
 }
 
+void CommandLineParser::printVersion(){
+    std::cout << TITLE_BASE << "\n" << std::flush;
+}
 
 
 CommandLineParser::CommandLineParser(const IModeParserFactory &parserFactory)
@@ -45,17 +50,23 @@ CommandLineParser::CommandLineParser(const IModeParserFactory &parserFactory)
 void CommandLineParser::parse(size_t argc, char *argv[])
 {
     _valid = false;
+    _printVersionMode = false;
     if (argc <= 1)
     {
         throw CommandLineException("No commandline parameters provided - don't know what to do");
     }
     for ( size_t i = 1; i < argc;  )
     {
-        if ( strcmp("-h", argv[i])== 0)
+        if ( std::strcmp("-h", argv[i])== 0)
         {
             return;
         }
-        else if ( strcmp ("-m", argv[i]) == 0)
+        else if ( std::strcmp("-v", argv[i])== 0)
+        {
+            _printVersionMode = true;
+            return;
+        }
+        else if ( std::strcmp ("-m", argv[i]) == 0)
         {
             if ( _modeParser)
             {
@@ -78,22 +89,22 @@ void CommandLineParser::parse(size_t argc, char *argv[])
                 throw CommandLineException(std::string("Invalid mode: ") + argv[i]);
             }
         }
-        else if ( strcmp ("-f", argv[i]) == 0)
+        else if ( std::strcmp ("-f", argv[i]) == 0)
         {
             ENFORCE_ARGUMENT("-f", i)
             _fileName = argv[i];
         }
-        else if ( strcmp ("-o", argv[i]) == 0)
+        else if ( std::strcmp ("-o", argv[i]) == 0)
         {
             ENFORCE_ARGUMENT("-o", i)
             _outputFile = argv[i];
         }
-        else if ( strcmp ("-t", argv[i]) == 0)
+        else if ( std::strcmp ("-t", argv[i]) == 0)
         {
             ENFORCE_ARGUMENT("-t", i)
             _timingFile = argv[i];
         }
-        else if ( strcmp("-s", argv[i]) == 0)
+        else if ( std::strcmp("-s", argv[i]) == 0)
         {
             _simpleMode = true;
         }

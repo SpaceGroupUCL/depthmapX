@@ -81,7 +81,7 @@ struct Connector
    void clear()
    { m_connections.clear(); m_back_segconns.clear(); m_forward_segconns.clear(); }
    //
-   bool read( ifstream& stream, int version, pvecint *keyvertices = NULL );
+   bool read(std::istream &stream, int version, pvecint *keyvertices = NULL );
    bool write( ofstream& stream );
    //
    // Cursor extras

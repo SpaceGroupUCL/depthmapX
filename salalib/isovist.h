@@ -21,6 +21,8 @@
 #ifndef __ISOVIST_H__
 #define __ISOVIST_H__
 
+#include "genlib/bsptree.h"
+
 // this is very much like sparksieve:
 
 struct IsoSeg
@@ -62,7 +64,7 @@ protected:
    Point2f m_centre;
    pqvector<IsoSeg> m_blocks;
    pqvector<IsoSeg> m_gaps;
-   pvecpoint m_poly;
+   pqvector<Point2f> m_poly;
    prefvec<PointDist> m_occlusion_points;
    double m_perimeter;
    double m_occluded_perimeter;
@@ -70,7 +72,7 @@ protected:
    double m_min_radial;
 public:
    Isovist() {;}
-   const pvecpoint& getPolygon() const { return m_poly; }
+   const pqvector<Point2f>& getPolygon() const { return m_poly; }
    const prefvec<PointDist>& getOcclusionPoints() const { return m_occlusion_points; }
    const Point2f& getCentre() const { return m_centre; }
    //

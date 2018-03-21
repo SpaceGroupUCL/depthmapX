@@ -321,3 +321,224 @@ TEST_CASE("Quirks in grid creation - Origin always at 0", "")
     // check if the grid is filled
     REQUIRE(pointsMade);
 }
+
+TEST_CASE("Test PointMap connections output", "")
+{
+    const float EPSILON = 0.001;
+    double spacing = 0.5;
+    Point2f offset(0,0); // seems that this is always set to 0,0
+
+    std::unique_ptr<SuperSpacePixel> spacePixel(new SuperSpacePixel("Test SuperSpacePixel"));
+
+    double rectSize = 1.5;
+
+    Point2f line0Start(0,0);
+    Point2f line0End(0,rectSize);
+    Point2f line1Start(0,rectSize);
+    Point2f line1End(rectSize,rectSize);
+    Point2f line2Start(rectSize,rectSize);
+    Point2f line2End(rectSize,0);
+    Point2f line3Start(rectSize,0);
+    Point2f line3End(0,0);
+
+    spacePixel->push_back(SpacePixelFile("Test SpacePixelGroup"));
+    spacePixel->tail().push_back(ShapeMap("Test ShapeMap"));
+    spacePixel->tail().tail().makeLineShape(Line(line0Start, line0End));
+    spacePixel->tail().tail().makeLineShape(Line(line1Start, line1End));
+    spacePixel->tail().tail().makeLineShape(Line(line2Start, line2End));
+    spacePixel->tail().tail().makeLineShape(Line(line3Start, line3End));
+    spacePixel->tail().m_region = spacePixel->tail().tail().getRegion();
+    spacePixel->m_region = spacePixel->tail().m_region;
+    PointMap pointMap("Test PointMap");
+    bool spacePixelSet = pointMap.setSpacePixel(spacePixel.get());
+
+
+
+    Point2f gridBottomLeft = pointMap.getRegion().bottom_left;
+
+    Point2f midPoint(gridBottomLeft.x + spacing * (floor(pointMap.getCols() * 0.5) + 0.5),
+                     gridBottomLeft.y + spacing * (floor(pointMap.getRows() * 0.5) + 0.5));
+
+    int fill_type = 0; // = QDepthmapView::FULLFILL
+    bool gridIsSet = pointMap.setGrid(spacing, offset);
+
+    bool pointsMade = pointMap.makePoints(midPoint, fill_type);
+
+    bool boundaryGraph = false;
+    double maxDist = -1;
+    // a communicator is required in order to create the connections between the pixels
+    std::unique_ptr<Communicator> comm(new ICommunicator());
+
+    bool graphMade = pointMap.sparkGraph2(comm.get(), boundaryGraph, maxDist);
+
+    REQUIRE(graphMade);
+
+    SECTION("PointMap::outputConnectionsAsCSV") {
+        std::stringstream stream;
+        pointMap.outputConnectionsAsCSV(stream);
+
+        REQUIRE(stream.good());
+        char line[1000];
+        std::vector<std::string> lines;
+        while( !stream.eof())
+        {
+            stream.getline(line, 1000);
+            lines.push_back(line);
+        }
+        std::vector<std::string> expected{ "RefFrom,RefTo",
+                                           "65537,131073", "65537,131074", "65537,65538",
+                                           "65538,131074", "65538,131073", "131073,131074"};
+        REQUIRE(lines == expected);
+    }
+
+    SECTION("PointMap::outputConnections") {
+        std::stringstream stream;
+        pointMap.outputConnections(stream);
+
+        REQUIRE(stream.good());
+        char line[1000];
+        std::vector<std::string> lines;
+        while( !stream.eof())
+        {
+            stream.getline(line, 1000);
+            lines.push_back(line);
+        }
+        std::vector<std::string> expected{ "#graph v1.0",
+                                           "node {",
+                                           "  ref    65537",
+                                           "  origin 0.5 0.5 0",
+                                           "  connections [",
+                                           "    131073,",
+                                           "    131074,",
+                                           "    65538,",
+                                           "  ]",
+                                           "}",
+                                           "node {",
+                                           "  ref    65538",
+                                           "  origin 0.5 1 0",
+                                           "  connections [",
+                                           "    131074,",
+                                           "    65537,",
+                                           "    131073,",
+                                           "  ]",
+                                           "}",
+                                           "node {",
+                                           "  ref    131073",
+                                           "  origin 1 0.5 0",
+                                           "  connections [",
+                                           "    131074,",
+                                           "    65538,",
+                                           "    65537,",
+                                           "  ]",
+                                           "}",
+                                           "node {",
+                                           "  ref    131074",
+                                           "  origin 1 1 0",
+                                           "  connections [",
+                                           "    65538,",
+                                           "    65537,",
+                                           "    131073,",
+                                           "  ]",
+                                           "}",
+                                           "" };
+        REQUIRE(lines == expected);
+    }
+
+}
+TEST_CASE("Direct pointmap linking - fully filled grid (no geometry)", "")
+{
+    double spacing = 0.5;
+    Point2f offset(0,0); // seems that this is always set to 0,0
+    Point2f bottomLeft(0,0);
+    Point2f topRight(2,4);
+    int fill_type = 0; // = QDepthmapView::FULLFILL
+
+    std::unique_ptr<SuperSpacePixel> spacePixel(new SuperSpacePixel("Test SuperSpacePixel"));
+    spacePixel->m_region = QtRegion(bottomLeft, topRight);
+    PointMap pointMap("Test PointMap");
+    pointMap.setSpacePixel(spacePixel.get());
+    pointMap.setGrid(spacing, offset);
+    Point2f gridBottomLeft = pointMap.getRegion().bottom_left;
+    Point2f midPoint(gridBottomLeft.x + spacing * (floor(pointMap.getCols() * 0.5) + 0.5),
+                         gridBottomLeft.y + spacing * (floor(pointMap.getRows() * 0.5) + 0.5));
+    pointMap.makePoints(midPoint, fill_type);
+
+    std::vector<Line> mergeLines;
+
+    PixelRef bottomLeftPixel = pointMap.pixelate(bottomLeft);
+    PixelRef topRightPixel = pointMap.pixelate(topRight);
+
+    // make sure pixels are not already merged
+    REQUIRE(!pointMap.isPixelMerged(bottomLeftPixel));
+    REQUIRE(!pointMap.isPixelMerged(topRightPixel));
+
+    // merge
+    pointMap.mergePixels(bottomLeftPixel, topRightPixel);
+
+    // make sure pixels are merged
+    REQUIRE(pointMap.isPixelMerged(bottomLeftPixel));
+    REQUIRE(pointMap.isPixelMerged(topRightPixel));
+
+    SECTION ("Make sure we get the correct number of merged pixel pairs")
+    {
+        const std::vector<std::pair<PixelRef, PixelRef>> &pixelPairs = pointMap.getMergedPixelPairs();
+        REQUIRE(pixelPairs.size() == 1);
+        REQUIRE(pixelPairs[0].first == bottomLeftPixel);
+        REQUIRE(pixelPairs[0].second == topRightPixel);
+    }
+
+    SECTION ("Overwrite the pixelpair by re-merging the first pixel of the pair")
+    {
+        PixelRef aboveBottomLeftPixel = pointMap.pixelate(Point2f(bottomLeft.x, bottomLeft.y + 1));
+
+        // merge
+        pointMap.mergePixels(aboveBottomLeftPixel, topRightPixel);
+
+        // make sure pixels are merged
+        REQUIRE(pointMap.isPixelMerged(aboveBottomLeftPixel));
+        REQUIRE(pointMap.isPixelMerged(topRightPixel));
+
+        // and previous pixel is not merged any more
+        REQUIRE(!pointMap.isPixelMerged(bottomLeftPixel));
+
+        // make sure we get the correct number of merged pixel pairs
+        const std::vector<std::pair<PixelRef, PixelRef>> &pixelPairs = pointMap.getMergedPixelPairs();
+        REQUIRE(pixelPairs.size() == 1);
+        REQUIRE(pixelPairs[0].first == aboveBottomLeftPixel);
+        REQUIRE(pixelPairs[0].second == topRightPixel);
+    }
+
+    SECTION ("Overwrite the pixelpair by re-merging the second pixel of the pair")
+    {
+        PixelRef belowTopRightPixel = pointMap.pixelate(Point2f(topRight.x, topRight.y - 1));
+
+        // merge
+        pointMap.mergePixels(bottomLeftPixel, belowTopRightPixel);
+
+        // make sure pixels are merged
+        REQUIRE(pointMap.isPixelMerged(bottomLeftPixel));
+        REQUIRE(pointMap.isPixelMerged(belowTopRightPixel));
+
+        // and previous pixel is not merged any more
+        REQUIRE(!pointMap.isPixelMerged(topRightPixel));
+
+        // make sure we get the correct number of merged pixel pairs
+        const std::vector<std::pair<PixelRef, PixelRef>> &pixelPairs2 = pointMap.getMergedPixelPairs();
+        REQUIRE(pixelPairs2.size() == 1);
+        REQUIRE(pixelPairs2[0].first == bottomLeftPixel);
+        REQUIRE(pixelPairs2[0].second == belowTopRightPixel);
+    }
+
+    SECTION ("Merge the same pixel twice to erase the pair")
+    {
+        pointMap.mergePixels(bottomLeftPixel, bottomLeftPixel);
+
+        // make sure no pixel is merged
+        REQUIRE(!pointMap.isPixelMerged(bottomLeftPixel));
+        REQUIRE(!pointMap.isPixelMerged(topRightPixel));
+
+        // make sure we get the correct number of merged pixel pairs
+        const std::vector<std::pair<PixelRef, PixelRef>> &pixelPairs3 = pointMap.getMergedPixelPairs();
+        REQUIRE(pixelPairs3.size() == 0);
+    }
+}

@@ -130,7 +130,7 @@ bool QPlotView::eventFilter(QObject *object, QEvent *e)
 
 void QPlotView::paintEvent(QPaintEvent *event)
 {
-	QPainter pDC(this);
+    QPainter pDC(m_pixmap);
 
 	QRect rect = QRect(0, 0, width(), height());
 	PafColor selcol(SALA_SELECTED_COLOR);
@@ -159,13 +159,17 @@ void QPlotView::paintEvent(QPaintEvent *event)
 			Output(&pDC, pDoc, true);
             OnRedraw(0, 0);
 		}
-	}
+    }
+
+    QPainter screenPainter(this);
+    screenPainter.drawPixmap(0,0,width(),height(),*m_pixmap);
 }
 
 void QPlotView::resizeEvent(QResizeEvent *event)
 {
    pDoc->m_view[QGraphDoc::VIEW_SCATTER] = this;
    setWindowTitle(pDoc->m_base_title+":Scatter Plot");
+   m_pixmap = new QPixmap(width(),height());
 }
 
 void QPlotView::closeEvent(QCloseEvent *event)
@@ -256,12 +260,12 @@ void QPlotView::PrintOutput(QPainter *pDC, QGraphDoc *pDoc)
 bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) 
 {
 // this is going to need a timer at somepoint, but for now, it's all very easy to start off:
-   if (!pDoc->m_meta_graph->setLock(this)) {
+   auto lock = pDoc->m_meta_graph->getLockDeferred();
+    if (!lock.try_lock()) {
       return false;
    }
 
    if (pDoc->m_communicator || !pDoc->m_meta_graph->viewingProcessed()) {
-      pDoc->m_meta_graph->releaseLock(this);
       return false;
    }
 
@@ -495,8 +499,6 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw)
 
    pDC->setPen(oldpen);
 
-   pDoc->m_meta_graph->releaseLock(this);
-
    return true;
 }
 /*
@@ -725,7 +727,7 @@ void QPlotView::mouseReleaseEvent(QMouseEvent *e)
       int index = idx_x[i].index;
       xkeys.add(index);
    }
-   pvecint finalkeys;
+   std::vector<int> finalkeys;
    for (size_t j = yfloor + 1; j < yceil; j++) {
       int index = idx_y[j].index;
       if (xkeys.searchindex(index) != paftl::npos) {

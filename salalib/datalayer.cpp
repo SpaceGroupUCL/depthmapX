@@ -27,7 +27,7 @@
 #include <salalib/mgraph.h>
 #include <salalib/datalayer.h>
 
-bool DataLayers::read(ifstream& stream, int version)
+bool DataLayers::read(istream& stream, int version)
 {
    m_layers.clear();
    stream.read( (char *) &m_current_layer_index, sizeof(int) );
@@ -82,12 +82,12 @@ void DataLayer::setDisplayColumn(int i)
    m_display_column = i;
 }
 
-bool DataLayer::read(ifstream& stream, int version)
+bool DataLayer::read(istream& stream, int version)
 {
    m_data_objects.clear();
    m_column_titles.clear();
    stream.read( (char *) &m_layer_ref, sizeof(int) );
-   m_layer_name.read(stream);
+   m_layer_name = dXstring::readString(stream);
    stream.read( (char *) &m_next_object_ref, sizeof(int) );
    int rows_size;
    stream.read( (char *) &rows_size, sizeof(int) );
@@ -99,9 +99,7 @@ bool DataLayer::read(ifstream& stream, int version)
    int columns_size;
    stream.read( (char *) &columns_size, sizeof(int) );
    for (int j = 0; j < columns_size; j++) {
-      pstring title;
-      m_column_titles.push_back(title);
-      m_column_titles.tail().read(stream);
+      m_column_titles.push_back(dXstring::readString(stream));
    }
 
    // Since it doesn't seem to be recorded, just display the initial column
@@ -113,7 +111,7 @@ bool DataLayer::read(ifstream& stream, int version)
 bool DataLayer::write(ofstream& stream)
 {
    stream.write( (char *) &m_layer_ref, sizeof(int) );
-   m_layer_name.write(stream);
+   dXstring::writeString(stream, m_layer_name);
    stream.write( (char *) &m_next_object_ref, sizeof(int) );
    int rows_size = m_data_objects.size();
    stream.write( (char *) &rows_size, sizeof(int) );
@@ -123,7 +121,7 @@ bool DataLayer::write(ofstream& stream)
    int columns_size = m_column_titles.size();
    stream.write( (char *) &columns_size, sizeof(int) );
    for (int j = 0; j < columns_size; j++) {
-      m_column_titles[j].write(stream);
+      dXstring::writeString(stream, m_column_titles[j]);
    }
    return true;
 }
@@ -151,14 +149,12 @@ bool DataLayer::output(ofstream& stream)
 
 //////////////////////////////////////////////////////////////
 
-bool DataObject::read(ifstream& stream, int version)
+bool DataObject::read(istream& stream, int version)
 {
    stream.read( (char *) &m_object_ref, sizeof(int) );
-   m_object_name.read(stream);
+   m_object_name = dXstring::readString(stream);
    m_data_cols.read(stream);
-   if (version >= VERSION_LAYERS_CENTROID_INTROD) {
-      stream.read( (char *) &m_centroid, sizeof(Point2f) );
-   }
+   stream.read( (char *) &m_centroid, sizeof(Point2f) );
    // default values for selection / output color
    m_selected = false;
    m_color = 0.0f;
@@ -169,7 +165,7 @@ bool DataObject::read(ifstream& stream, int version)
 bool DataObject::write(ofstream& stream)
 {
    stream.write( (char *) &m_object_ref, sizeof(int) );
-   m_object_name.write(stream);
+   dXstring::writeString(stream, m_object_name);
    m_data_cols.write(stream);
    stream.write( (char *) &m_centroid, sizeof(Point2f) );
    return true;

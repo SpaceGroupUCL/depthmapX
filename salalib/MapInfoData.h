@@ -31,12 +31,12 @@ friend class ShapeGraphs;
 friend class ShapeMap;
    //
 protected:
-   pstring m_version;
-   pstring m_charset;
+   std::string m_version;
+   std::string m_charset;
    char m_delimiter;
-   pstring m_index;
-   pstring m_coordsys;
-   pstring m_bounds;
+   std::string m_index;
+   std::string m_coordsys;
+   std::string m_bounds;
    //
    // no longer use columnheads and table
    // -- where possible, added directly to the data
@@ -50,10 +50,10 @@ public:
    //bool exportFile(ostream& miffile, ostream& midfile, const ShapeGraph& map);   // n.b., deprecated: use shapemap instead
    bool exportFile(ostream& miffile, ostream& midfile, const PointMap& points);
    bool exportFile(ostream& miffile, ostream& midfile, const ShapeMap& map);
-   bool exportPolygons(ostream& miffile, ostream& midfile, const prefvec<pvecpoint>& polygons, const QtRegion& region);
+   bool exportPolygons(ostream& miffile, ostream& midfile, const prefvec<pqvector<Point2f>>& polygons, const QtRegion& region);
    //
    bool readheader(istream& miffile);
-   bool readcolumnheaders(istream& miffile, istream& midfile, pvecstring& columnheads);
+   bool readcolumnheaders(istream& miffile, istream& midfile, std::vector<std::string>& columnheads);
    void writeheader(ostream& miffile);
    void writetable(ostream& miffile, ostream& midfile, const AttributeTable& attributes);
    //

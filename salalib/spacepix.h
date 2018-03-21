@@ -21,160 +21,16 @@
 #define __SPATIALDATA_H__
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
+#include "genlib/pafmath.h"
+#include "genlib/p2dpoly.h"
+
+#include "genlib/stringutils.h"
+#include "salalib/pixelref.h"
+#include "salalib/pafcolor.h"
+#include "genlib/paftl.h"
+#include <map>
 
 class SalaShape;
-
-class PixelRef
-{
-public:
-   short x;
-   short y;
-   PixelRef( short ax = -1, short ay = -1 )
-      { x = ax; y = ay; }
-   PixelRef( int i )
-      { x = short(i >> 16); y = short(i & 0xffff); }
-   bool empty()
-      { return x == -1 && y == -1; }
-   PixelRef up() const
-      { return PixelRef(x, y + 1); }
-   PixelRef left() const
-      { return PixelRef(x - 1, y); }
-   PixelRef right() const
-      { return PixelRef(x + 1, y); }
-   PixelRef down() const
-      { return PixelRef(x, y - 1); }
-   short& operator [] (int i)
-      { return (i == XAXIS) ? x : y; }
-   bool within( const PixelRef bl, const PixelRef tr ) const 
-      { return (x >= bl.x && x <= tr.x && y >= bl.y && y <= tr.y); }
-   bool encloses( PixelRef testpoint ) const
-      { return (testpoint.x >= 0 && testpoint.x < x && testpoint.y >= 0 && testpoint.y < y);}
-   // directions for the ngraph:
-   enum {NODIR = 0x00, HORIZONTAL = 0x01, VERTICAL = 0x02, POSDIAGONAL = 0x04, NEGDIAGONAL = 0x08, DIAGONAL = 0x0c, NEGHORIZONTAL = 0x10, NEGVERTICAL = 0x20};
-   short& row(char dir)
-      { return (dir & VERTICAL) ? x : y; }
-   short& col(char dir)
-      { return (dir & VERTICAL) ? y : x; }
-   const short& row(char dir) const
-      { return (dir & VERTICAL) ? x : y; }
-   const short& col(char dir) const
-      { return (dir & VERTICAL) ? y : x; }
-   PixelRef& move(char dir)
-      { switch (dir) 
-        { 
-           case POSDIAGONAL: x++; y++; break;
-           case NEGDIAGONAL: x++; y--; break;
-           case HORIZONTAL: x++; break;
-           case VERTICAL: y++; break;
-           case NEGHORIZONTAL: x--; break;
-           case NEGVERTICAL: y--; break;
-        }
-        return *this; }
-   bool isodd() 
-   { return x % 2 == 1 && y % 2 == 1; }
-   bool iseven() 
-   { return x % 2 == 0 && y % 2 == 0; }
-   friend bool operator == (const PixelRef a, const PixelRef b);
-   friend bool operator != (const PixelRef a, const PixelRef b);
-   friend bool operator < (const PixelRef a, const PixelRef b);
-   friend bool operator > (const PixelRef a, const PixelRef b);
-   friend PixelRef operator + (const PixelRef a, const PixelRef b);
-   friend PixelRef operator - (const PixelRef a, const PixelRef b);
-   friend PixelRef operator / (const PixelRef a, const int factor);
-   friend double dist(const PixelRef a, const PixelRef b);
-   friend double angle(const PixelRef a, const PixelRef b, const PixelRef c);
-   operator int() const
-   { return ((int(x) << 16) + (int(y) & 0xffff)); }
-};
-
-const PixelRef NoPixel( -1, -1 );
-
-inline bool operator == (const PixelRef a, const PixelRef b)
-{
-   return (a.x == b.x) && (a.y == b.y);
-}
-inline bool operator != (const PixelRef a, const PixelRef b)
-{
-   return (a.x != b.x) || (a.y != b.y);
-}
-inline bool operator < (const PixelRef a, const PixelRef b)
-{
-   return (a.x < b.x) || (a.x == b.x && a.y < b.y);
-}
-inline bool operator > (const PixelRef a, const PixelRef b)
-{
-   return (a.x > b.x) || (a.x == b.x && a.y > b.y);
-}
-inline PixelRef operator + (const PixelRef a, const PixelRef b)
-{
-   return PixelRef(a.x + b.x, a.y + b.y);
-}
-inline PixelRef operator - (const PixelRef a, const PixelRef b)
-{
-   return PixelRef(a.x - b.x, a.y - b.y);
-}
-inline PixelRef operator / (const PixelRef a, const int factor)
-{
-   return PixelRef(a.x / factor, a.y / factor);
-}
-
-inline double dist(const PixelRef a, const PixelRef b)
-{
-   return sqrt(sqr(a.x - b.x) + sqr(a.y - b.y));
-}
-
-inline double angle(const PixelRef a, const PixelRef b, const PixelRef c)
-{
-   if (c == NoPixel) {
-      return 0.0;
-   }
-   else {
-      // n.b. 1e-12 required for floating point error
-      return acos( double((a.x - b.x) * (b.x - c.x) + (a.y - b.y) * (b.y - c.y)) / 
-                   (sqrt(sqr(a.x - b.x) + sqr(a.y - b.y)) * sqrt(sqr(b.x - c.x) + sqr(b.y - c.y)) + 1e-12) ); 
-   }
-}
-
-// Now sizeof(PixelRef) == sizeof(int) better stored directly:
-typedef pvector<PixelRef> PixelRefList;
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
-
-struct PixelRefPair
-{
-   PixelRef a;
-   PixelRef b;
-   PixelRefPair(const PixelRef x = NoPixel, const PixelRef y = NoPixel) 
-   { 
-      a =  x < y ? x : y;
-      b =  x < y ? y : x;
-   }
-   friend bool operator == (const PixelRefPair& x, const PixelRefPair& y);
-   friend bool operator != (const PixelRefPair& x, const PixelRefPair& y);
-   friend bool operator <  (const PixelRefPair& x, const PixelRefPair& y);
-   friend bool operator >  (const PixelRefPair& x, const PixelRefPair& y);
-
-};
-
-// note: these are made with a is always less than b
-inline bool operator == (const PixelRefPair& x, const PixelRefPair& y)
-{
-   return (x.a == y.a && x.b == y.b);
-}
-inline bool operator != (const PixelRefPair& x, const PixelRefPair& y)
-{
-   return (x.a != y.a || x.b != y.b);
-}
-inline bool operator < (const PixelRefPair& x, const PixelRefPair& y)
-{
-   return ( (x.a == y.a) ? x.b < y.b : x.a < y.a );
-}
-inline bool operator > (const PixelRefPair& x, const PixelRefPair& y)
-{
-   return ( (x.a == y.a) ? x.b > y.b : x.a > y.a );
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
 
 class PixelBase
 {
@@ -186,9 +42,9 @@ public:
    PixelBase() {;}
    // constrain is constrain to bounding box (i.e., in row / col bounds)
    virtual PixelRef pixelate(const Point2f&, bool constrain = true, int scalefactor = 1 ) const = 0;
-   PixelRefList pixelateLine( Line l, int scalefactor = 1 ) const;
-   PixelRefList pixelateLineTouching( Line l, double tolerance ) const;
-   PixelRefList quickPixelateLine(PixelRef p, PixelRef q);
+   PixelRefVector pixelateLine( Line l, int scalefactor = 1 ) const;
+   PixelRefVector pixelateLineTouching( Line l, double tolerance ) const;
+   PixelRefVector quickPixelateLine(PixelRef p, PixelRef q);
    bool includes(const PixelRef pix) const {
       return (pix.x >= 0 && pix.x < m_cols && pix.y >= 0 && pix.y < m_rows);
    }
@@ -259,7 +115,7 @@ protected:
 protected:
    PafColor m_color;
    int m_style;   // allows for bold / dotted lines etc
-   pstring m_name;
+   std::string m_name;
    bool m_show;
    bool m_edit;
    pvecint **m_pixel_lines;
@@ -270,7 +126,7 @@ protected:
 //   double m_pixel_width;
    //
    int m_ref;
-   pmap<int,LineTest> m_lines;
+   std::map<int,LineTest> m_lines;
    //
    // for screen drawing
    mutable int *m_display_lines;
@@ -280,7 +136,7 @@ protected:
    mutable unsigned int m_test;
    //
 public:
-   SpacePixel(const pstring& name = pstring("Default"));
+   SpacePixel(const std::string& name = std::string("Default"));
    virtual ~SpacePixel();
    //
    SpacePixel(const SpacePixel& spacepixel);
@@ -288,7 +144,7 @@ public:
    void construct(const SpacePixel& spacepixel);
    //
    PixelRef pixelate( const Point2f& p, bool constrain = true, int = 1 ) const;
-//   PixelRefList pixelate( const Line& l ) const;
+//   PixelRefVector pixelate( const Line& l ) const;
    //
    void initLines(int size, const Point2f& min, const Point2f& max, double density = 1.0);
    void reinitLines(double density);   // just reinitialises pixel lines, keeps lines, current ref and test setting
@@ -324,13 +180,13 @@ public:
    QtRegion& getRegion() const
       { return (QtRegion&) m_region; }
    //
-   const pmap<int,LineTest>& getAllLines() const // Danger! Use solely to look at the raw line data
+   const std::map<int,LineTest>& getAllLines() const // Danger! Use solely to look at the raw line data
       { return m_lines; }
    //
    // For easy layer manipulation:
-   void setName(const pstring& name)
+   void setName(const std::string& name)
       { m_name = name; }
-   pstring getName() 
+   std::string getName()
       { return m_name; }
    void setShow(bool show = true)
       { m_show = show; }
@@ -356,7 +212,7 @@ public:
    int getLineCount() const
       { return (int)m_lines.size(); }
 public:
-   virtual bool read( ifstream& stream, int version );
+   virtual bool read(istream &stream, int version );
    virtual bool write( ofstream& stream );
    friend bool operator == (const SpacePixel& a, const SpacePixel& b); 
 };
@@ -373,16 +229,16 @@ template <class T>
 class SpacePixelGroup : public pqvector<T>
 {
 protected:
-   pstring m_name;   // <- file name
+   std::string m_name;   // <- file name
    mutable int m_current_layer;
 public:
    QtRegion m_region;  // easier public for now
    //
-   SpacePixelGroup(const pstring& name = pstring()) 
+   SpacePixelGroup(const std::string& name = std::string())
    { m_name = name; m_current_layer = -1; }
-   void setName(const pstring& name)
+   void setName(const std::string& name)
    { m_name = name; }
-   const pstring& getName() const
+   const std::string& getName() const
    { return m_name; }
    //
    QtRegion& getRegion() const
@@ -425,8 +281,8 @@ public:
       { for (size_t i = 0; i < prefvec<T>::size(); i++) if (prefvec<T>::at(i).isShown()) return true; return false; }
    //
 public:
-   bool read( ifstream& stream, int version, bool drawinglayer = true );
-   bool write( ofstream& stream, int version );
+   bool read(std::istream &stream, int version, bool drawinglayer = true );
+   bool write( std::ofstream& stream, int version );
 };
 
 template <class T> 
@@ -446,7 +302,7 @@ void SpacePixelGroup<T>::makeViewportShapes( const QtRegion& viewport ) const
    for (size_t i = prefvec<T>::size() - 1; i != paftl::npos; i--) {
       if (prefvec<T>::at(i).isShown()) {
          m_current_layer = (int) i;
-         prefvec<T>::at(i).makeViewportShapes( (viewport.isNull() ? m_region : viewport) );
+         prefvec<T>::at(i).makeViewportShapes( (viewport.atZero() ? m_region : viewport) );
       }
    }
 }
@@ -465,24 +321,17 @@ bool SpacePixelGroup<T>::findNextShape(bool& nextlayer) const
    return true;
 }
 template <class T>
-bool SpacePixelGroup<T>::read( ifstream& stream, int version, bool drawinglayer )
+bool SpacePixelGroup<T>::read( istream& stream, int version, bool drawinglayer )
 {
-   if (version >= VERSION_SPACEPIXELGROUPS) {
-      m_name.read(stream);
-      stream.read( (char *) &m_region, sizeof(m_region) );
-      int count;
-      stream.read( (char *) &count, sizeof(count) );
-      for (int i = 0; i < count; i++) {
-         SpacePixelGroup<T>::push_back(T());
-         prefvec<T>::tail().read(stream,version,true);
-      }
+   m_name = dXstring::readString(stream);
+   stream.read( (char *) &m_region, sizeof(m_region) );
+   int count;
+   stream.read( (char *) &count, sizeof(count) );
+   for (int i = 0; i < count; i++) {
+       SpacePixelGroup<T>::push_back(T());
+       prefvec<T>::tail().read(stream,version,true);
    }
-   else {
-      m_name = "<unknown>";
-      SpacePixelGroup<T>::push_back(T());
-      prefvec<T>::tail().read(stream,version,true);
-      m_region = prefvec<T>::tail().getRegion();
-   }
+
    if (m_name.empty()) {
       m_name = "<unknown>";
    }
@@ -491,7 +340,7 @@ bool SpacePixelGroup<T>::read( ifstream& stream, int version, bool drawinglayer 
 template <class T>
 bool SpacePixelGroup<T>::write( ofstream& stream, int version )
 {
-   m_name.write(stream);
+   dXstring::writeString(stream, m_name);
    stream.write( (char *) &m_region, sizeof(m_region) );
    
    // Quick mod - TV

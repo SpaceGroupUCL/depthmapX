@@ -26,7 +26,7 @@
 // C,D etc are not currently parsed, but given the nice file format 
 // (thank you US Census Bureau!) they can easily be added
 
-class TigerChain : public pvecline
+class TigerChain : public prefvec<Line>
 {
 public:
    TigerChain() {;}
@@ -38,7 +38,7 @@ public:
    TigerCategory() {;}
 };
 
-class TigerMap : public pqmap<pstring,TigerCategory>
+class TigerMap : public std::map<std::string,TigerCategory>
 {
 protected:
    QtRegion m_region;
@@ -46,12 +46,7 @@ protected:
 public:
    TigerMap() { m_init = false;}
 
-   // Modified by Dream
-#if defined(_WIN32)
-   void parse(const pqvector<wstring>& fileset, Communicator *communicator);
-#else
-   void parse(const pqvector<string>& fileset, Communicator *communicator);
-#endif
+   void parse(const std::vector<std::string> &fileset, Communicator *communicator);
 
    Point2f getBottomLeft()
    { return m_region.bottom_left; }

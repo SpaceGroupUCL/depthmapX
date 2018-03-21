@@ -25,7 +25,7 @@ struct NtfPoint {
    int b;
    NtfPoint(char chars = 10)  // apparently 10 is NTF default
    { m_chars = chars; };
-   int parse(const pstring& token, bool secondhalf = false);
+   int parse(const std::string& token, bool secondhalf = false);
 };
 
 class NtfGeometry : public prefvec<Line>
@@ -37,14 +37,14 @@ public:
 class NtfLayer : public prefvec<NtfGeometry> {
    friend class NtfMap;
 protected:
-   pstring m_name;
+   std::string m_name;
    int m_line_count;
 public:
-   NtfLayer(const pstring& name = pstring())
+   NtfLayer(const std::string& name = std::string())
       { m_name = name; m_line_count = 0; };
    int getLineCount()
       { return m_line_count; }
-   pstring getName()
+   std::string getName()
       { return m_name; }
 };
 
@@ -60,12 +60,7 @@ public:
    NtfMap() {;}
    Line makeLine(const NtfPoint& a, const NtfPoint& b);
    
-   // Modified by Dream
-#if defined(_WIN32)   
-   void open(const pqvector<wstring>& fileset, Communicator *comm);
-#else
-   void open(const pqvector<string>& fileset, Communicator *comm);
-#endif   
+   void open(const std::vector<std::string> &fileset, Communicator *comm);
    const QtRegion& getRegion() const
    { return m_region; }
    int getLineCount() const

@@ -25,8 +25,10 @@
 #include <QRect>
 #include <QPoint>
 #include <QSize>
+#include "qpixmap.h"
 
 #include "GraphDoc.h"
+#include "genlib/linreg.h"
 
 #define MK_LBUTTON          0x0001
 #define MK_RBUTTON          0x0002
@@ -115,4 +117,7 @@ protected:
     virtual void mouseReleaseEvent(QMouseEvent *event);
     virtual void closeEvent(QCloseEvent *event);
     virtual void timerEvent(QTimerEvent *event);
+
+private:
+    QPixmap *m_pixmap;
 };

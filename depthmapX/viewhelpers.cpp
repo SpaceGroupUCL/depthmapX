@@ -10,12 +10,12 @@ namespace ViewHelpers {
                        point.y() + double(diffY) * factor);
     }
 
-    pstring getCurrentDate()
+    std::string getCurrentDate()
     {
         time_t now = time(NULL);
         char timeString[11];
         strftime(timeString, 11, "%Y/%m/%d", localtime(&now));
-        return pstring(timeString);
+        return timeString;
     }
 
 }

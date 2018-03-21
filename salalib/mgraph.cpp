@@ -29,11 +29,14 @@
 #include "isovist.h"
 #include "ntfp.h"
 #include "tigerp.h"
-#include "gmlmap.h"
 #include <salalib/mgraph.h>
 
 // shouldn't really include this -- required for node in PushValuesToLayer
 #include <salalib/ngraph.h>
+#include <salalib/importutils.h>
+
+#include "mgraph440/mgraph.h"
+#include <sstream>
 
 // Quick mod - TV
 #pragma warning (disable: 4800)
@@ -43,14 +46,8 @@
 MetaGraph::MetaGraph()
 { 
    m_state = 0; 
-   m_lock = NULL;
    m_view_class = VIEWNONE;
    m_file_version = -1; // <- if unsaved, file version is -1
-
-   // Standard layers no longer added: the gates layer will be initialised with the first push to layer,
-   // or when made from axial lines.
-
-   m_attr_conv_table = NULL;
 
    // whether or not showing text / grid saved with file:
    m_showtext = false;
@@ -73,10 +70,10 @@ MetaGraph::~MetaGraph()
 QtRegion MetaGraph::getBoundingBox() const
 {
    QtRegion bounds = SuperSpacePixel::getRegion();
-   if (bounds.isNull() && ((getState() & MetaGraph::SHAPEGRAPHS) == MetaGraph::SHAPEGRAPHS)) {
+   if (bounds.atZero() && ((getState() & MetaGraph::SHAPEGRAPHS) == MetaGraph::SHAPEGRAPHS)) {
       bounds = m_shape_graphs.getBoundingBox();
    }
-   if (bounds.isNull() && ((getState() & MetaGraph::DATAMAPS) == MetaGraph::DATAMAPS)) {
+   if (bounds.atZero() && ((getState() & MetaGraph::DATAMAPS) == MetaGraph::DATAMAPS)) {
       bounds = m_data_maps.getBoundingBox();
    }
    return bounds;
@@ -470,7 +467,7 @@ bool MetaGraph::moveSelShape(const Line& line)
          return false;
       }
       // note, selection sets currently store rowids not uids, but moveShape sensibly works off uid:
-      int rowid = map.getSelSet()[0];
+      int rowid = *map.getSelSet().begin();
       retvar = map.moveShape(map.getIndex(rowid),line);
       if (retvar) {
          map.clearSel();
@@ -485,7 +482,7 @@ bool MetaGraph::moveSelShape(const Line& line)
          return false;
       }
       // note, selection sets currently store rowids not uids, but moveShape sensibly works off uid:
-      int rowid = map.getSelSet()[0];
+      int rowid = *map.getSelSet().begin();
       retvar = map.moveShape(map.getIndex(rowid),line);
       if (retvar) {
          map.clearSel();
@@ -515,7 +512,7 @@ int MetaGraph::makeIsovist(Communicator *communicator, const Point2f& p, double 
       ShapeMap& map = m_data_maps.getMap(shapelayer);
       // false: closed polygon, true: isovist
       int polyref = map.makePolyShape(iso.getPolygon(),false);  
-      map.getAllShapes().search(polyref).setCentroid(p);
+      map.getAllShapes().find(polyref)->second.setCentroid(p);
       map.overrideDisplayedAttribute(-2);
       map.setDisplayedAttribute(-1);
       setViewClass(SHOWSHAPETOP);
@@ -566,10 +563,10 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
 
    bool first = true;
    if (makeBSPtree(communicator)) {
-      pvecint& selset = map->getSelSet();
-      pqmap<int,SalaShape>& shapes = map->getAllShapes();
-      for (size_t i = 0; i < selset.size(); i++) {
-         SalaShape& path = shapes.value(selset[i]);
+      std::set<int> selset = map->getSelSet();
+      std::map<int,SalaShape>& shapes = map->getAllShapes();
+      for (auto& sel: selset) {
+         const SalaShape& path = depthmapX::getMapAtIndex(shapes, sel)->second;
          if (path.isLine() || path.isPolyLine()) {
             if (first) {
                retvar = 1;
@@ -596,7 +593,7 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
                }
                iso.makeit(m_bsp_root,start,SuperSpacePixel::m_region, angles.first, angles.second);
                int polyref = isovists->makePolyShape(iso.getPolygon(),false);  
-               isovists->getAllShapes().search(polyref).setCentroid(start);
+               isovists->getAllShapes().find(polyref)->second.setCentroid(start);
                AttributeTable& table = isovists->getAttributeTable();
                int row = table.getRowid(polyref);
                iso.setData(table,row, simple_version);
@@ -611,7 +608,7 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
                   }
                   iso.makeit(m_bsp_root,start,SuperSpacePixel::m_region, angles.first, angles.second);
                   int polyref = isovists->makePolyShape(iso.getPolygon(),false);  
-                  isovists->getAllShapes().search(polyref).setCentroid(start);
+                  isovists->getAllShapes().find(polyref)->second.setCentroid(start);
                   AttributeTable& table = isovists->getAttributeTable();
                   int row = table.getRowid(polyref);
                   iso.setData(table,row, simple_version);
@@ -644,13 +641,16 @@ bool MetaGraph::makeBSPtree(Communicator *communicator)
       return true;
    }
 
-   prefvec<TaggedLine> partitionlines;
+   std::vector<TaggedLine> partitionlines;
    for (size_t i = 0; i < SuperSpacePixel::size(); i++) {
       for (size_t j = 0; j < SuperSpacePixel::at(i).size(); j++) {
          // chooses the first editable layer it can find:
          if (SuperSpacePixel::at(i).at(j).isShown()) {
-            for (size_t k = 0; k < SuperSpacePixel::at(i).at(j).getAllShapes().size(); k++) {
-               SalaShape& shape = SuperSpacePixel::at(i).at(j).getAllShapes().at(k);
+             auto refShapes = SuperSpacePixel::at(i).at(j).getAllShapes();
+             int k = -1;
+             for (auto& refShape: refShapes) {
+                 k++;
+                 SalaShape& shape = refShape.second;
                // I'm not sure what the tagging was meant for any more, 
                // tagging at the moment tags the *polygon* it was original attached to
                // must check it is not a zero length line:
@@ -692,7 +692,7 @@ bool MetaGraph::makeBSPtree(Communicator *communicator)
       qtimer( atime, 0 );
 
       try {
-         m_bsp_root->make(communicator,atime,partitionlines,NULL);
+         BSPTree::make(communicator,atime,partitionlines,m_bsp_root);
          m_bsp_tree = true;
       } 
       catch (Communicator::CancelledException) {
@@ -710,7 +710,7 @@ bool MetaGraph::makeBSPtree(Communicator *communicator)
 
 //////////////////////////////////////////////////////////////////
 
-int MetaGraph::addShapeGraph(const pstring& name, int type)
+int MetaGraph::addShapeGraph(const std::string& name, int type)
 {
    int mapref= m_shape_graphs.addMap(name,type);
    m_state |= SHAPEGRAPHS;
@@ -723,7 +723,7 @@ int MetaGraph::addShapeGraph(const pstring& name, int type)
    }
    return mapref;
 }
-int MetaGraph::addShapeMap(const pstring& name)
+int MetaGraph::addShapeMap(const std::string& name)
 {
    int ref = m_data_maps.addMap(name,ShapeMap::DATAMAP);
    m_state |= DATAMAPS;
@@ -762,7 +762,7 @@ void MetaGraph::removeDisplayedMap()
 //////////////////////////////////////////////////////////////////
 
 
-bool MetaGraph::convertDrawingToAxial(Communicator *comm, pstring layer_name)
+bool MetaGraph::convertDrawingToAxial(Communicator *comm, std::string layer_name)
 {
    int oldstate = m_state;
 
@@ -790,7 +790,7 @@ bool MetaGraph::convertDrawingToAxial(Communicator *comm, pstring layer_name)
    return retvar;
 }
 
-bool MetaGraph::convertDataToAxial(Communicator *comm, pstring layer_name, bool keeporiginal, bool pushvalues)
+bool MetaGraph::convertDataToAxial(Communicator *comm, std::string layer_name, bool keeporiginal, bool pushvalues)
 {
    int oldstate = m_state;
 
@@ -826,7 +826,7 @@ bool MetaGraph::convertDataToAxial(Communicator *comm, pstring layer_name, bool 
 }
 
 // typeflag: -1 convert drawing to convex, 0 or 1, convert data to convex (1 is pushvalues)
-bool MetaGraph::convertToConvex(Communicator *comm, pstring layer_name, bool keeporiginal, int typeflag)
+bool MetaGraph::convertToConvex(Communicator *comm, std::string layer_name, bool keeporiginal, int typeflag)
 {
    int oldstate = m_state;
 
@@ -867,7 +867,7 @@ bool MetaGraph::convertToConvex(Communicator *comm, pstring layer_name, bool kee
    return retvar;
 }
 
-bool MetaGraph::convertDrawingToSegment(Communicator *comm, pstring layer_name)
+bool MetaGraph::convertDrawingToSegment(Communicator *comm, std::string layer_name)
 {
    int oldstate = m_state;
 
@@ -895,7 +895,7 @@ bool MetaGraph::convertDrawingToSegment(Communicator *comm, pstring layer_name)
    return retvar;
 }
 
-bool MetaGraph::convertDataToSegment(Communicator *comm, pstring layer_name, bool keeporiginal, bool pushvalues)
+bool MetaGraph::convertDataToSegment(Communicator *comm, std::string layer_name, bool keeporiginal, bool pushvalues)
 {
    int oldstate = m_state;
 
@@ -932,7 +932,7 @@ bool MetaGraph::convertDataToSegment(Communicator *comm, pstring layer_name, boo
 
 // note: type flag says whether this is graph to data map or drawing to data map
 
-bool MetaGraph::convertToData(Communicator *comm, pstring layer_name, bool keeporiginal, int typeflag)
+bool MetaGraph::convertToData(Communicator *comm, std::string layer_name, bool keeporiginal, int typeflag)
 {
    int oldstate = m_state;
 
@@ -957,8 +957,9 @@ bool MetaGraph::convertToData(Communicator *comm, pstring layer_name, bool keepo
          for (size_t i = 0; i < SuperSpacePixel::size(); i++) {
             for (size_t j = 0; j < SuperSpacePixel::at(i).size(); j++) {
                if (SuperSpacePixel::at(i).at(j).isShown()) {
-                  for (size_t k = 0; k < SuperSpacePixel::at(i).at(j).getAllShapes().size(); k++) {
-                     int key = destmap.makeShape(SuperSpacePixel::at(i).at(j).getAllShapes().at(k));
+                  auto refShapes = SuperSpacePixel::at(i).at(j).getAllShapes();
+                  for (auto& refShape: refShapes) {
+                     int key = destmap.makeShape(refShape.second);
                      table.setValue(table.getRowid(key),layercol,float(j+1));
                      count++;
                   }
@@ -1010,7 +1011,7 @@ bool MetaGraph::convertToData(Communicator *comm, pstring layer_name, bool keepo
    return retvar;
 }
 
-bool MetaGraph::convertToDrawing(Communicator *comm, pstring layer_name, int typeflag)
+bool MetaGraph::convertToDrawing(Communicator *comm, std::string layer_name, int typeflag)
 {
    bool retvar = false;
 
@@ -1036,7 +1037,7 @@ bool MetaGraph::convertToDrawing(Communicator *comm, pstring layer_name, int typ
             }
          }
          if (group == -1) {
-            SuperSpacePixel::push_back(pstring("Converted Maps"));
+            SuperSpacePixel::push_back(std::string("Converted Maps"));
             group = SuperSpacePixel::size() - 1;
          }
          SuperSpacePixel::at(group).push_back(ShapeMap(layer_name));
@@ -1085,7 +1086,7 @@ bool MetaGraph::convertPointsToShape()
    m_state &= ~DATAMAPS;
 
    if (m_data_maps.getMapCount() == 0) {
-      m_data_maps.addMap(pstring("Gates"),ShapeMap::DATAMAP);
+      m_data_maps.addMap("Gates",ShapeMap::DATAMAP);
    }
 
    if (m_data_maps.getDisplayedMap().makeShapeFromPointSet(getDisplayedPointMap()) != -1) {
@@ -1130,7 +1131,7 @@ bool MetaGraph::convertBoundaryGraph( Communicator *communicator )
 }
 */
 
-bool MetaGraph::convertAxialToSegment(Communicator *comm, pstring layer_name, bool keeporiginal, bool pushvalues, double stubremoval)
+bool MetaGraph::convertAxialToSegment(Communicator *comm, std::string layer_name, bool keeporiginal, bool pushvalues, double stubremoval)
 {
    int oldstate = m_state;
 
@@ -1374,10 +1375,13 @@ bool MetaGraph::makeAxialLines( Communicator *communicator, bool analyse_in_memo
    return retvar;
 }
 
-const int DXFCIRCLERES = 36;
-
 int MetaGraph::loadLineData( Communicator *communicator, int load_type )
 {
+    if (load_type & DXF) {
+       // separate the stream and the communicator, allowing non-file streams read
+       return depthmapX::importFile(*this, *communicator, communicator, communicator->GetMBInfileName(), depthmapX::ImportType::DRAWINGMAP, depthmapX::ImportFileType::DXF);
+    }
+
    m_state &= ~LINEDATA;      // Clear line data flag (stops accidental redraw during reload) 
 /*
    if (m_state & POINTS) {
@@ -1399,16 +1403,7 @@ int MetaGraph::loadLineData( Communicator *communicator, int load_type )
 
    SuperSpacePixel::push_back(communicator->GetMBInfileName());
 
-   if (load_type & DXF) {
-
-      // separate the stream and the communicator, allowing non-file streams read
-      int error = loadDxf(*communicator, communicator);
-
-      if (error != 1) {
-         return error;
-      }
-   }
-   else if (load_type & CAT) {
+   if (load_type & CAT) {
       // separate the stream and the communicator, allowing non-file streams read
       int error = loadCat(*communicator, communicator);
       if (error != 1) {
@@ -1475,117 +1470,6 @@ int MetaGraph::loadLineData( Communicator *communicator, int load_type )
    return 1;
 }
 
-int MetaGraph::loadDxf( istream& stream, Communicator *communicator)
-{
-   DxfParser dp;
-
-   if (communicator) {
-      dp = DxfParser( communicator );
-
-      try {
-         *communicator >> dp;
-      }
-      catch (Communicator::CancelledException) {
-         SuperSpacePixel::pop_back();
-         return 0;
-      }
-      catch (pexception) {
-         SuperSpacePixel::pop_back();
-         return -1;
-      }
-
-      if (communicator->IsCancelled()) {
-         SuperSpacePixel::pop_back();
-         return 0;
-      }
-   }
-   else {
-      dp.open(stream);
-   }
-
-   SuperSpacePixel::tail().m_region = QtRegion(dp.getExtMin(), dp.getExtMax());
-
-   int i = 0;
-
-   for (int layerref = 0; layerref < dp.numLayers(); layerref++) {
-
-      const DxfLayer& dxf_layer = dp.getLayerNum( layerref );
-
-      if (dxf_layer.empty()) {
-         continue;
-      }
-      
-      SuperSpacePixel::tail().push_back(ShapeMap(dxf_layer.getName()));
-      // note the circle lines are not counted in the total number of lines, as we have to specify number of segments
-      SuperSpacePixel::tail().at(i).init(dxf_layer.numTotalPoints() + dxf_layer.numTotalLines() + dxf_layer.numArcs() * DXFCIRCLERES + dxf_layer.numCircles() * DXFCIRCLERES, QtRegion(Point2f(dxf_layer.getExtMin()),Point2f(dxf_layer.getExtMax())) );
-
-      for (int jp = 0; jp < dxf_layer.numPoints(); jp++) {
-
-         const DxfVertex& dxf_point = dxf_layer.getPoint( jp );
-         Point2f point = Point2f(dxf_point);
-         SuperSpacePixel::tail().at(i).makePointShape( point );
-
-      }
-
-      for (int j = 0; j < dxf_layer.numLines(); j++) {
-
-         const DxfLine& dxf_line = dxf_layer.getLine( j );
-         Line line = Line( Point2f(dxf_line.getStart()), Point2f(dxf_line.getEnd()) );
-         SuperSpacePixel::tail().at(i).makeLineShape( line );   
-
-      }
-      for (int k = 0; k < dxf_layer.numPolyLines(); k++) {
-
-         const DxfPolyLine& poly = dxf_layer.getPolyLine( k );
-         pvecpoint points;
-         for (int m = 0; m < poly.numVertices(); m++) {
-            points.push_back(poly.getVertex(m));
-         }
-         SuperSpacePixel::tail().at(i).makePolyShape( points, (poly.getAttributes() & DxfPolyLine::CLOSED) != DxfPolyLine::CLOSED );
-      }
-      for (int l = 0; l < dxf_layer.numSplines(); l++) {
-
-         const DxfSpline& poly = dxf_layer.getSpline( l );
-
-         pvecpoint points;
-         for (int m = 0; m < poly.numVertices(); m++) {
-            points.push_back(poly.getVertex(m));
-         }
-         SuperSpacePixel::tail().at(i).makePolyShape( points, (poly.getAttributes() & DxfPolyLine::CLOSED) != DxfPolyLine::CLOSED );
-
-      }
-      // needs fixing to use appropriate poly type:
-      for (int n = 0; n < dxf_layer.numArcs(); n++) {
-         
-         const DxfArc& circ = dxf_layer.getArc( n );
-         int segments = circ.numSegments(DXFCIRCLERES);
-         if (segments > 1) {
-            for (int m = 0; m < segments; m++) {
-               // note, loops on DXFCIRCLERES (e.g. 36) to 0
-               Line line = Line( Point2f(circ.getVertex(m,DXFCIRCLERES)), Point2f(circ.getVertex(m+1,DXFCIRCLERES)) );
-               SuperSpacePixel::tail().at(i).makeLineShape( line );
-            }
-         }
-      }
-      for (int nc = 0; nc < dxf_layer.numCircles(); nc++) {
-         
-         const DxfCircle& circ = dxf_layer.getCircle( nc );
-         pvecpoint points;
-         for (int m = 0; m < DXFCIRCLERES; m++) {
-            points.push_back(circ.getVertex(m,DXFCIRCLERES));
-         }
-         SuperSpacePixel::tail().at(i).makePolyShape( points, false );
-      }
-
-      SuperSpacePixel::tail().at(i).setDisplayedAttribute(-2);
-      SuperSpacePixel::tail().at(i).setDisplayedAttribute(-1);
-
-      i++;
-   }
-
-   return 1;
-}
-
 int MetaGraph::loadCat( istream& stream, Communicator *communicator )
 {
    if (communicator) {
@@ -1611,23 +1495,24 @@ int MetaGraph::loadCat( istream& stream, Communicator *communicator )
 
    while (!stream.eof()) {
 
-      pstring inputline;
+      std::string inputline;
       stream >> inputline;
       if (inputline.length() > 1 && inputline[0] != '#') {
          if (!parsing) {
-            if (inputline.makelower() == "begin polygon") {
+            if (dXstring::toLower(inputline) == "begin polygon") {
                parsing = 1;
             }
-            else if (inputline.makelower() == "begin polyline") {
+            else if (dXstring::toLower(inputline) == "begin polyline") {
                parsing = 2;
             }
          }
-         else if (inputline.makelower().substr(0,3) == "end") {
+         else if (dXstring::toLower(inputline).substr(0,3) == "end") {
             parsing = 0;
          }
          else {
-            current_point.x = inputline.ltrim().splice(' ').c_double();
-            current_point.y = inputline.ltrim().c_double();
+            auto tokens = dXstring::split(inputline, ' ', true);
+            current_point.x = stod(tokens[0]);
+            current_point.y = stod(tokens[1]);
             numlines++;
             if (first) {
                min_point = current_point;
@@ -1662,25 +1547,25 @@ int MetaGraph::loadCat( istream& stream, Communicator *communicator )
 
    parsing = 0;
    first = true;
-   pvecpoint points;
+   pqvector<Point2f> points;
 
    while (!stream.eof()) {
 
-      pstring inputline;
+      std::string inputline;
       stream >> inputline;
 
       if (inputline.length() > 1 && inputline[0] != '#') {
          if (!parsing) {
-            if (inputline.makelower() == "begin polygon") {
+            if (dXstring::toLower(inputline) == "begin polygon") {
                parsing = 1;
                first = true;
             }
-            else if (inputline.makelower() == "begin polyline") {
+            else if (dXstring::toLower(inputline) == "begin polyline") {
                parsing = 2;
                first = true;
             }
          }
-         else if (inputline.makelower().substr(0,3) == "end") {
+         else if (dXstring::toLower(inputline).substr(0,3) == "end") {
             if (points.size() > 2) {
                if (parsing == 1) { // polygon
                   SuperSpacePixel::tail().tail().makePolyShape(points, false);
@@ -1696,8 +1581,9 @@ int MetaGraph::loadCat( istream& stream, Communicator *communicator )
             parsing = 0;
          }
          else {
-            current_point.x = inputline.ltrim().splice(' ').c_double();
-            current_point.y = inputline.ltrim().c_double();
+             auto tokens = dXstring::split(inputline, ' ', true);
+            current_point.x = stod(tokens[0]);
+            current_point.y = stod(tokens[1]);
             points.push_back(current_point);
          }
       }
@@ -1720,12 +1606,7 @@ int MetaGraph::loadCat( istream& stream, Communicator *communicator )
    return 1;
 }
 
-// Quick mod - TV
-#if defined(_WIN32)
-int MetaGraph::loadRT1(const pqvector<wstring>& fileset, Communicator *communicator)
-#else
-int MetaGraph::loadRT1(const pqvector<string>& fileset, Communicator *communicator)
-#endif
+int MetaGraph::loadRT1(const std::vector<string>& fileset, Communicator *communicator)
 {
    TigerMap map;
 
@@ -1749,16 +1630,17 @@ int MetaGraph::loadRT1(const pqvector<string>& fileset, Communicator *communicat
    SuperSpacePixel::tail().m_region = QtRegion(map.getBottomLeft(), map.getTopRight());
 
    // for each category
-   for (size_t i = 0; i < map.size(); i++) {
-
-      SuperSpacePixel::tail().push_back(ShapeMap(map.key(i)));
-      SuperSpacePixel::tail().at(i).init(map.value(i).size(), map.getRegion() );
+   int i = -1;
+   for (auto& val: map) {
+      i++;
+      SuperSpacePixel::tail().push_back(ShapeMap(val.first));
+      SuperSpacePixel::tail().at(i).init(val.second.size(), map.getRegion() );
 
       // for each chains in category:
-      for (size_t j = 0; j < map.value(i).size(); j++) {
+      for (size_t j = 0; j < val.second.size(); j++) {
          // for each node pair in each category
-         for (size_t k = 0; k < map.value(i).at(j).size(); k++) {
-            SuperSpacePixel::tail().at(i).makeLineShape( map.value(i).at(j).at(k) );   
+         for (size_t k = 0; k < val.second.at(j).size(); k++) {
+            SuperSpacePixel::tail().at(i).makeLineShape( val.second.at(j).at(k) );
          }
       }
 
@@ -1869,28 +1751,6 @@ bool MetaGraph::importCat(istream& filecontents)
    return true;
 }
 
-bool MetaGraph::importDxf(istream& filecontents)
-{
-   // any name for the file will do...
-   SuperSpacePixel::push_back(SpacePixelFile("salad"));
-
-   // load the data from the file
-   if (!loadDxf( filecontents, NULL )) {
-      return false;
-   }
-
-   if (SuperSpacePixel::size() == 1) {
-      SuperSpacePixel::m_region = SuperSpacePixel::tail().m_region;
-   }
-   else {
-      SuperSpacePixel::m_region = runion(SuperSpacePixel::m_region, SuperSpacePixel::tail().m_region);
-   }
-
-   m_state |= LINEDATA;
-
-   return true;
-}
-
 // a second does the lot, especially for evolutionary graphs
 // essentially, hand the ecoevograph a new meta graph each time...
 // it'll do everything for you
@@ -1914,7 +1774,72 @@ void MetaGraph::fastGraph( const Point2f& seed, double spacing )
    // write("dummy.graph");
 }
 
-int MetaGraph::importTxt( istream& stream, const pstring& name, bool csv )
+ShapeMap &MetaGraph::createNewShapeMap(depthmapX::ImportType mapType, std::string name) {
+
+    switch(mapType) {
+        case depthmapX::ImportType::DRAWINGMAP: {
+            SuperSpacePixel::tail().push_back(ShapeMap(name));
+            return SuperSpacePixel::tail().tail();
+        }
+        case depthmapX::ImportType::DATAMAP: {
+            m_data_maps.addMap(name,ShapeMap::DATAMAP);
+            return m_data_maps.tail();
+        }
+    }
+}
+
+void MetaGraph::deleteShapeMap(depthmapX::ImportType mapType, ShapeMap &shapeMap) {
+
+    switch(mapType) {
+        case depthmapX::ImportType::DRAWINGMAP: {
+            // go through the files to find if the layer is in one of them
+            // if it is, remove it and if the remaining file is empty then
+            // remove that too
+            for(size_t j = 0; j < SuperSpacePixel::size(); j++) {
+                int mapToRemove = -1;
+                for(size_t i = 0; i < SuperSpacePixel::at(j).size(); i++) {
+                    if(&SuperSpacePixel::at(j).at(i) == &shapeMap) {
+                        mapToRemove = i;
+                        break;
+                    }
+                }
+                if(mapToRemove != -1) {
+                    SuperSpacePixel::at(j).remove_at(mapToRemove);
+                    if(SuperSpacePixel::at(j).size() == 0) {
+                        SuperSpacePixel::remove_at(j);
+                    }
+                    break;
+                }
+            }
+        }
+        case depthmapX::ImportType::DATAMAP: {
+            for(size_t i = 0; i < m_data_maps.size(); i++) {
+                if(&m_data_maps[i] == &shapeMap) {
+                    m_data_maps.remove_at(i);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void MetaGraph::updateParentRegions(ShapeMap &shapeMap) {
+    if(SuperSpacePixel::tail().m_region.atZero()) {
+        SuperSpacePixel::tail().m_region = shapeMap.getRegion();
+    } else {
+        SuperSpacePixel::tail().m_region = runion(SuperSpacePixel::tail().m_region, shapeMap.getRegion());
+    }
+    if(SuperSpacePixel::m_region.atZero()) {
+        SuperSpacePixel::m_region = SuperSpacePixel::tail().m_region;
+    } else {
+        SuperSpacePixel::m_region = runion(SuperSpacePixel::m_region, SuperSpacePixel::tail().m_region);
+    }
+}
+
+int MetaGraph::importLinesAsShapeMap(const std::vector<Line> &lines,
+                                     QtRegion region,
+                                     std::string name,
+                                     depthmapX::Table &data )
 {
    int oldstate = m_state;
 
@@ -1922,7 +1847,32 @@ int MetaGraph::importTxt( istream& stream, const pstring& name, bool csv )
 
    int x = m_data_maps.addMap(name,ShapeMap::DATAMAP);
 
-   if (!m_data_maps.getDisplayedMap().importTxt( stream, csv )) {
+   m_data_maps.getDisplayedMap().init(lines.size(), region);
+   if (!m_data_maps.getDisplayedMap().importLines( lines, data )) {
+      m_data_maps.removeMap(x);
+      m_state = oldstate;
+      return -1;
+   }
+
+   m_state |= DATAMAPS;
+   setViewClass(SHOWSHAPETOP);
+
+   return x;
+}
+
+int MetaGraph::importPointsAsShapeMap(const std::vector<Point2f> &points,
+                                      QtRegion region,
+                                      std::string name,
+                                      depthmapX::Table &data )
+{
+   int oldstate = m_state;
+
+   m_state &= ~DATAMAPS;
+
+   int x = m_data_maps.addMap(name,ShapeMap::DATAMAP);
+
+   m_data_maps.getDisplayedMap().init(points.size(), region);
+   if (!m_data_maps.getDisplayedMap().importPoints( points, data )) {
       m_data_maps.removeMap(x);
       m_state = oldstate;
       return -1;
@@ -1942,12 +1892,12 @@ int MetaGraph::convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& poi
 {
    int retvar = 1;
    // check for existence of data:
-   pmap<int,int> conversion_lookup;
+   std::map<int,int> conversion_lookup;
    size_t i;
    for (i = 0; i < size_t(datalayers.getLayerCount()); i++) {
       if (datalayers[i].getObjectCount()) {
          int x = m_data_maps.addMap(datalayers[i].getLayerName(),ShapeMap::DATAMAP);
-         conversion_lookup.add(i,x);
+         conversion_lookup.insert(std::make_pair(i,x));
       }
    }
    // nothing to convert:
@@ -1956,27 +1906,14 @@ int MetaGraph::convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& poi
    }
 
    for (i = 0; i < conversion_lookup.size(); i++) {
-      ShapeMap& shapemap = m_data_maps.getMap(conversion_lookup.value(i));
-      int layer_ref = datalayers.getLayerRef(conversion_lookup.key(i));
-      pvecint *shape_pixel_lists = new pvecint [datalayers[i].getObjectCount()];
+      ShapeMap& shapemap = m_data_maps.getMap(depthmapX::getMapAtIndex(conversion_lookup, i)->second);
       int j;
-      for (j = 0; j < pointmap.getAttributeTable().getRowCount(); j++) {
-         PixelRef pix = pointmap.getAttributeTable().getRowKey(j);
-         int z = pointmap.getPoint(pix).getDataObject(layer_ref);
-         if (z != -1) {
-            shape_pixel_lists[z].push_back(pix);
-         }
-      }
       // add shapes:
       pvecint row_lookup;
       for (j = 0; j < datalayers[i].getObjectCount(); j++) {
-         for (size_t k = 0; k < shape_pixel_lists[j].size(); k++) {
-            pointmap.overrideSelPixel(shape_pixel_lists[j][k]);
-         }
          row_lookup.push_back(shapemap.makeShapeFromPointSet(pointmap));
          pointmap.clearSel();
       }
-      delete [] shape_pixel_lists;
       // now add attributes:
       AttributeTable& table = shapemap.getAttributeTable();
       // add columns, note, we'll have to add and then have lookups because not necessarily in alphabetical order:
@@ -2009,50 +1946,6 @@ int MetaGraph::convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& poi
    // the horror is over:     
    return retvar;
 }
-
-// similar (but much, much easier than above -- relies on order of index order of
-// axial lines being the same as as the created poly index order and both attribute 
-// tables -- should be since the map is in indexed order, as is its attribute table)
-
-// DEPRECATED: only need to switch map type flag
-
-void MetaGraph::convertShapeGraphToShapeMap(const ShapeGraph& axialmap)
-{
-   int x = m_data_maps.addMap("Axial Gates",ShapeMap::DATAMAP);
-   ShapeMap& shapemap = m_data_maps.getMap(x);
-
-   // use the dangermouse all polygon grabber:
-   const pqmap<int,SalaShape>& polys = axialmap.getAllShapes();
-   shapemap.init(axialmap.getShapeCount(),axialmap.getRegion());
-   size_t i;
-   for (i = 0; i < axialmap.getShapeCount(); i++) {
-      if (polys[i].isLine()) {   // it ought to be since we're starting with an axial map!
-         shapemap.makeLineShape(polys[i].getLine());
-      }
-   }
-
-   // now convert attributes and we're done!
-   const AttributeTable& table_in = axialmap.getAttributeTable();
-   AttributeTable& table_out = shapemap.getAttributeTable();
-
-   for (i = 0; i < size_t(table_in.getColumnCount()); i++) {
-      table_out.insertColumn(table_in.getColumnName(i));
-   }
-   
-   int counter = 0;
-   for (i = 0; i < size_t(table_in.getRowCount()); i++) {
-      if (polys[i].isLine()) {   // check needs to be maintained so indices match
-         for (int j = 0; j < table_in.getColumnCount(); j++) {
-            table_out.setValue(counter,j,table_in.getValue(i,j));
-         }
-         counter++;  // in case 'i' skips over a few non-line objects
-      }
-   }
-
-   shapemap.overrideDisplayedAttribute(-2);
-   shapemap.setDisplayedAttribute(-1);
-}
-
 
 // the tidy(ish) version: still needs to be at top level and switch between layers
 
@@ -2109,16 +2002,16 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
    AttributeTable& table_out = getAttributeTable(desttype, destlayer);
 
    if (col_out == -2) {
-      pstring name = table_in.getColumnName(col_in);
+      std::string name = table_in.getColumnName(col_in);
       if ((table_out.isValidColumn(name) && table_out.isColumnLocked(table_out.getColumnIndex(name))) || name == "Object Count") {
-         name = pstring("Copied ") + name;
+         name = std::string("Copied ") + name;
       }
       col_out = table_out.insertColumn(name);
    }
 
    int col_count = -1;
    if (count_col) {
-      col_count = table_out.insertColumn(pstring("Object Count"));
+      col_count = table_out.insertColumn("Object Count");
       if (col_count <= col_out) {
          col_out++;
       }
@@ -2135,14 +2028,16 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             m_data_maps.getMap(sourcelayer).pointInPolyList(PointMaps::at(destlayer).getPoint(table_out.getRowKey(i)).m_location,gatelist);
          }
          else if (desttype == VIEWAXIAL) {
-            m_data_maps.getMap(sourcelayer).shapeInPolyList(m_shape_graphs.getMap(destlayer).getAllShapes().search(table_out.getRowKey(i)),gatelist);
+            auto shapeMap = m_shape_graphs.getMap(destlayer).getAllShapes();
+            m_data_maps.getMap(sourcelayer).shapeInPolyList(depthmapX::getMapAtIndex(shapeMap, table_out.getRowKey(i))->second,gatelist);
          }
          else if (desttype == VIEWDATA) {
             if (sourcelayer == destlayer) {
                // error: pushing to same map
                return false;
             }
-            m_data_maps.getMap(sourcelayer).shapeInPolyList(m_data_maps.getMap(destlayer).getAllShapes().search(table_out.getRowKey(i)),gatelist);
+            auto dataMap = m_data_maps.getMap(destlayer).getAllShapes();
+            m_data_maps.getMap(sourcelayer).shapeInPolyList(depthmapX::getMapAtIndex(dataMap, table_out.getRowKey(i))->second,gatelist);
          }
          double val = -1.0;
          int count = 0;
@@ -2207,10 +2102,12 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             }
             gatelist.clear();
             if (desttype == VIEWDATA) {
-               m_data_maps.getMap(destlayer).shapeInPolyList(m_shape_graphs.getMap(sourcelayer).getAllShapes().search(table_in.getRowKey(i)),gatelist);
+               auto dataMap = m_shape_graphs.getMap(sourcelayer).getAllShapes();
+               m_data_maps.getMap(destlayer).shapeInPolyList(depthmapX::getMapAtIndex(dataMap, table_in.getRowKey(i))->second,gatelist);
             }
             else if (desttype == VIEWAXIAL) {
-               m_shape_graphs.getMap(destlayer).shapeInPolyList(m_shape_graphs.getMap(sourcelayer).getAllShapes().search(table_in.getRowKey(i)),gatelist);
+                auto shapeMap = m_shape_graphs.getMap(sourcelayer).getAllShapes();
+               m_shape_graphs.getMap(destlayer).shapeInPolyList(depthmapX::getMapAtIndex(shapeMap, table_in.getRowKey(i))->second,gatelist);
             }
             double thisval = table_in.getValue(i,col_in);
             for (size_t j = 0; j < gatelist.size(); j++) {
@@ -2500,7 +2397,7 @@ void MetaGraph::undo()
 
 // Moving to global ways of doing things:
 
-int MetaGraph::addAttribute(const pstring& name)
+int MetaGraph::addAttribute(const std::string& name)
 {
    int col;
    switch (m_view_class & VIEWFRONT) {
@@ -2706,7 +2603,24 @@ void MetaGraph::unloadGraphAgent()
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int MetaGraph::read( const pstring& filename )
+int MetaGraph::readFromFile( const std::string& filename )
+{
+
+    if (filename.empty()) {
+       return NOT_A_GRAPH;
+    }
+
+ #ifdef _WIN32
+    ifstream stream( filename.c_str(), ios::binary | ios::in );
+ #else
+    ifstream stream( filename.c_str(), ios::in );
+ #endif
+    int result = readFromStream(stream, filename);
+    stream.close();
+    return result;
+}
+
+int MetaGraph::readFromStream( std::istream &stream, const std::string& filename )
 {
    m_state = 0;   // <- clear the state out
 
@@ -2717,48 +2631,36 @@ int MetaGraph::read( const pstring& filename )
    }
    m_bsp_tree = false;
 
-   if (filename.empty()) {
-      return NOT_A_GRAPH;
-   }
-
-#ifdef _WIN32
-   ifstream stream( filename.c_str(), ios::binary | ios::in );
-#else
-   ifstream stream( filename.c_str(), ios::in );
-#endif
-
    char header[3];
    stream.read( header, 3 );
    if (stream.fail() || header[0] != 'g' || header[1] != 'r' || header[2] != 'f') {
-      stream.close();
       return NOT_A_GRAPH;
    }
    int version;
    stream.read( (char *) &version, sizeof( version ) );
    m_file_version = version;  // <- recorded for easy debugging
    if (version > METAGRAPH_VERSION) {
-      stream.close();
       return NEWER_VERSION;
    }
-   if (version == VERSION_VIEW_CLASS_ADDED) {
-      stream.close();
-      return DEPRECATED_VERSION; // trial version no longer supported
+   if (version < METAGRAPH_VERSION) {
+       std::unique_ptr<mgraph440::MetaGraph> mgraph(new mgraph440::MetaGraph);
+       auto result = mgraph->read(filename);
+       if ( result != mgraph440::MetaGraph::OK)
+       {
+           return DAMAGED_FILE;
+       }
+       std::stringstream tempstream;
+       mgraph->writeToStream(tempstream, METAGRAPH_VERSION, 0);
+
+       return readFromStream(tempstream, filename);
    }
 
    // have to use temporary state here as redraw attempt may come too early:
    int temp_state = 0;
-   if (version >= VERSION_STATE_RECORDED) {
-      stream.read( (char *) &temp_state, sizeof( temp_state ) );      
-   }
-
-   if (version >= VERSION_VIEW_CLASS_ADDED) {
-      stream.read( (char *) &m_view_class, sizeof(m_view_class) );
-   }
-
-   if (version >= VERSION_STORE_GRIDTEXTINFO) {
-      stream.read( (char *) &m_showgrid, sizeof(m_showgrid) );
-      stream.read( (char *) &m_showtext, sizeof(m_showtext) );
-   }
+   stream.read( (char *) &temp_state, sizeof( temp_state ) );
+   stream.read( (char *) &m_view_class, sizeof(m_view_class) );
+   stream.read( (char *) &m_showgrid, sizeof(m_showgrid) );
+   stream.read( (char *) &m_showtext, sizeof(m_showtext) );
 
    // type codes: x --- properties
    //             v --- virtual graph (from versions below 70)
@@ -2775,7 +2677,6 @@ int MetaGraph::read( const pstring& filename )
       FileProperties::read(stream,version);
       if (stream.eof()) {
          // erk... this shouldn't happen
-         stream.close();
          return DAMAGED_FILE;
       }
       else if (!stream.eof()) {
@@ -2784,6 +2685,10 @@ int MetaGraph::read( const pstring& filename )
    }
    else {
       FileProperties::setProperties("<unknown>","<unknown>","<unknown>","<unknown>");
+   }
+   if (stream.eof()) {
+       // file is still ok, just empty
+       return OK;
    }
    if (type == 'v') {
 
@@ -2799,7 +2704,6 @@ int MetaGraph::read( const pstring& filename )
 
       if (stream.eof()) {
          // erk... this shouldn't happen
-         stream.close();
          return DAMAGED_FILE;
       }
       else if (!stream.eof()) {
@@ -2816,32 +2720,12 @@ int MetaGraph::read( const pstring& filename )
       }
       catch (pexception) {
          // erk... this shouldn't happen
-         stream.close();
          return DAMAGED_FILE;
       }
    }
    if (type == 'p') {
-      if (version < VERSION_NGRAPH_INTROD) {
-         // This hasn't been coded yet
-         stream.close();
-         return DEPRECATED_VERSION;
-      }
-      if (version < VERSION_POINT_MAPS) {
-         PointMaps::push_back(PointMap());
-         if (temp_state & 0x0001) { // 0x0001 was "GRAPH"
-            PointMaps::tail().m_processed = true;
-            temp_state &= ~0x0001;
-         }
-         if (temp_state & 0x0080) { // 0x0080 was "BOUNDARYGRAPH"
-            PointMaps::tail().m_boundarygraph = true;
-            temp_state &= ~0x0080;
-         }
-         PointMaps::tail().read( stream, version );
-         setDisplayedPointMapRef(0);
-      }
-      else {
-         PointMaps::read( stream, version );
-      }
+      PointMaps::read( stream, version );
+
       PointMaps::setSpacePixel( (SuperSpacePixel *) this );
       temp_state |= POINTMAPS;
       if (!stream.eof()) {
@@ -2849,15 +2733,6 @@ int MetaGraph::read( const pstring& filename )
       }
    }
    if (type == 'g') {
-      // Note the older version stored its attributes in a different location...
-      // ...well, actually, now it's been rearranged, pretty similar to the original...
-      // hasn't been coded yet, though (see above)
-      if (version < VERSION_NGRAPH_INTROD) {
-         if (!convertAttributes( stream, version )) {
-            stream.close();
-            return DAMAGED_FILE;
-         }
-      }
       // record on state of actual point map:
       PointMaps::tail().m_processed = true;
 
@@ -2899,26 +2774,6 @@ int MetaGraph::read( const pstring& filename )
    if (type == 'x') {
       m_shape_graphs.read( stream, version );
       temp_state |= SHAPEGRAPHS;
-      /*
-      // THIS CODE IS NO LONGER REQUIRED AS AXIAL MAPS *ARE* SHAPE MAPS -- can just be switched to shape map layer
-      if (version < VERSION_SHAPE_MAPS && m_shape_graphs.m_gate_map != -1) {
-         // check for a gate map:
-         convertShapeGraphToShapeMap(m_shape_graphs.at(m_shape_graphs.m_gate_map));
-         // delete the gate map:
-         m_shape_graphs.remove_at(m_shape_graphs.m_gate_map);
-         if (m_shape_graphs.m_displayed_map >= m_shape_graphs.m_gate_map) {
-            int map = m_shape_graphs.m_displayed_map;
-            m_shape_graphs.m_displayed_map = -1; // <- have to do this as setDisplayedShapeGraph clearSels a map that may not exist anymore
-            setDisplayedShapeGraph(map-1);
-         }
-         m_shape_graphs.m_gate_map = -1;
-         if (m_shape_graphs.size() == 0) {
-            temp_state &= ~SHAPEGRAPHS;
-         }
-         // assume objects read in okay:
-         temp_state |= DATAMAPS;
-      }
-      */
       if (!stream.eof()) {
          stream.read( &type, 1 );         
       }
@@ -2930,38 +2785,12 @@ int MetaGraph::read( const pstring& filename )
          stream.read( &type, 1 );         
       }
    }
-
-   stream.close();
-
    m_state = temp_state;
-
-   if (version < VERSION_VIEW_CLASS_ADDED) {
-      if (m_state & POINTMAPS) {
-         m_view_class = VIEWVGA;
-      }
-      else {
-         m_view_class = VIEWNONE;
-      }
-   }
-   
-   // Note, below version 70, the graph data must be reread:
-   if (version < VERSION_NGRAPH_INTROD && conversion_required) {
-      // reopen the stream and convert
-      stream.open(filename.c_str(), ios::binary | ios::in );
-      int ok = convertVirtualMem(stream, version);
-      stream.close();
-      return ok;
-   }
-
-   if (version == VERSION_EXTRA_POINT_DATA_INTROD || version == VERSION_NGRAPH_INTROD || version == VERSION_SEGMENT_MAPS) {
-      m_state |= BUGGY;
-      return WARN_BUGGY_VERSION;
-   }
 
    return OK;
 }
 
-int MetaGraph::write( const pstring& filename, int version, bool currentlayer )
+int MetaGraph::write( const std::string& filename, int version, bool currentlayer )
 {
    ofstream stream;
 
@@ -3056,147 +2885,13 @@ int MetaGraph::write( const pstring& filename, int version, bool currentlayer )
    return OK;
 }
 
-int MetaGraph::convertAttributes( ifstream& stream, int version )
-{
-   int ret = 1;
-
-   // This is adapted from original ArVertexList code:
-
-   int attr_count, which_attributes;
-   stream.read( (char *) &which_attributes, sizeof(int) );
-   stream.read( (char *) &attr_count, sizeof(int) );
-
-   int size;
-   stream.read( (char *) &size, sizeof(int) );
-   
-   if (m_attr_conv_table)
-      delete m_attr_conv_table;
-   m_attr_conv_table = new pqvector<AttrBody>;
-   pqvector<AttrBody>& attrs = *m_attr_conv_table;
-
-   size_t i;
-   for (i = 0; i < size_t(size); i++) {
-      AttrBody attr(-1, g_attr_header);
-      attr.read(stream, attr_count);   // <- only write in saved attributes
-      if (attr.ref != -1) {
-         attrs.add( attr );
-      }
-   }
-
-   for (size_t ii = 0; ii < attrs.size(); ii++) {
-      // Check these are numbered 0 to n, and set the pos to be used later:
-      if (attrs[ii].ref != ii) {
-         ret = 0;
-         break;
-      }
-      attrs[ii].pos = -1;
-   }
-
-   if (ret == 0) {
-      delete m_attr_conv_table;
-      m_attr_conv_table = NULL;
-      return 0;
-   }
-
-   for (i = 0; i < PointMaps::size(); i++) {
-      PointMap& map = PointMaps::at(i);
-      for (int j = 0; j < map.m_cols; j++) {
-         for (int k = 0; k < map.m_rows; k++) {
-            // Note: block used to be the noderef
-            if (map.m_points[j][k].filled() && map.m_points[j][k].m_block != -1) {
-               AttrBody test(-1,g_attr_header);
-               test.ref = map.m_points[j][k].m_block;
-               size_t pos = attrs.searchindex(test);
-               if (pos != paftl::npos) {
-                  map.m_points[j][k].setAttributes(attrs[pos]);
-                  attrs[pos].pos = (int) PixelRef(j,k);  // <- note this can be used to convert the virtual mem quickly
-               }
-               else {
-                  // oops
-                  ret = 0;
-               }
-            }
-         }
-      }
-   }
-   return ret;
-}
-
-#include <salalib/ngraph.h>  // for conversion
-
-int MetaGraph::convertVirtualMem( ifstream& stream, int version )
-{
-   if (!m_attr_conv_table) {
-      return 0;
-   }
-   if (~m_state & ANGULARGRAPH) {
-      // can't convert non-angular graphs:
-      if (m_attr_conv_table)
-         delete m_attr_conv_table;
-      m_attr_conv_table = NULL;
-      return DEPRECATED_VERSION;
-   }
-
-   // The attr conv table can help us quickly convert:
-   pqvector<AttrBody>& attrs = *m_attr_conv_table;
-
-   pvecint nodes;
-   pvecint bins;
-
-   PixelRefList bins_b[32];
-   static float far_bin_dists[32];
-   for (int ii = 0; ii < 32; ii++) {
-      far_bin_dists[ii] = 0.0f;
-   }
-
-   char header[3];
-   stream.read( header, 3 );                             // 'grf'
-   stream.read( (char *) &version, sizeof( version ) );  // version
-   char type;
-   stream.read( (char *) &type, sizeof( type ) );        // 'v'
-
-   int size;
-   stream.read( (char *) &size, sizeof( size ) );
-
-   PointMap& map = PointMaps::tail();
-   for (int i = 0; i < size; i++) {
-      nodes.read(stream);
-      bins.read(stream);
-      if (attrs[i].pos != -1) {
-         PixelRef curs = (PixelRef) attrs[i].pos;
-         
-         for (int j = 0; j < 32; j++) {
-            for (int k = loword(bins[j]); k < hiword(bins[j]); k++) {
-               int next = attrs[nodes[k]].pos;
-               if (next != -1) {
-                  bins_b[j].push_back( (PixelRef) next );
-               }
-            }
-         }
-
-         Point& pt = map.getPoint( curs );
-         pt.m_node = new Node;
-         pt.m_node->make( curs, bins_b, far_bin_dists, 0x00FF );
-      }
-      nodes.clear();
-      bins.clear();
-   }
-
-   delete m_attr_conv_table;
-   m_attr_conv_table = NULL;
-
-   return WARN_CONVERTED;
-}
-
-streampos MetaGraph::skipVirtualMem(ifstream& stream, int version)
+streampos MetaGraph::skipVirtualMem(istream& stream, int version)
 {
    // it's graph virtual memory: skip it
    int nodes = -1;
    stream.read( (char *) &nodes, sizeof(nodes) );
 
-   // in angular version, have to skip two pvectors for each node:
-   if (version >= 30)
-      nodes *= 2;
+   nodes *= 2;
 
    for (int i = 0; i < nodes; i++) {
       int connections;
@@ -3207,3 +2902,17 @@ streampos MetaGraph::skipVirtualMem(ifstream& stream, int version)
    return (stream.tellg());
 }
 
+std::vector<SimpleLine> MetaGraph::getVisibleDrawingLines() {
+
+    std::vector<SimpleLine> lines;
+
+    for (size_t i = 0; i < SuperSpacePixel::size(); i++) {
+        for (size_t j = 0; j < SuperSpacePixel::at(i).size(); j++) {
+            if (SuperSpacePixel::at(i).at(j).isShown()) {
+                const std::vector<SimpleLine> &newLines = SuperSpacePixel::at(i).at(j).getAllShapesAsLines();
+                lines.insert(std::end(lines), std::begin(newLines), std::end(newLines));
+            }
+        }
+    }
+    return lines;
+}

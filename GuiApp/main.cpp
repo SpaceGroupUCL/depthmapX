@@ -14,16 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-#include <QApplication>
 #include <QPixmap>
 #include <QDir>
-#include <QSplashScreen>
-#include <QDesktopWidget>
 #include <QDateTime>
 
-#include "mainwindowfactory.h"
-#include "version.h"
+#include "coreapplication.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -36,28 +31,9 @@
 int main(int argc, char *argv[])
 {
     Q_INIT_RESOURCE(resource);
+    Q_INIT_RESOURCE(settingsdialog);
 
-    QApplication app(argc, argv);
+    CoreApplication app(argc, argv);
 
-    LicenseAgreementHolder dummy;
-    dummy.get().setModal(true);
-    dummy.get().setWindowTitle(TITLE_BASE);
-    dummy.get().exec();
-    if ( dummy.get().result() == dummy.get().Rejected ) return 0;
-
-	QSplashScreen *splash = 0;
-    int screenId = QApplication::desktop()->screenNumber();
-    splash = new QSplashScreen(QPixmap(QLatin1String("images/splash.png")));
-    if (QApplication::desktop()->isVirtualDesktop()) 
-	{
-        QRect srect(0, 0, splash->width(), splash->height());
-        splash->move(QApplication::desktop()->availableGeometry(screenId).center() - srect.center() );
-    }
-    //splash->show();
-
-    MainWindowHolder mainWindow;
-    mainWindow.get().show();
-
-    //splash->finish(&mainWin);
     return app.exec();
 }

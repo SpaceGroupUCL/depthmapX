@@ -33,7 +33,7 @@ public:
 	void UpdateData(bool value);
 	void showEvent(QShowEvent * event);
 
-	pvecstring m_layer_names;
+    std::vector<std::string> m_layer_names;
 
 	private slots:
 		void OnOutputType(bool);

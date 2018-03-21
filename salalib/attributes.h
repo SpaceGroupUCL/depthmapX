@@ -18,6 +18,9 @@
 #ifndef __ATTRIBUTES_H__
 #define __ATTRIBUTES_H__
 
+#include "salalib/mgraph_consts.h"
+#include <string>
+
 // yet another way to do attributes, but one that is easily expandable
 // it's slow to look for a column, since you have to find the column
 // by name, but other than that it's fairly easy
@@ -131,7 +134,7 @@ public:
 class AttributeColumn
 {
 public:
-   pstring m_name;
+   std::string m_name;
    bool m_updated; // <- this flag is not saved, and indicates new data in the column (set on insert column etc)
    int m_physical_col;
    mutable double  m_min;
@@ -145,9 +148,9 @@ public:
    // display parameters
    DisplayParams m_display_params;
    // retain formula used to create column
-   pstring m_formula;
+   std::string m_formula;
 public:
-   AttributeColumn(const pstring& name = pstring(), int physical_col = -1)
+   AttributeColumn(const std::string& name = std::string(), int physical_col = -1)
    {   m_name = name;
        m_min = -1.0f;
        m_max = 0.0f;
@@ -190,7 +193,7 @@ public:
    { return m_display_params; }
    //
    void reset();
-   void rename(const pstring& name) {
+   void rename(const std::string& name) {
       m_name = name;
    }
    // user-interface locking unlocking
@@ -199,7 +202,7 @@ public:
    void setLock(bool lock = true)
    { m_locked = lock; }
    //
-   bool read( ifstream& stream, int version );
+   bool read(istream &stream, int version );
    bool write( ofstream& stream, int version );
    friend bool operator == (const AttributeColumn& a, const AttributeColumn& b);
    friend bool operator < (const AttributeColumn& a, const AttributeColumn& b);
@@ -215,44 +218,44 @@ inline bool operator > (const AttributeColumn& a, const AttributeColumn& b)
 class AttributeTable : protected pqmap<int,AttributeRow>
 {
 protected:
-   pstring m_name;
+   std::string m_name;
    pqvector<AttributeColumn> m_columns;
    pqmap<int,AttributeRow> m_data;
    // display parameters for the reference id column
    DisplayParams m_ref_display_params;
    //
    int64 m_available_layers;
-   pqmap<int64,pstring> m_layers;
+   pqmap<int64,std::string> m_layers;
    mutable int64 m_visible_layers;
    mutable int m_visible_size;
    //
-   pstring g_ref_number_name;    // = pstring("Ref Number");
-   pstring g_ref_number_formula; // = pstring("");
+   std::string g_ref_number_name;    // = std::string("Ref Number");
+   std::string g_ref_number_formula; // = std::string("");
    //
 public:
    //
-   AttributeTable(const pstring& name = pstring());
+   AttributeTable(const std::string& name = std::string());
    //
-   int insertColumn(const pstring& name = pstring());
+   int insertColumn(const std::string& name = std::string());
    void removeColumn(int col);
-   int renameColumn(int col, const pstring& name = pstring());
+   int renameColumn(int col, const std::string& name = std::string());
    int insertRow(int key);
    void removeRow(int key);
    void removeRowids(const pvecint& list)
       { remove_at(list); }
    //
    // note... retrieves from column index (which are sorted by name), not physical column
-   const pstring& getColumnName(int col) const
+   const std::string& getColumnName(int col) const
       { return col != -1 ? m_columns[col].m_name : g_ref_number_name; } 
-   int getColumnIndex(const pstring& name) const
+   int getColumnIndex(const std::string& name) const
       { size_t index = m_columns.searchindex(name); return (index == paftl::npos) ? -1 : int(index);} // note use -1 rather than paftl::npos for return value
    int getColumnCount() const
       { return (int) m_columns.size(); }
-   int getOrInsertColumnIndex(const pstring& name)
+   int getOrInsertColumnIndex(const std::string& name)
       { size_t col = m_columns.searchindex(name); if (col == paftl::npos) return insertColumn(name); else return (int) col; }
-   int getOrInsertLockedColumnIndex(const pstring& name) 
+   int getOrInsertLockedColumnIndex(const std::string& name)
       { size_t col = m_columns.searchindex(name); if (col == paftl::npos) return insertLockedColumn(name); else return (int) col; }
-   bool isValidColumn(const pstring& name) const
+   bool isValidColumn(const std::string& name) const
       { return m_columns.searchindex(name) != paftl::npos || name == g_ref_number_name; }
    //
    int getRowKey(int index) const
@@ -269,27 +272,27 @@ public:
    float getValue(int row, int col) const
       { return col != -1 ? value(row).at(m_columns[col].m_physical_col) : key(row); }
    // this version is meant to use row key and col name
-   float getValue(int row, const pstring& name) const
+   float getValue(int row, const std::string& name) const
       { int col = getColumnIndex(name); return col != -1 ? value(row).at(m_columns[col].m_physical_col) : key(row); }
    float getNormValue(int row, int col) const
       { return col != -1 ? m_columns[col].makeNormValue(value(row).at(m_columns[col].m_physical_col)) : (float) (double(getRowKey(row))/double(getRowKey(int(size()-1)))); }
    void setValue(int row, int col, float val)
       { value(row).at(m_columns[col].m_physical_col) = val; m_columns[col].setValue(val); }
-   void setValue(int row, const pstring& name, float val) 
+   void setValue(int row, const std::string& name, float val)
       { int col = getColumnIndex(name); if (col != -1) setValue(row,col,val); }
    void changeValue(int row, int col, float val)
       { float& theval = value(row).at(m_columns[col].m_physical_col); m_columns[col].changeValue(theval,val); theval = val; }
-   void changeValue(int row, const pstring& name, float val) 
+   void changeValue(int row, const std::string& name, float val)
       { int col = getColumnIndex(name); if (col != -1) changeValue(row,col,val); }
    void changeSelValues(int col, float val) 
       { for (size_t i = 0; i < size(); i++) { if (value(i).m_selected) changeValue((int)i,col,val);} }
    void incrValue(int row, int col, float amount = 1.0f) 
       { float& v = value(row).at(m_columns[col].m_physical_col); v = (v == -1.0f) ? amount : v+amount ; m_columns[col].changeValue(v-amount,v); }
-   void incrValue(int row, const pstring& name, float amount = 1.0f) 
+   void incrValue(int row, const std::string& name, float amount = 1.0f)
       { int col = getColumnIndex(name);  if (col != -1) incrValue(row,col,amount); }
    void decrValue(int row, int col, float amount = 1.0f) 
       { float& v = value(row).at(m_columns[col].m_physical_col); v = (v != -1.0f) ? v-amount : -1.0f; m_columns[col].changeValue(v+amount,v); }
-   void decrValue(int row, const pstring& name, float amount = 1.0f) 
+   void decrValue(int row, const std::string& name, float amount = 1.0f)
       { int col = getColumnIndex(name);  if (col != -1) decrValue(row,col,amount); }
    void setColumnValue(int col, float val);
    double getMinValue(int col) const
@@ -309,9 +312,9 @@ public:
    void setColumnInfo(int col, double min, double max, double tot, double vismin, double vismax, double vistot) const
       { m_columns[col].setInfo(min,max,tot,vismin,vismax,vistot); } 
    //
-   const pstring& getColumnFormula(int col) const
+   const std::string& getColumnFormula(int col) const
       { return col != -1 ? m_columns[col].m_formula : g_ref_number_formula; } 
-   void setColumnFormula(int col, const pstring& formula)
+   void setColumnFormula(int col, const std::string& formula)
       { m_columns[col].m_formula = formula; } 
    //
    // user-interface locking unlocking
@@ -319,7 +322,7 @@ public:
    { return (col == -1) ? true : m_columns[col].isLocked(); }
    void setColumnLock(int col, bool lock = true)
    { m_columns[col].setLock(lock); }
-   int insertLockedColumn(const pstring& name = pstring())
+   int insertLockedColumn(const std::string& name = std::string())
    { int col = insertColumn(name); setColumnLock(col); return col; }
    //
    // For SalaScript:
@@ -350,10 +353,10 @@ public:
    const int64 getVisibleLayers() const
       { return m_visible_layers; }
    // More user friendly layer control:
-   bool selectionToLayer(const pstring& name);
+   bool selectionToLayer(const std::string& name);
    int getLayerCount() const
       { return (int) m_layers.size(); }
-   pstring getLayerName(int layer) const
+   std::string getLayerName(int layer) const
       { return m_layers.value(layer); }
    bool isLayerVisible(int layer) const
       { return ((m_layers.key(layer) & m_visible_layers) != 0); }
@@ -387,13 +390,13 @@ public:
    void clear()  // <- totally destroy, not just clear values
    { m_columns.clear(); pqmap<int,AttributeRow>::clear(); }
    //
-   void setName(const pstring& name)
+   void setName(const std::string& name)
    { m_name = name; }
-   const pstring& getName() const
+   const std::string& getName() const
    { return m_name; }
    //
    // read / write
-   bool read( ifstream& stream, int version );
+   bool read(istream &stream, int version );
    bool write( ofstream& stream, int version );
    //
    bool outputHeader( ostream& stream, char delim = '\t', bool updated_only = false ) const;

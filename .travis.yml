@@ -7,7 +7,7 @@ notifications:
 
 before_install:
   - sudo add-apt-repository --yes ppa:beineri/opt-qt571-trusty
-  - sudo add-apt-repository --yes ppa:fkrull/deadsnakes
+  - sudo add-apt-repository --yes ppa:deadsnakes/ppa
   - sudo apt-get update -qq
 
 install:
@@ -19,4 +19,4 @@ script:
   - /opt/qt57/bin/qmake ../depthmapX.pro
   - make
   - ./cliTest/cliTest && ./GuiUnitTest/GuiUnitTest && ./salaTest/salaTest && ./genlibTest/genlibTest
-  - cd ../RegressionTest/test && python3.5 test_main.py && cd .. && python3.5 RegressionTestRunner.py
+  - cd ../RegressionTest/test && python3.5 test_main.py && cd .. && python3.5 RegressionTestRunner.py && python3.5 RegressionTestRunner.py regressionconfig_agents.json

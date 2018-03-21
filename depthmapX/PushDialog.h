@@ -23,7 +23,7 @@ class CPushDialog : public QDialog, public Ui::CPushDialog
 {
 	Q_OBJECT
 public:
-	CPushDialog(pqmap<IntPair,pstring>& names, QWidget *parent = 0);
+    CPushDialog(std::map<IntPair,std::string>& names, QWidget *parent = 0);
 	int		m_layer_selection;
 	QString	m_origin_attribute;
 	QString	m_origin_layer;
@@ -32,7 +32,7 @@ public:
 	void UpdateData(bool value);
 	void showEvent(QShowEvent * event);
 
-	pvecstring m_names;
+    std::vector<std::string> m_names;
 
 	private slots:
 		void OnOK();

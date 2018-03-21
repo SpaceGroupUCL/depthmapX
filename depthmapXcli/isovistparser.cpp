@@ -18,6 +18,7 @@
 #include "salalib/entityparsing.h"
 #include <sstream>
 #include "runmethods.h"
+#include <cstring>
 
 using namespace depthmapX;
 
@@ -51,7 +52,7 @@ void IsovistParser::parse(int argc, char **argv)
 
     for( int i = 1; i < argc; ++i)
     {
-        if (strcmp(argv[i], "-ii") == 0 )
+        if (std::strcmp(argv[i], "-ii") == 0 )
         {
             if ( !isovistFile.empty())
             {
@@ -60,7 +61,7 @@ void IsovistParser::parse(int argc, char **argv)
             ENFORCE_ARGUMENT("-ii", i);
             mIsovists.push_back(EntityParsing::parseIsovist(argv[i]));
         }
-        else if( strcmp(argv[i], "-if") == 0)
+        else if( std::strcmp(argv[i], "-if") == 0)
         {
             if ( !isovistFile.empty())
             {
@@ -77,7 +78,7 @@ void IsovistParser::parse(int argc, char **argv)
 
     if (!isovistFile.empty())
     {
-        ifstream file(isovistFile);
+        std::ifstream file(isovistFile);
         if ( !file.good())
         {
             std::stringstream message;

@@ -20,8 +20,18 @@
 #ifndef __SHAPEMAP_H__
 #define __SHAPEMAP_H__
 
+#include "genlib/p2dpoly.h"
+#include "genlib/stringutils.h"
+#include <vector>
+#include <string>
+#include "salalib/importtypedefs.h"
+#include "genlib/bsptree.h"
+#include "genlib/containerutils.h"
+#include <set>
+
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <map>
 // each pixel has various lists of information:
 
 struct ShapeRef
@@ -128,7 +138,7 @@ public:
    //
    pqvector<SalaEdgeU> getClippingSet(QtRegion& clipframe) const;
    //
-   bool read(ifstream& stream, int version);
+   bool read(istream &stream, int version);
    bool write(ofstream& stream);
 };
 
@@ -142,10 +152,10 @@ protected:
 public:
    SalaObject() {;}
    //
-   bool read(ifstream& stream, int version);
+   bool read(istream &stream, int version);
    bool write(ofstream& stream);
 };
-inline bool SalaObject::read(ifstream& stream, int)
+inline bool SalaObject::read(istream& stream, int)
 {
    stream.read((char *)&m_centroid,sizeof(m_centroid));
    pvecint::read(stream);
@@ -190,7 +200,7 @@ public:
           ALLLINEMAP = 0x0010, AXIALMAP = 0x0020, SEGMENTMAP = 0x0040, PESHMAP = 0x0080, LINEMAP = 0x0070 };
    enum { COPY_NAME = 0x0001, COPY_GEOMETRY = 0x0002, COPY_ATTRIBUTES = 0x0004, COPY_GRAPH = 0x0008, COPY_ALL = 0x000f };
 protected:
-   pstring m_name;
+   std::string m_name;
    int m_map_type;
    bool m_hasgraph;
    // counters
@@ -205,8 +215,8 @@ protected:
    mutable BSPNode *m_bsp_root;
    mutable bool m_bsp_tree;
    //
-   pqmap<int,SalaShape> m_shapes;
-   pqmap<int,SalaObject> m_objects;   // THIS IS UNUSED! Meant for each object to have many shapes
+   std::map<int,SalaShape> m_shapes;
+   std::map<int,SalaObject> m_objects;   // THIS IS UNUSED! Meant for each object to have many shapes
    //
    prefvec<SalaEvent> m_undobuffer;
    //
@@ -225,7 +235,7 @@ protected:
    mutable bool m_invalidate;
    //
 public:
-   ShapeMap(const pstring& name = pstring(),int type = EMPTYMAP);
+   ShapeMap(const std::string& name = std::string(),int type = EMPTYMAP);
    virtual ~ShapeMap();
    void copy(const ShapeMap& shapemap, int copyflags = 0);
    void clearAll();
@@ -239,14 +249,14 @@ public:
    // num shapes for this object (note, request by object rowid
    // -- on interrogation, this is what you will usually receive)
    const size_t getShapeCount(int rowid) const
-   { return m_shapes.value(rowid).size(); }
+   { return depthmapX::getMapAtIndex(m_shapes, rowid)->second.size(); }
    //
    int getIndex(int rowid) const
-   { return m_shapes.key(rowid); }
+   { return depthmapX::getMapAtIndex(m_shapes, rowid)->first; }
    //
    // add shape tools
    void makePolyPixels(int shaperef);
-   void shapePixelBorder(pmap<int,int>& relations, int shaperef, int side, PixelRef currpix, PixelRef minpix, bool first);
+   void shapePixelBorder(std::map<int,int>& relations, int shaperef, int side, PixelRef currpix, PixelRef minpix, bool first);
    // remove shape tools
    void removePolyPixels(int shaperef);
    //
@@ -257,7 +267,7 @@ public:
    // or a single line into a shape
    int makeLineShape(const Line& line, bool through_ui = false, bool tempshape = false);
    // or a polygon into a shape
-   int makePolyShape(const pvecpoint& points, bool open, bool tempshape = false);
+   int makePolyShape(const pqvector<Point2f>& points, bool open, bool tempshape = false);
 public:
    // or make a shape from a shape
    int makeShape(const SalaShape& shape, int override_shape_ref = -1);
@@ -269,7 +279,7 @@ public:
    // move a shape (currently only a line shape) -- in the future should use SalaShape
    bool moveShape(int shaperef, const Line& line, bool undoing = false);
    // delete selected shapes
-   void removeSelected();
+   bool removeSelected();
    // delete a shape
    void removeShape(int shaperef, bool undoing = false);
    //
@@ -282,7 +292,7 @@ public:
    bool polyCancel();
    // some shape creation tools for the scripting language or DLL interface
 protected:
-   pvecpoint m_temppoints;
+   pqvector<Point2f> m_temppoints;
 public:
    // add a shape (does not commit to poly pixels)
    void shapeBegin();
@@ -299,7 +309,7 @@ public:
    Point2f pointOffset(const PointMap& pointmap, int currpix, int side);
    int moveDir(int side);
    //
-   void pointPixelBorder(const PointMap& pointmap, pmap<int,int>& relations, SalaShape& shape, int side, PixelRef currpix, PixelRef minpix, bool first);
+   void pointPixelBorder(const PointMap& pointmap, std::map<int, int> &relations, SalaShape& shape, int side, PixelRef currpix, PixelRef minpix, bool first);
    // quick find of topmost poly from a point (bit too inaccurate!)
    int quickPointInPoly(const Point2f& p) const;
    // slower point in topmost poly test:
@@ -324,7 +334,7 @@ public:
    // Cut a line according to the first shape it cuts
    void cutLine(Line& li);//, short dir);
    // Find out which shapes are within a certain radius of a point:
-   int withinRadius(const Point2f& p, double radius, pvecint& bufferset);
+   int withinRadius(const Point2f& p, double radius, std::vector<int> &bufferset);
    // Connect a particular shape into the graph
    int connectIntersected(int rowid, bool linegraph);
    // Get the connections for a particular line
@@ -354,15 +364,15 @@ protected:
    // which attribute is currently displayed:
    mutable int m_displayed_attribute;
 public:
-   const pstring& getName() const
+   const std::string& getName() const
       { return m_name; }
-   int addAttribute(const pstring& name)
+   int addAttribute(const std::string& name)
       { return m_attributes.insertColumn(name); }
    void removeAttribute(int col)
       { m_attributes.removeColumn(col); }
-   void setAttribute(int obj, const pstring& name, float val)
+   void setAttribute(int obj, const std::string& name, float val)
       { m_attributes.setValue(m_attributes.getRowid(obj),name,val); }
-   void incrementAttribute(int obj, const pstring& name)
+   void incrementAttribute(int obj, const std::string& name)
       { m_attributes.incrValue(m_attributes.getRowid(obj),name); }
    // I don't want to do this, but every so often you will need to update this table 
    // use const version by preference
@@ -376,7 +386,7 @@ public:
    { return m_attributes.isLayerVisible(layerid); }
    void setLayerVisible(int layerid, bool show)
    { m_attributes.setLayerVisible(layerid,show); }
-   bool selectionToLayer(const pstring& name = pstring("Unnamed"));
+   bool selectionToLayer(const std::string& name = std::string("Unnamed"));
 public:
    double getDisplayMinValue() const
    { return (m_displayed_attribute != -1) ? m_attributes.getMinValue(m_displayed_attribute) : 0; } 
@@ -427,18 +437,18 @@ protected:
    bool m_show;              // used when shape map is a drawing layer
    bool m_editable;
    bool m_selection;
-   pvecint m_selection_set;   // note: uses rowids not keys
+   std::set<int> m_selection_set;   // note: uses rowids not keys
 public:
    // Selection
    bool isSelected() const
    { return m_selection; }
    bool setCurSel( QtRegion& r, bool add = false );
-   bool setCurSel( const pvecint& selset, bool add = false );
-   bool setCurSelDirect( const pvecint& selset, bool add = false );
+   bool setCurSel(const std::vector<int> &selset, bool add = false );
+   bool setCurSelDirect( const std::vector<int>& selset, bool add = false );
    bool clearSel();
-   pvecint& getSelSet()
+   std::set<int>& getSelSet()
    { return m_selection_set; }
-   const pvecint& getSelSet() const
+   const std::set<int>& getSelSet() const
    { return m_selection_set; }
    size_t getSelCount()
    { return m_selection_set.size(); }
@@ -468,7 +478,7 @@ public:
    const PafColor getShapeColor() const
    { return m_attributes.getDisplayColor(m_display_shapes[m_current]); }
    bool getShapeSelected() const
-   { return m_shapes[m_display_shapes[m_current]].m_selected; }
+   { return depthmapX::getMapAtIndex(m_shapes, m_display_shapes[m_current])->second.m_selected; }
    //
    double getLocationValue(const Point2f& point) const;
 
@@ -482,20 +492,19 @@ public:
    { return __max(m_region.width(), m_region.height()) / (10 * log((double)10+m_shapes.size())); }
    //
    // dangerous: accessor for the shapes themselves:
-   const pqmap<int,SalaShape>& getAllShapes() const
+   const std::map<int,SalaShape>& getAllShapes() const
    { return m_shapes; }
-   pqmap<int,SalaShape>& getAllShapes()
+   std::map<int,SalaShape>& getAllShapes()
    { return m_shapes; }
    // required for PixelBase, have to implement your own version of pixelate
    PixelRef pixelate( const Point2f& p, bool constrain = true, int = 1) const;
    //
 public:
    // file
-   bool read( ifstream& stream, int version, bool drawinglayer = false );
+   bool read(istream &stream, int version, bool drawinglayer = false );
    bool write( ofstream& stream, int version );
    //
    bool output( ofstream& stream, char delimiter = '\t', bool updated_only = false );
-   bool importTxt(istream& stream, bool csv);
    //
    // links and unlinks
 protected:
@@ -515,9 +524,11 @@ public:
    // generic for all types of graphs
    bool findNextLinkLine() const;
    Line getNextLinkLine() const;
+   std::vector<SimpleLine> getAllLinkLines();
    // specific to axial line graphs 
    bool findNextUnlinkPoint() const;
    Point2f getNextUnlinkPoint() const;
+   std::vector<Point2f> getAllUnlinkPoints();
    void outputUnlinkPoints( ofstream& stream, char delim );
 public:
    void ozlemSpecial(ShapeMap& output);
@@ -527,6 +538,14 @@ public:
    void ozlemSpecial5(ShapeMap& buildings);
    void ozlemSpecial6();
    void ozlemSpecial7(ShapeMap& linemap);
+   std::vector<SimpleLine> getAllShapesAsLines();
+   std::vector<std::pair<SimpleLine, PafColor>> getAllLinesWithColour();
+   std::map<std::vector<Point2f>, PafColor> getAllPolygonsWithColour();
+   bool importLines(const std::vector<Line> &lines, const depthmapX::Table &data);
+   bool importPoints(const std::vector<Point2f> &points, const depthmapX::Table &data);
+   bool importPolylines(const std::vector<depthmapX::Polyline> &lines, const depthmapX::Table &data);
+private:
+   bool importData(const depthmapX::Table &data, std::vector<int> indices);
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -541,7 +560,7 @@ public:
    ShapeMaps() { m_displayed_map = paftl::npos;}
    virtual ~ShapeMaps() {;}
    //
-   size_t addMap(const pstring& name, int type);
+   size_t addMap(const std::string& name, int type);
    void removeMap(size_t map);
 
    //
@@ -572,14 +591,14 @@ public:
    const T& getLastMap() const
    { return prefvec<T>::tail(); }
    //
-   size_t getMapRef(const pstring& name) const;
+   size_t getMapRef(const std::string& name) const;
    //
    size_t getObjectCount() const
    { return prefvec<T>::at(m_displayed_map).getObjectCount(); }
    const size_t getShapeCount() const
    { return prefvec<T>::at(m_displayed_map).m_shapes.size(); }
    //
-   bool read( ifstream& stream, int version );
+   bool read(istream &stream, int version );
    bool write( ofstream& stream, int version, bool displayedmaponly = false );
    //
    const QtRegion& getBoundingBox() const
@@ -603,7 +622,7 @@ public:
 };
 
 template <class T>
-size_t ShapeMaps<T>::addMap(const pstring& name, int type)
+size_t ShapeMaps<T>::addMap(const std::string& name, int type)
 {
    ShapeMaps<T>::push_back(T(name,type));
    setDisplayedMapRef(pmemvec<T*>::size()-1);
@@ -620,7 +639,7 @@ void ShapeMaps<T>::removeMap(size_t map)
       m_displayed_map--; 
 }
 template <class T>
-size_t ShapeMaps<T>::getMapRef(const pstring& name) const
+size_t ShapeMaps<T>::getMapRef(const std::string& name) const
 {  
    // note, only finds first map with this name
    for (size_t i = 0; i < pmemvec<T*>::size(); i++) {
@@ -637,7 +656,7 @@ void ShapeMaps<T>::setDisplayedMapRef(size_t map)
    m_displayed_map = map;
 }
 template <class T>
-bool ShapeMaps<T>::read( ifstream& stream, int version )
+bool ShapeMaps<T>::read( istream& stream, int version )
 {
     prefvec<T>::clear(); // empty existing data
    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
@@ -648,14 +667,7 @@ bool ShapeMaps<T>::read( ifstream& stream, int version )
    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
    unsigned int count = 0;
    stream.read((char *) &count, sizeof(count));
-   if (version < VERSION_NO_SHAPEMAP_NAME_LOOKUP) {
-      for (size_t i = 0; i < size_t(count); i++) {
-         // dummy name lookup (now simply creates on fly, as the name lookup may be corrupted in earlier versions)
-         pstring name; int number;
-         name.read(stream);
-         stream.read((char *)&number,sizeof(number));
-      }
-   }
+
    for (size_t j = 0; j < size_t(count); j++) {
       ShapeMaps<T>::push_back(T());
       prefvec<T>::tail().read(stream,version);

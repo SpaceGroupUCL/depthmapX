@@ -6,7 +6,10 @@ CONFIG -= qt
 INCLUDEPATH += ../ThirdParty/Catch
 
 SOURCES += convertertest.cpp \
-    main.cpp
+    main.cpp \
+    dxfptest.cpp \
+    teststringutils.cpp \
+    testbspnode.cpp
 
 HEADERS +=
 

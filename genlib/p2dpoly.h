@@ -29,7 +29,6 @@
 #include <algorithm>
 #include <genlib/pafmath.h>
 #include <genlib/comm.h> // communicator used in BSP tree construction
-#include <genlib/dxfp.h> // has to be compatible with DXF file parser types
 
 // Note: code depends on XAXIS being 0 and YAXIS being 1 --- do not change
 enum {
@@ -66,9 +65,7 @@ public:
       { x = 0.0; y = 0.0; }
    Point2f(double a, double b)
       { x = a; y = b; }
-   Point2f(const DxfVertex& p)
-      { x = p.x; y = p.y; }
-   bool isNull() const
+   bool atZero() const
 //      { return x == P2DNULL || y == P2DNULL; }
       { return x == 0.0 && y == 0.0; }
    void normalScale( const QtRegion& );  // inline function: below region
@@ -124,8 +121,6 @@ public:
    double angle() const
       { return (y < 0) ? (2.0 * M_PI - acos(x)) : acos(x); }
 };
-
-typedef pqvector<Point2f> pvecpoint;
 
 inline Point2f operator - (Point2f& p)
 {
@@ -351,8 +346,8 @@ public:
    { if (p.x < bottom_left.x) bottom_left.x = p.x; if (p.x > top_right.x) top_right.x = p.x;
      if (p.y < bottom_left.y) bottom_left.y = p.y; if (p.y > top_right.y) top_right.y = p.y; }
    //
-   bool isNull() const
-   { return bottom_left.isNull() || top_right.isNull(); }
+   bool atZero() const
+   { return bottom_left.atZero() || top_right.atZero(); }
    //
    Point2f getEdgeUPoint(const EdgeU& eu);
    EdgeU getCutEdgeU(const Point2f& inside, const Point2f& outside);
@@ -395,11 +390,15 @@ class Line : public QtRegion
 {
 protected:
    struct Bits {
+      Bits() : x_dummy(0), y_dummy(0), z_dummy(0){}
       char parity      : 8;  // 1 ... positive, 0 ... negative
       char direction   : 8;  // 1 ... positive, 0 ... negative
-#ifndef _WIN32
-      int z_dummy      : 32;
-#endif
+
+      // dummy variables as it seems to be necessary that the width of this struct is 8 bytes
+      // and I don't want any uninitialised memory that gets written to file accidentally
+      char x_dummy : 8;
+      char y_dummy : 8;
+      int  z_dummy : 32;
    };
    Bits bits;
 public:
@@ -483,8 +482,6 @@ inline Point2f intersection_point(const Line& a, const Line& b, double tolerance
    return a.point_on_line(a.intersection_point(b,axis,tolerance),axis);
 }
 
-typedef prefvec<Line> pvecline;
-
 ////////////////////////////////////////////////////////////////////////////////////////
 
 struct TaggedLine
@@ -494,32 +491,36 @@ struct TaggedLine
    TaggedLine(const Line& l = Line(),int t = -1) { line = l; tag = t; }
 };
 
-// Binary Space Partition
-
-struct BSPNode
+// plain 2-point line without regions
+struct SimpleLine
 {
 public:
-   enum { BSPLEFT, BSPRIGHT };
-   BSPNode *left;
-   BSPNode *right;
-   BSPNode *parent;
-   Line line;
-   int m_tag;
-   int m_count;
-   //
-public:
-   BSPNode()
-   { left = NULL; right = NULL; parent = NULL; m_count = 0; m_tag = -1; }
-   virtual ~BSPNode()
-   { if (left) delete left; left = NULL; if (right) delete right; right = NULL; }
-   //
-   bool isLeaf() {
-      return left == NULL && right == NULL;
-   }
-   void make(Communicator *communicator, comm_time_t atime, const prefvec<TaggedLine>& lines, BSPNode *par);
-   int classify(const Point2f& p);
-   const Line& getLine() const { return line; }
-   const int getTag() const { return m_tag; }
+    SimpleLine(const Line& line)
+    {
+        m_start.x = line.start().x;
+        m_start.y = line.start().y;
+        m_end.x = line.end().x;
+        m_end.y = line.end().y;
+    }
+    SimpleLine(const Point2f& a, const Point2f& b)
+    {
+        m_start.x = a.x;
+        m_start.y = a.y;
+        m_end.x = b.x;
+        m_end.y = b.y;
+    }
+    SimpleLine(double x1, double y1, double x2, double y2)
+    {
+        m_start.x = x1;
+        m_start.y = y1;
+        m_end.x = x2;
+        m_end.y = y2;
+    }
+    const Point2f& start() const { return m_start; }
+    const Point2f& end() const { return m_end; }
+private:
+    Point2f m_start;
+    Point2f m_end;
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////

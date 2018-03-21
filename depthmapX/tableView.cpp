@@ -49,6 +49,8 @@ tableView::tableView(QWidget *parent, QGraphDoc* p)
     setWindowIcon(QIcon(tr(":/images/cur/icon-1-5.png")));
     setWindowTitle(pDoc->m_base_title+":Table View");
 
+    setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
+
 	m_protect_edit = false;
 }
 
@@ -84,7 +86,7 @@ void tableView::RedoTable()
 
 	  m_row_count = table.getRowCount();
 	  setRowCount(m_row_count);
-	  PrepareCache(0, m_curr_row);
+      PrepareCache(m_curr_row);
    }
 }
 
@@ -94,7 +96,7 @@ void tableView::scrollContentsBy(int dx, int dy)
 		QTableWidget::scrollContentsBy(dx, 0);
 		return;
 	}
-	PrepareCache(m_curr_row, m_curr_row - dy);
+    PrepareCache(m_curr_row - dy);
 	m_curr_row -= dy;
 	QTableWidget::scrollContentsBy(dx, dy);
 }
@@ -104,21 +106,26 @@ QSize tableView::sizeHint() const
 	return QSize(2000, 2000);
 }
 
-void tableView::PrepareCache(int from, int to)
+void tableView::PrepareCache(int to)
 {
 	in_update = 1;
 	QTableWidgetItem *Item;
 	const AttributeTable& table = pDoc->m_meta_graph->getAttributeTable();
 	AttributeIndex& index = table.m_display_index;
 
-	if(to+PG_COUNT >= m_row_count) return;
-	for (int i = 0; i < PG_COUNT; i++)
+    int diff = PG_COUNT;
+    if(to+PG_COUNT >= m_row_count)
+    {
+        diff = m_row_count - to;
+    }
+    for (int i = 0; i < diff; i++)
 	{
 		for (int j = 0; j < m_column_count+1; j++)
 		{
 			if(!j)
 			{
-				if(Item = item(to+i, j))
+                Item = item(to+i, j);
+                if(Item)
 				{
 					if(table.isSelected(to+i)) Item->setCheckState(Qt::Checked);
 					else Item->setCheckState(Qt::Unchecked);
@@ -150,13 +157,13 @@ void tableView::itemChanged(QTableWidgetItem * item)
 	int col = item->column();
 	if(col == 0)
 	{
-		pvecint x;
+        std::vector<int> x;
 		AttributeTable& table = pDoc->m_meta_graph->getAttributeTable();
 		AttributeIndex& index = table.m_display_index;
 		x.push_back(table.getRowKey(index[row].index));
 		pDoc->m_meta_graph->setSelSet(x);
 		pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL,QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_SELECTION, this);
-		PrepareCache(0, m_curr_row);
+        PrepareCache(m_curr_row);
 	}
 	else
 	{
@@ -192,7 +199,7 @@ void tableView::colum_Sort(int col_id)
 	{
 		pDoc->m_meta_graph->setDisplayedAttribute(col_id - 1);
 		clearContents();
-		PrepareCache(0, m_curr_row);
+        PrepareCache(m_curr_row);
 		return;
 
 		RedoTable();
@@ -223,7 +230,7 @@ int tableView::OnRedraw(int wParam, int lParam)
          }
          else {
             // redo the cache and redisplay
-            PrepareCache(0, m_curr_row);
+            PrepareCache(m_curr_row);
          }
       }
    }

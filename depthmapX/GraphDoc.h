@@ -36,8 +36,6 @@
 // Sala
 #include <salalib/mgraph.h>
 #include "salalib/salaprogram.h"
-#include <salalib/idepthmap.h>
-#include <salalib/idepthmapx.h>
 #include <salalib/entityparsing.h>
 #include <salalib/linkutils.h>
 
@@ -59,6 +57,7 @@ public:
 
 signals:
     void renderedImage(const QImage &image, double scaleFactor);
+    void runtimeExceptionThrown(int type, std::string message);
 
 protected:
     void run();
@@ -85,7 +84,7 @@ public:
    void ProcPostMessage(int m, int x, int y);
    CMSCommunicator();
    virtual ~CMSCommunicator();
-   virtual void CommPostMessage(int m, int x, int y) const;  // Inline below CWaitDialog
+   virtual void CommPostMessage(int m, int x) const;  // Inline below CWaitDialog
 
    void * parent_doc;
 
@@ -175,7 +174,8 @@ struct QFilePath {
 class QGraphDoc : public QWidget
 {
 	Q_OBJECT
-
+private:
+    void exceptionThrownInRenderThread(int type, std::string message);
 public:
    QGraphDoc(const QString &author, const QString &organisation);
    CMSCommunicator *m_communicator;
@@ -202,7 +202,7 @@ public:
          CONTROLS_LOADATTRIBUTES,CONTROLS_CHANGEATTRIBUTE};
 
    // Views attached (by viewtypes)
-   enum {VIEW_ALL = 0, VIEW_MAP = 1, VIEW_SCATTER = 2, VIEW_TABLE = 3, VIEW_3D = 4, VIEW_TYPES = 5};
+   enum {VIEW_ALL = 0, VIEW_MAP = 1, VIEW_SCATTER = 2, VIEW_TABLE = 3, VIEW_3D = 4, VIEW_MAP_GL = 5, VIEW_TYPES = 6};
 
    void* m_mainFrame;
    QWidget *m_view[VIEW_TYPES];
@@ -238,7 +238,7 @@ public:
    Point2f m_position;  // Last known mouse position, in DXF units
    // Paths for the March 05 evolved agents
    // (loaded from file using the test button)
-   prefvec<pvecpoint> m_evolved_paths;
+   prefvec<pqvector<Point2f>> m_evolved_paths;
    RenderThread m_thread;
 
    QProgressDialog* m_waitdlg;
@@ -250,7 +250,7 @@ public:
    int m_step;
    int m_num_records;
    QTime m_timer;
-   void ProcPostMessage(int m, int x, int y);
+   void ProcPostMessage(int m, int x);
    void UpdateMainframestatus();
 
 public slots:
@@ -283,6 +283,10 @@ public:
     void OnVGALinksFileImport();
     void OnFileImport();
 	void OnFileExport();
+    void OnFileExportLinks();
+    void OnAxialConnectionsExportAsDot();
+    void OnAxialConnectionsExportAsPairCSV();
+    void OnSegmentConnectionsExportAsPairCSV();
 	void OnToolsMakeGraph();
 	void OnEditClear();
 	void OnVGAOptions();
@@ -335,11 +339,12 @@ public:
 	void OnLayerConvertDrawing();
     void OnEditSelectToLayer();
     void OnToolsIsovistpath();
-    void OnFileSave();
-    void OnFileSaveAs();
+    bool OnFileSave();
+    bool OnFileSaveAs();
 	void OnConvertMapShapes();
 	void OnToolsBoundaryToAxial();
 	void OnToolsLineLoadUnlinks();
+    void OnPointmapExportConnectionsAsCSV();
 
 protected:
     virtual void timerEvent(QTimerEvent *event);

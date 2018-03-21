@@ -1,0 +1,208 @@
+{
+    "rundir": "rundir",
+    "basebinlocation": "../../BaselineBinaries",
+    "testbinlocation": "../../../build",
+    "testcases": {
+        "agents_defaults": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "standard",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_line_of_sight_length_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "los-length",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_occluded_length_look": {
+            "infile": "../../../testdata/gallery_connected_with_isovist.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "occ-length",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_any_occlusion_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "occ-any",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_occlusion_group_bins_45_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "occ-group-45",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_occlusion_group_bins_60_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "occ-group-60",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_furthest_occlusion_per_bin_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "occ-furthest",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_per_bin_far_distance_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "bin-far-dist",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_per_bin_angle_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "bin-angle",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_per_bin_far_distance_and_angle_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "bin-far-dist-angle",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_per_bin_memory_look": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "bin-memory",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0"
+            }
+        },
+        "agents_gatecounts": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.tsv",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "standard",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "5",
+                "-ot": "gatecounts"
+            }
+        },
+        "agents_trails_all": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.cat",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "standard",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0",
+                "-atrails": "0",
+                "-ot": "trails"
+            }
+        },
+        "agents_trails_1": {
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.cat",
+            "mode": "AGENTS",
+            "extraArgs": {
+                "-am": "standard",
+                "-ats": "5000",
+                "-arr": "0.1",
+                "-afov": "15",
+                "-asteps": "3",
+                "-alife": "1000",
+                "-alocseed": "0",
+                "-atrails": "1",
+                "-ot": "trails"
+            }
+        }
+    }
+}

@@ -47,13 +47,13 @@ class DataObject
    friend class DataLayer;
 protected:
    int m_object_ref;
-   pstring m_object_name;
+   std::string m_object_name;
    Point2f m_centroid;
    pvecdouble m_data_cols;
    float m_color;
    bool m_selected;
 public:
-   DataObject(int ref = 0, const pstring& name = pstring()) {
+   DataObject(int ref = 0, const std::string& name = std::string()) {
       m_object_ref = ref;
       m_object_name = name;
       m_selected = false;
@@ -89,7 +89,7 @@ public:
    friend bool operator <  (const DataObject& a, const DataObject& b);
    friend bool operator >  (const DataObject& a, const DataObject& b);
    //
-   bool read( ifstream& stream, int version );
+   bool read(std::istream &stream, int version );
    bool write( ofstream& stream );
 };
 
@@ -110,13 +110,13 @@ class DataLayer
 {
 protected:
    int m_layer_ref;
-   pstring m_layer_name;
+   std::string m_layer_name;
    int m_next_object_ref;
    pqvector<DataObject> m_data_objects;   
-   pvecstring m_column_titles;
+   std::vector<std::string> m_column_titles;
    int m_display_column;
 public:
-   DataLayer(int ref = -1, const pstring& name = pstring()) {
+   DataLayer(int ref = -1, const std::string& name = std::string()) {
       m_layer_ref = ref;
       m_layer_name = name;
       m_next_object_ref = -1;
@@ -157,18 +157,19 @@ public:
    }
    int getLayerRef() const
    { return m_layer_ref; }
-   void setLayerName(const pstring& name)
+   void setLayerName(const std::string& name)
    { m_layer_name = name; }
-   const pstring& getLayerName() const
+   const std::string& getLayerName() const
    { return m_layer_name; }
    //
-   int addColumn(pstring title) {
+   int addColumn(std::string title) {
       // probably ought to insert -1.0 to be consistent with -1.0 nulls in attributes tables
       // but for the time being it's easier to set to 0.0
       // -- and helps as agent trace / collision counts should default to 0.0
       // -- and helps for push column to layer
-      size_t index = m_column_titles.findindex(title);
-      if (index != paftl::npos) {
+      auto iter = std::find(m_column_titles.begin(), m_column_titles.end(), title);
+      if (iter != m_column_titles.end()) {
+         size_t index = iter - m_column_titles.begin();
          for (size_t i = 0; i < m_data_objects.size(); i++) {
             m_data_objects[i][index] = 0.0;
          }
@@ -181,20 +182,20 @@ public:
       return (int) m_column_titles.size() - 1;
    }
    void delColumn(int col) {
-      m_column_titles.remove_at(col);
+      m_column_titles.erase(m_column_titles.begin() + col);
       for (size_t i = 0; i < m_data_objects.size(); i++) {
          m_data_objects[i].m_data_cols.remove_at(col);
       }
    }
-   void setColumnTitle(int i, pstring& name) {
+   void setColumnTitle(int i, std::string& name) {
       m_column_titles[i] = name;
    }
-   pstring& getColumnTitle(int i) {
+   std::string& getColumnTitle(int i) {
       return m_column_titles[i];
    }
-   int getColumnIndex(const pstring& title) {
-      size_t i = m_column_titles.findindex(title);
-      return (i == paftl::npos ? -1 : int(i)); // note: must convert to -1
+   int getColumnIndex(const std::string& title) {
+      auto iter = std::find(m_column_titles.begin(), m_column_titles.end(), title);
+      return (iter  == m_column_titles.end() ? -1 : int(iter - m_column_titles.begin())); // note: must convert to -1
    }
    int getColumnCount() {
       return (int) m_column_titles.size();
@@ -217,11 +218,11 @@ public:
       if (m_display_column == 0) return (float)object_ref;
       else return (float)m_data_objects[object_ref].m_data_cols[m_display_column-1];
    }
-   pstring getObjectText(int object_ref) {
+   std::string getObjectText(int object_ref) {
       char val[16];
       if (m_display_column == 0) sprintf(val,"%d",object_ref);
       else sprintf(val,"%g",m_data_objects[object_ref].m_data_cols[m_display_column-1]);
-      return pstring(val);
+      return val;
    }
    PafColor getObjectColor(int object_ref) {
       PafColor color;
@@ -233,7 +234,7 @@ public:
    friend bool operator <  (const DataLayer& a, const DataLayer& b);
    friend bool operator >  (const DataLayer& a, const DataLayer& b);
    //
-   bool read( ifstream& stream, int version );
+   bool read(std::istream &stream, int version );
    bool write( ofstream& stream );
    bool output( ofstream& stream );
 };
@@ -262,7 +263,7 @@ protected:
    pqvector<DataLayer> m_layers;
 public:
    DataLayers() {;}
-   bool addLayer(int layer_ref, pstring layer_name) {
+   bool addLayer(int layer_ref, const std::string& layer_name) {
       size_t index = m_layers.searchindex(layer_ref);
       if (index != paftl::npos) {
          m_layers.remove_at(index);
@@ -310,7 +311,7 @@ public:
       return (int) m_layers.size();
    }
    //
-   bool read( ifstream& stream, int version );
+   bool read(std::istream &stream, int version );
    bool write( ofstream& stream );
 };
 

@@ -19,6 +19,7 @@
 #include "exceptions.h"
 #include "salalib/entityparsing.h"
 #include "runmethods.h"
+#include <cstring>
 
 using namespace depthmapX;
 
@@ -52,20 +53,20 @@ void AxialParser::parse(int argc, char **argv)
 {
     for (int i = 1; i < argc; ++i)
     {
-        if (strcmp(argv[i], "-xl") == 0)
+        if (std::strcmp(argv[i], "-xl") == 0)
         {
             ENFORCE_ARGUMENT("-xl", i)
             m_allAxesRoots.push_back(EntityParsing::parsePoint(argv[i]));
         }
-        else if(strcmp(argv[i], "-xf") == 0)
+        else if(std::strcmp(argv[i], "-xf") == 0)
         {
             m_runFewestLines = true;
         }
-        else if(strcmp(argv[i], "-xu") == 0)
+        else if(std::strcmp(argv[i], "-xu") == 0)
         {
             ENFORCE_ARGUMENT("-xu", i)
         }
-        else if (strcmp(argv[i], "-xa") == 0)
+        else if (std::strcmp(argv[i], "-xa") == 0)
         {
             ENFORCE_ARGUMENT("-xa", i)
             if (m_runAnalysis)
@@ -75,15 +76,15 @@ void AxialParser::parse(int argc, char **argv)
             m_radii = depthmapX::parseAxialRadiusList(argv[i]);
             m_runAnalysis = true;
         }
-        else if (strcmp(argv[i], "-xal") == 0)
+        else if (std::strcmp(argv[i], "-xal") == 0)
         {
             m_local = true;
         }
-        else if (strcmp(argv[i], "-xac") == 0)
+        else if (std::strcmp(argv[i], "-xac") == 0)
         {
             m_choice = true;
         }
-        else if(strcmp(argv[i], "-xar") == 0)
+        else if(std::strcmp(argv[i], "-xar") == 0)
         {
             m_rra = true;
         }

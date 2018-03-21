@@ -148,18 +148,18 @@ void Isovist::make(BSPNode *here)
    if (m_gaps.size()) {
       int which = here->classify(m_centre);
       if (which == BSPNode::BSPLEFT) {
-         if (here->left)
-            make(here->left);
-         drawnode(here->line,here->m_tag);
-         if (here->right)
-            make(here->right);
+         if (here->m_left)
+            make(here->m_left);
+         drawnode(here->getLine(),here->getTag());
+         if (here->m_right)
+            make(here->m_right);
       }
       else {
-         if (here->right)
-            make(here->right);
-         drawnode(here->line,here->m_tag);
-         if (here->left)
-            make(here->left);
+         if (here->m_right)
+            make(here->m_right);
+         drawnode(here->getLine(),here->getTag());
+         if (here->m_left)
+            make(here->m_left);
       }
    }
 }

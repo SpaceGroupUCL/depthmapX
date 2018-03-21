@@ -30,7 +30,13 @@ SOURCES += main.cpp \
     testparsingutils.cpp \
     ../depthmapXcli/parsingutils.cpp \
     testisovistparser.cpp \
-    ../depthmapXcli/isovistparser.cpp
+    ../depthmapXcli/isovistparser.cpp \
+    testexportparser.cpp \
+    ../depthmapXcli/exportparser.cpp \
+    ../depthmapXcli/importparser.cpp \
+    testimportparser.cpp \
+    ../depthmapXcli/stepdepthparser.cpp \
+    teststepdepthparser.cpp
 
 
 HEADERS += \
@@ -44,8 +50,8 @@ HEADERS += \
     argumentholder.h \
     selfcleaningfile.h
 
-win32:Release:LIBS += -L../genlib/release -L../salalib/release
-win32:Debug:LIBS += -L../genlib/debug -L../salalib/debug
-!win32:LIBS += -L../genlib -L../salalib
+win32:Release:LIBS += -L../genlib/release -L../mgraph440/release -L../salalib/release
+win32:Debug:LIBS += -L../genlib/debug -L../mgraph440/debug -L../salalib/debug
+!win32:LIBS += -L../genlib -L../mgraph440 -L../salalib
 
-LIBS += -lsalalib -lgenlib
+LIBS += -lsalalib -lmgraph440 -lgenlib

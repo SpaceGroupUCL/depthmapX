@@ -15,14 +15,12 @@
 
 #include "LayerChooserDlg.h"
 
-CLayerChooserDlg::CLayerChooserDlg(pvecstring names, QWidget *parent)
-: QDialog(parent)
+CLayerChooserDlg::CLayerChooserDlg(const std::vector<std::string>& names, QWidget *parent)
+: QDialog(parent),  m_names(names)
 {
 	setupUi(this);
 	m_text = tr("");
 	m_layer = 0;
-
-	m_names = names;
 }
 
 void CLayerChooserDlg::OnOK()

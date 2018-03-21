@@ -26,15 +26,16 @@ using namespace std;
 #include <genlib/p2dpoly.h>
 #include <genlib/comm.h> // for communicator
 
+#include "genlib/stringutils.h"
 #include "ntfp.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int NtfPoint::parse(const pstring& token, bool secondhalf /* = false */)
+int NtfPoint::parse(const std::string& token, bool secondhalf /* = false */)
 {
    if (secondhalf) {
-      pstring second = token.substr(0,m_chars);
-      b = second.c_int();
+      std::string second = token.substr(0,m_chars);
+      b = stoi(second);
       if (m_chars == 5) {
          b *= 100;
       }
@@ -44,18 +45,18 @@ int NtfPoint::parse(const pstring& token, bool secondhalf /* = false */)
       if ((int)token.length() < m_chars) {
          return 0;
       }
-      pstring first = token.substr(0,m_chars);
-      a = first.c_int();
+      std::string first = token.substr(0,m_chars);
+      a = stoi(first);
       if (m_chars == 5) {
          a *= 100;
       }
       return 1;
    }
    else {
-      pstring first = token.substr(0,m_chars);
-      pstring second = token.substr(m_chars,m_chars);
-      a = first.c_int();
-      b = second.c_int();
+      std::string first = token.substr(0,m_chars);
+      std::string second = token.substr(m_chars,m_chars);
+      a = stoi(first);
+      b = stoi(second);
       if (m_chars == 5) {
          a *= 100;
          b *= 100;
@@ -66,7 +67,7 @@ int NtfPoint::parse(const pstring& token, bool secondhalf /* = false */)
 
 void NtfMap::fitBounds(const Line& li)
 {
-   if (m_region.isNull()) {
+   if (m_region.atZero()) {
       m_region = li;
    }
    else {
@@ -96,19 +97,9 @@ Line NtfMap::makeLine(const NtfPoint& a, const NtfPoint& b)
    );
 }
 
-// Quick mod - TV
-#if defined(_WIN32)
-void NtfMap::open(const pqvector<wstring>& fileset, Communicator *comm)
-#else
-void NtfMap::open(const pqvector<string>& fileset, Communicator *comm)
-#endif
+void NtfMap::open(const std::vector<string>& fileset, Communicator *comm)
 {
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t time = 0;
-#else
    time_t time = 0;
-#endif   
    qtimer( time, 0 );
 
    pvecint featcodes;
@@ -130,14 +121,14 @@ void NtfMap::open(const pqvector<string>& fileset, Communicator *comm)
       int filetype = NTF_UNKNOWN;
 
       while (!stream.eof() && filetype == NTF_UNKNOWN) {
-         pstring line;
-         stream >> line;
+        std::string line;
+        std::getline(stream, line);
          if (line.length() > 2) {
-            if (compare(line, "02", 2)) {
-               if (compare(line, "02Land-Line", 11)) {
+            if (dXstring::beginsWith<std::string>(line, "02")) {
+               if (dXstring::beginsWith<std::string>(line, "02Land-Line")) {
                   filetype = NTF_LANDLINE;
                }
-               else if (compare(line, "02Meridian", 10)) {
+               else if (dXstring::beginsWith<std::string>(line, "02Meridian")) {
                   filetype = NTF_MERIDIAN;
                }
             }
@@ -185,27 +176,27 @@ void NtfMap::open(const pqvector<string>& fileset, Communicator *comm)
       int parsing = 0;
       int currpos = -1;
       int currtoken = 0;
-      pvecstring tokens;
+      std::vector<std::string> tokens;
 
       while (!stream.eof())
       {
-         pstring line;
+         std::string line;
          stream >> line;
 
          if (line.length()) {
-            if (parsing == 0 && compare(line, "07", 2)) {
+            if (parsing == 0 && dXstring::beginsWith<std::string>(line, "07")) {
                // Grab the easting and northing offset
-               pstring easting = line.substr(46,10);
-               pstring northing =line.substr(56,10);
-               m_offset.a = easting.c_int();
-               m_offset.b = northing.c_int();
+               std::string easting = line.substr(46,10);
+               std::string northing =line.substr(56,10);
+               m_offset.a = stoi(easting);
+               m_offset.b = stoi(northing);
             }
-            if (parsing == 0 && compare(line, "23", 2)) {
+            if (parsing == 0 && dXstring::beginsWith<std::string>(line, "23")) {
                geom.clear();
                // In Landline, check to see if it's a code we recognise:
                if (filetype == NTF_LANDLINE) {
-                  pstring featcodestr = line.substr(16,4);
-                  size_t pos = featcodes.searchindex( featcodestr.c_int() );
+                  std::string featcodestr = line.substr(16,4);
+                  size_t pos = featcodes.searchindex( stoi(featcodestr) );
                   if (pos != paftl::npos) {
                      at(pos).push_back( NtfGeometry() );
                      parsing = 1;
@@ -219,11 +210,11 @@ void NtfMap::open(const pqvector<string>& fileset, Communicator *comm)
                }
             }
             else if (parsing == 1) {
-               if (compare(line, "21", 2)) {
+               if (dXstring::beginsWith<std::string>(line, "21")) {
                   tokens.clear();
                   // Some line data:
                   // read to end, and possibly leave hanging:
-                  tokens = line.tokenize(' ',true);
+                  tokens = dXstring::split(line, ' ',true);
                   tokens[0] = tokens[0].substr(13);
                   lastpoint.parse(tokens[0]);
                   currtoken = 1;
@@ -231,19 +222,19 @@ void NtfMap::open(const pqvector<string>& fileset, Communicator *comm)
                }
             }
             else if (parsing > 1) {
-               if (compare(line, "00", 2)) {
-                  tokens = line.tokenize(' ',true);
+               if (dXstring::beginsWith<std::string>(line, "00")) {
+                  tokens = dXstring::split(line, ' ',true);
                   tokens[0] = tokens[0].substr(2);
                   currtoken = 0;
                }
-               else if (compare(line, "14", 2) && filetype == NTF_MERIDIAN) {
+               else if (dXstring::beginsWith<std::string>(line, "14") && filetype == NTF_MERIDIAN) {
                   // Meridian record for this line:
                   // finish up and add if featcode is recognised
                   // (goodness knows how we are supposed to know in advance what sort of feature we are given)
                   if (line.length() > 25 && line.substr(23,2) == "FC") { 
-                     pstring featcodestr = line.substr(25,4);
-                     size_t pos = featcodes.searchindex( featcodestr.c_int() );
-                     if (pos != paftl::npos) {
+                     std::string featcodestr = line.substr(25,4);
+                     size_t pos = featcodes.searchindex( stoi(featcodestr) );
+                     if (pos != std::string::npos) {
                         addGeom(pos,geom);
                      }
                   }
@@ -272,7 +263,7 @@ void NtfMap::open(const pqvector<string>& fileset, Communicator *comm)
                      parsing = 3;
                   }
                }
-               if (tokens.tail()[tokens.tail().length()-2] == '0') { // 0 here indicates no continuation
+               if (tokens.back()[tokens.back().length()-2] == '0') { // 0 here indicates no continuation
                   if (filetype == NTF_LANDLINE) {
                      addGeom(currpos,geom);
                      parsing = 0;

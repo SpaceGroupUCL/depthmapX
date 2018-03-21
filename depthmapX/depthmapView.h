@@ -14,13 +14,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-#include <qwidget.h>
+#include "depthmapX/mapview.h"
 #include <QRect>
 #include <QPoint>
 #include <QSize>
 
 #include <qpixmap.h>
-#include "GraphDoc.h"
 
 #define MK_LBUTTON          0x0001
 #define MK_RBUTTON          0x0002
@@ -28,26 +27,19 @@
 #define MK_CONTROL          0x0008
 #define MK_MBUTTON          0x0010
 
-class QDepthmapView : public QWidget
+class QDepthmapView : public MapView
 {
     Q_OBJECT
 
 public:
-	QGraphDoc* pDoc;
-
-    QDepthmapView(const QString &settingFilename);
+    QDepthmapView(QGraphDoc &pDoc,
+                  Settings &settings,
+                  QWidget *parent = Q_NULLPTR);
     ~QDepthmapView();
     QSize sizeHint() const;
-	void SetRedrawflag();
-	bool loadFile(const QString &fileName);
-	bool newFile();
+    void SetRedrawflag();
     void saveToFile();
-	QString m_open_file_name;
-	QString currentFile() {return m_open_file_name;}
 
-    const QString &m_settingsFile;
-
-	int m_curr_seleted;
 	bool m_showgrid;
 	bool m_showtext;
 	bool m_showlinks;
@@ -67,41 +59,42 @@ public:
          GENERICJOIN = 0x20000, JOINB = 0x00400, JOIN = 0x20001, UNJOIN = 0x20002
    };
    enum {FULLFILL = 0, SEMIFILL = 1, AUGMENT = 2}; // AV TV
+   virtual void OnModeJoin() override;
+   virtual void OnModeUnjoin() override;
+   virtual void OnModeSeedAxial() override;
+   virtual void OnModeIsovist() override;
+   virtual void OnModeTargetedIsovist() override;
+   virtual void OnEditLineTool() override;
+   virtual void OnEditPolygonTool() override;
+   virtual void OnEditFill() override;
+   virtual void OnEditSemiFill() override;
+   virtual void OnEditAugmentFill() override; // AV TV
+   virtual void OnViewZoomIn() override;
+   virtual void OnViewZoomOut() override;
+   virtual void OnViewPan() override;
+   virtual void OnViewZoomsel() override;
+   virtual void OnEditSelect() override;
+   virtual void OnEditPencil() override;
+   virtual void postLoadFile() override;
+   virtual void OnEditCopy() override;
+   virtual void OnEditSave() override;
+   virtual void OnViewZoomToRegion(QtRegion regionToZoomAt) override;
 
 protected:
-    virtual void timerEvent(QTimerEvent *event);
-    virtual void paintEvent(QPaintEvent *event);
-    virtual void resizeEvent(QResizeEvent *event);
-    virtual void mouseMoveEvent(QMouseEvent *event);
-    virtual void mousePressEvent(QMouseEvent *event);
-    virtual void mouseReleaseEvent(QMouseEvent *event);
-	virtual void closeEvent(QCloseEvent *event);
-	virtual void mouseDoubleClickEvent(QMouseEvent *e);
-	virtual void wheelEvent(QWheelEvent *e);
-	virtual void keyPressEvent(QKeyEvent *event);
-	virtual bool eventFilter(QObject *object, QEvent *e);
+    virtual void timerEvent(QTimerEvent *event) override;
+    virtual void paintEvent(QPaintEvent *event) override;
+    virtual void resizeGL(int w, int h) override;
+    virtual void mouseMoveEvent(QMouseEvent *event) override;
+    virtual void mousePressEvent(QMouseEvent *event) override;
+    virtual void mouseReleaseEvent(QMouseEvent *event) override;
+    virtual void closeEvent(QCloseEvent *event) override;
+    virtual void mouseDoubleClickEvent(QMouseEvent *e) override;
+    virtual void wheelEvent(QWheelEvent *e) override;
+    virtual bool eventFilter(QObject *object, QEvent *e) override;
 
 public slots:
-	int OnRedraw(int wParam, int lParam);
-	void OnEditEraser();
-	void OnEditFill();
-	void OnEditSemiFill();
-    void OnEditAugmentFill(); // AV TV
-	void OnViewZoomIn();
-	void OnViewZoomOut();
-	void OnViewMove();
-	void OnEditSelect();
-	void OnEditPencil();
-	void OnEditCopy();
-	void OnEditSave();
-	void OnModeJoin();
-	void OnModeUnjoin();
-	void OnToolsAxialMap();
-	void OnModeIsovist();
-	void OnModeHalfovist();
-	void OnEditLineTool();
-	void OnEditPolygon();
-	void OnViewZoomsel();
+    int OnRedraw(int wParam, int lParam);
+    void OnEditEraser();
 
 private:
    int m_mouse_mode;
@@ -195,7 +188,7 @@ private:
    void DrawPointHandle(QPainter *pDC, QPoint pt);
 
    //
-   void OutputEPS( ofstream& stream, QGraphDoc *pDoc );
+   void OutputEPS(ofstream& stream, QGraphDoc *pDoc , bool includeScale = true);
    void OutputEPSMap(ofstream& stream, ShapeMap& map, QtRegion& logicalviewport, QRect& rect, float spacer);
    void OutputEPSLine(ofstream& stream, Line& line, int spacer, QtRegion& logicalviewport, QRect& rect);
    void OutputEPSPoly(ofstream& stream, const SalaShape& shape, int spacer, QtRegion& logicalviewport, QRect& rect);
@@ -213,7 +206,9 @@ private:
    void AltMode();
    void BeginJoin();
    void BeginDrag(QPoint point);
-   
+
+   QPixmap *m_pixmap;
+
 };
    
    

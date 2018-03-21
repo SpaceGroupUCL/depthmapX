@@ -210,6 +210,24 @@ TEST_CASE("Run Tests","Check we only run if it's appropriate"){
         REQUIRE_THROWS_WITH(cmdP.run(perfSink.get()), Catch::Contains("Trying to run with invalid command line parameters"));
     }
 
+    SECTION("Fail run with version on the command line")
+    {
+        CommandLineParser cmdP(factoryMock.get());
+        ArgumentHolder ah{"prog", "-v", "-m", "TEST1", "-f", "inputfile.graph", "-o", "outputfile.graph"};
+        cmdP.parse(ah.argc(), ah.argv());
+        REQUIRE_FALSE(cmdP.isValid());
+        REQUIRE_THROWS_WITH(cmdP.run(perfSink.get()), Catch::Contains("Trying to run with invalid command line parameters"));
+    }
+
+    SECTION("Fail run with version on the command line as last parameter")
+    {
+        CommandLineParser cmdP(factoryMock.get());
+        ArgumentHolder ah{"prog", "-m", "TEST1", "-f", "inputfile.graph", "-o", "outputfile.graph", "-v"};
+        cmdP.parse(ah.argc(), ah.argv());
+        REQUIRE_FALSE(cmdP.isValid());
+        REQUIRE_THROWS_WITH(cmdP.run(perfSink.get()), Catch::Contains("Trying to run with invalid command line parameters"));
+    }
+
     SECTION("Fail run without sub parser")
     {
         CommandLineParser cmdP(factoryMock.get());
@@ -248,10 +266,18 @@ TEST_CASE("Invalid Parser Need Help", "CheckForHelp")
     Mock<IModeParserFactory> factoryMock;
     When(Method(factoryMock,getModeParsers)).AlwaysReturn(parsers);
 
-    CommandLineParser cmdP(factoryMock.get());
-    ArgumentHolder ah{ "prog", "-h"};
-    cmdP.parse(ah.argc(), ah.argv());
-    REQUIRE_FALSE(cmdP.isValid());
+    SECTION("Help requested")
+    {
+        CommandLineParser cmdP(factoryMock.get());
+        ArgumentHolder ah{ "prog", "-h"};
+        cmdP.parse(ah.argc(), ah.argv());
+        REQUIRE_FALSE(cmdP.isValid());
+    }
+    SECTION("Version requested")
+    {
+        CommandLineParser cmdP(factoryMock.get());
+        ArgumentHolder ah{ "prog", "-v"};
+        cmdP.parse(ah.argc(), ah.argv());
+        REQUIRE_FALSE(cmdP.isValid());
+    }
 }
-
-

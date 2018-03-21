@@ -36,7 +36,7 @@ public:
 	//}}AFX_DATA
 
 	int m_gatelayer;
-	pvecstring m_names;
+    std::vector<std::string> m_names;
 	void UpdateData(bool value);
 	void showEvent(QShowEvent * event);
 

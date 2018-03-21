@@ -35,11 +35,13 @@ public:
     const std::string &getOuputFile() const {return _outputFile;}
     const std::string &getTimingFile() const {return _timingFile;}
     bool isValid() const { return _valid; }
+    bool printVersionMode() const { return _printVersionMode; }
     bool simpleMode() const { return _simpleMode; }
     const IModeParser& modeOptions() const{ return *_modeParser;};
 
 
     void printHelp();
+    void printVersion();
     void run(IPerformanceSink &perfWriter) const;
 
 
@@ -48,6 +50,7 @@ private:
     std::string _outputFile;
     std::string _timingFile;
     bool _valid;
+    bool _printVersionMode;
     bool _simpleMode;
 
     const IModeParserFactory &_parserFactory;

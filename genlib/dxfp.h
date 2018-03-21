@@ -26,6 +26,8 @@
 // The parser reads in vertices, lines and polylines, and stores them in the
 // defined layers.  It also reads in any line types defined.
 
+#include <map>
+
 class DxfToken;
 
 class DxfTableRow;
@@ -60,7 +62,7 @@ class DxfToken {
 public:
    int code;
    int size;
-   pstring data;
+   std::string data;
    //
    DxfToken();
    friend istream& operator >> (istream& stream, DxfToken& token);
@@ -74,10 +76,10 @@ class DxfTableRow
 {
    friend class DxfParser;
 protected:
-   pstring m_name;
+   std::string m_name;
 public:
-   DxfTableRow( const pstring& name = "" );
-   const pstring& getName() const
+   DxfTableRow( const std::string& name = "" );
+   const std::string& getName() const
       { return m_name; }
    virtual ~DxfTableRow(){}
 protected:
@@ -237,7 +239,7 @@ public:
 protected:
    int m_attributes;
    int m_vertex_count;
-   prefvec<DxfVertex> m_vertices;
+   std::vector<DxfVertex> m_vertices;
 public:
    DxfPolyLine( int tag = -1 );
    void clear();  // for reuse when parsing
@@ -331,6 +333,59 @@ protected:
    bool parse( const DxfToken& token, DxfParser *parser );
 };
 
+
+class DxfEllipse : public DxfEntity, public DxfRegion
+{
+   friend class DxfParser;
+   DxfVertex m_centre;
+   DxfVertex m_majorAxisEndPoint;
+   DxfVertex m_extrusionDirection;
+   double m_minorMajorAxisRatio;
+   mutable double m_start;
+   double m_end;
+public:
+   DxfEllipse( int tag = -1 );
+   void clear();  // for reuse when parsing
+   // getVertex splits into number of segments
+   int numSegments(int segments) const;
+   DxfVertex getVertex(int i, int segments) const;
+   const DxfVertex& getCentre() const
+   { return m_centre; }
+   const double& getMinorMajorAxisRatio() const
+   { return m_minorMajorAxisRatio; }
+   int getAttributes() const;
+   const DxfRegion& getBoundingBox();
+   //
+   // some basic manipulation
+   void scale(const DxfVertex& base_vertex, const DxfVertex& scale)
+   { m_centre.scale(base_vertex, scale);
+
+       m_majorAxisEndPoint.x *= scale.x;
+       m_majorAxisEndPoint.y *= scale.y;
+
+     // this is rather tricky to do, need to think more than just reflect around 0,0,0
+     if (m_start != m_end && (scale.x < 0 || scale.y < 0)) {
+        reflect(scale.x, scale.y);
+     }
+     DxfRegion::scale(base_vertex, scale);
+   }
+   void reflect(double x, double y);
+   void rotate(const DxfVertex& base_vertex, double angle)
+   { m_centre.rotate(base_vertex, angle);
+     // this is rather tricky to do, need to think more than just rotate around 0,0,0
+     if (m_start != m_end) {
+        m_start += angle; m_end += angle;
+     }
+     DxfRegion::rotate(base_vertex, angle);
+   }
+   void translate(const DxfVertex& translation)
+   { m_centre.translate(translation);
+     DxfRegion::translate(translation); }
+   //
+protected:
+   bool parse( const DxfToken& token, DxfParser *parser );
+};
+
 class DxfCircle : public DxfEntity, public DxfRegion
 {
    friend class DxfParser;
@@ -381,8 +436,8 @@ protected:
    int m_attributes;
    int m_ctrl_pt_count;
    int m_knot_count;
-   prefvec<DxfVertex> m_ctrl_pts;
-   pvecdouble m_knots;
+   std::vector<DxfVertex> m_ctrl_pts;
+   std::vector<double> m_knots;
 public:
    DxfSpline( int tag = -1 );
    void clear();  // for reuse when parsing
@@ -417,7 +472,7 @@ class DxfInsert : public DxfEntity, public DxfRegion
    friend class DxfParser;
    friend class DxfLayer;
 protected:
-   DxfBlock *m_block;
+   std::string m_blockName;
    DxfVertex m_translation;
    DxfVertex m_scale;
    double m_rotation;
@@ -439,7 +494,7 @@ class DxfLineType : public DxfTableRow
 {
    friend class DxfParser;
 public:
-   DxfLineType( const pstring& name = "" );
+   DxfLineType( const std::string& name = "" );
 protected:
    bool parse( const DxfToken& token, DxfParser *parser );
 };
@@ -451,21 +506,24 @@ class DxfLayer : public DxfTableRow, public DxfRegion
    friend class DxfParser;
 protected:
    // Originally was going to be clever, but it's far easier to have a list for each type:
-   prefvec<DxfVertex>   m_points;
-   prefvec<DxfLine>     m_lines;
-   prefvec<DxfPolyLine> m_poly_lines;
-   prefvec<DxfArc>      m_arcs;
-   prefvec<DxfCircle>   m_circles;
-   prefvec<DxfSpline>   m_splines;
-   int                  m_total_point_count;
-   int                  m_total_line_count;
+   std::vector<DxfVertex>   m_points;
+   std::vector<DxfLine>     m_lines;
+   std::vector<DxfPolyLine> m_poly_lines;
+   std::vector<DxfArc>      m_arcs;
+   std::vector<DxfEllipse>  m_ellipses;
+   std::vector<DxfCircle>   m_circles;
+   std::vector<DxfSpline>   m_splines;
+   std::vector<DxfInsert>   m_inserts;
+   int                  m_total_point_count = 0;
+   int                  m_total_line_count = 0;
 public:
-   DxfLayer( const pstring& name = "" );
+   DxfLayer( const std::string& name = "" );
    //
    const DxfVertex& getPoint( int i ) const;
    const DxfLine& getLine( int i ) const;
    const DxfPolyLine& getPolyLine( int i ) const;
    const DxfArc& getArc( int i ) const;
+   const DxfEllipse& getEllipse( int i ) const;
    const DxfCircle& getCircle( int i ) const;
    const DxfSpline& getSpline( int i ) const;
    //
@@ -473,6 +531,7 @@ public:
    int numLines() const;
    int numPolyLines() const;
    int numArcs() const;
+   int numEllipses() const;
    int numCircles() const;
    int numSplines() const;
    //
@@ -482,7 +541,7 @@ public:
       { return m_total_line_count; }
    //
    // this merges an insert (so the insert remains flattened)
-   void insert( DxfInsert& insert, DxfParser *parser );
+   void insert(DxfInsert& insert, DxfParser *parser);
 protected:
    bool parse( const DxfToken& token, DxfParser *parser );
 };
@@ -494,7 +553,7 @@ class DxfBlock : public DxfLayer
 protected:
    DxfVertex m_base_point;
 public:
-   DxfBlock( const pstring& name = "" );
+   DxfBlock( const std::string& name = "" );
    //
 protected:
    bool parse( const DxfToken& token, DxfParser *parser );
@@ -512,15 +571,15 @@ public:
    enum section_t { HEADER, CLASSES, TABLES, BLOCKS, ENTITIES, OBJECTS, _EOF };
    enum subsection_t { EXTMIN, EXTMAX,
                        LTYPE_TABLE, LTYPE_ROW, LAYER_TABLE, LAYER_ROW, BLOCK,
-                       POINT, LINE, POLYLINE, LWPOLYLINE, ARC, CIRCLE, SPLINE, INSERT, VERTEX,
+                       POINT, LINE, POLYLINE, LWPOLYLINE, ARC, ELLIPSE, CIRCLE, SPLINE, INSERT, VERTEX,
                        ENDSEC };
 protected:
-   comm_time_t            m_time;
+   time_t            m_time;
 protected:
    DxfRegion              m_region;
-   pqvector<DxfLayer>     m_layers;
-   pqvector<DxfBlock>     m_blocks;
-   pqvector<DxfLineType>  m_line_types;
+   std::map<std::string, DxfLayer>     m_layers;
+   std::map<std::string, DxfBlock>     m_blocks;
+   std::map<std::string, DxfLineType>  m_line_types;
    //
    long m_size;
    Communicator *m_communicator;
@@ -536,15 +595,15 @@ public:
    //
    const DxfVertex& getExtMin() const;
    const DxfVertex& getExtMax() const;
-   const DxfLayer& getLayerNum( const int i ) const;
-   DxfLayer *getLayer( const pstring& layer_name ); // const; <- removed as will have to add layer when DXF hasn't declared one
-   const DxfLineType& getLineType( const int i ) const;
-   DxfLineType *getLineType( const pstring& line_type_name ); // const;
+   DxfLayer *getLayer( const std::string& layer_name ); // const; <- removed as will have to add layer when DXF hasn't declared one
+   DxfLineType *getLineType( const std::string& line_type_name ); // const;
    //
    int numLayers() const;
    int numLineTypes() const;
    //
    friend istream& operator >> (istream& stream, DxfParser& dxfp);
+
+   std::map<std::string, DxfLayer> getLayers() { return m_layers; }
 };
 
 ///////////////////////////////////////////////////////////////////////////////

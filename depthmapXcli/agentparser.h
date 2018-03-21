@@ -43,13 +43,14 @@ public:
                   "    bin-angle (Per bin angle weighted)\n"\
                   "    bin-far-dist-angle (Per bin far-distance and angle weighted)\n"\
                   "    bin-memory (Per bin memory)\n"\
-                  "-ats set total system timesteps\n"\
-                  "-arr set agent release rate (likelyhood of release per timestep)\n"\
-                  "-atrails record trails for this amount of agents (set to 0 to record all)\n"\
-                  "-afov set agent field-of-view (bins)\n"\
-                  "-asteps set agent steps before turn decision\n"\
-                  "-alife set agent total lifetime (in timesteps)\n"\
-                  "-alocrand <seed> set agents to start at random locations with specific seed (0 to 10)\n"\
+                  "-ats <timesteps> set total system timesteps\n"\
+                  "-arr <rate> set agent release rate (likelyhood of release per timestep)\n"\
+                  "-atrails <no of trails> record trails for this amount of agents (set to 0 to record all"\
+                           ", with max possible currently = 50)\n"\
+                  "-afov <fov> set agent field-of-view (bins)\n"\
+                  "-asteps <steps> set agent steps before turn decision\n"\
+                  "-alife <timesteps> set agent total lifetime (in timesteps)\n"\
+                  "-alocseed <seed> set agents to start at random locations with specific seed (0 to 10)\n"\
                   "-alocfile <agent starting points file>\n"\
                   "-aloc <single agent starting point coordinates> provided in csv (x1,y1) "\
                   "for example \"0.1,0.2\". Provide multiple times for multiple links\n"\

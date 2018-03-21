@@ -19,6 +19,7 @@
 #include "salalib/entityparsing.h"
 #include "runmethods.h"
 #include <sstream>
+#include <cstring>
 
 using namespace depthmapX;
 
@@ -29,7 +30,7 @@ void VisPrepParser::parse(int argc, char ** argv)
     std::string pointFile;
     for ( int i = 1; i < argc; ++i )
     {
-        if ( strcmp ("-pg", argv[i]) == 0)
+        if ( std::strcmp ("-pg", argv[i]) == 0)
         {
             if (m_grid >= 0)
             {
@@ -42,7 +43,7 @@ void VisPrepParser::parse(int argc, char ** argv)
                 throw CommandLineException(std::string("-pg must be a number >0, got ") + argv[i]);
             }
         }
-        else if ( strcmp ("-pp", argv[i]) == 0)
+        else if ( std::strcmp ("-pp", argv[i]) == 0)
         {
             if (!pointFile.empty())
             {
@@ -55,12 +56,12 @@ void VisPrepParser::parse(int argc, char ** argv)
                 message << "Invalid fill point provided ("
                         << argv[i]
                         << "). Should only contain digits dots and commas"
-                        << flush;
+                        << std::flush;
                 throw CommandLineException(message.str().c_str());
             }
             points.push_back(argv[i]);
         }
-        else if ( strcmp("-pf", argv[i]) == 0 )
+        else if ( std::strcmp("-pf", argv[i]) == 0 )
         {
             if (!points.empty())
             {
@@ -69,7 +70,7 @@ void VisPrepParser::parse(int argc, char ** argv)
             ENFORCE_ARGUMENT("-pf", i)
             pointFile = argv[i];
         }
-        else if ( strcmp("-pr", argv[i]) == 0)
+        else if ( std::strcmp("-pr", argv[i]) == 0)
         {
             ENFORCE_ARGUMENT("-pr", i);
             m_maxVisibility = std::atof(argv[i]);
@@ -80,7 +81,7 @@ void VisPrepParser::parse(int argc, char ** argv)
                 throw CommandLineException(message.str());
             }
         }
-        else if ( strcmp("-pb", argv[i]) == 0 )
+        else if ( std::strcmp("-pb", argv[i]) == 0 )
         {
             m_boundaryGraph = true;
         }
@@ -101,10 +102,10 @@ void VisPrepParser::parse(int argc, char ** argv)
         if (!pointsStream)
         {
             std::stringstream message;
-            message << "Failed to load file " << pointFile << ", error " << strerror(errno) << flush;
+            message << "Failed to load file " << pointFile << ", error " << std::strerror(errno) << std::flush;
             throw depthmapX::RuntimeException(message.str().c_str());
         }
-        vector<Point2f> parsed = EntityParsing::parsePoints(pointsStream, '\t');
+        std::vector<Point2f> parsed = EntityParsing::parsePoints(pointsStream, '\t');
         m_fillPoints.insert(std::end(m_fillPoints), std::begin(parsed), std::end(parsed));
     }
     else if(!points.empty())
@@ -117,7 +118,7 @@ void VisPrepParser::parse(int argc, char ** argv)
         {
             pointsStream << "\n" << *iter;
         }
-        vector<Point2f> parsed = EntityParsing::parsePoints(pointsStream, ',');
+        std::vector<Point2f> parsed = EntityParsing::parsePoints(pointsStream, ',');
         m_fillPoints.insert(std::end(m_fillPoints), std::begin(parsed), std::end(parsed));
 
     }

@@ -14,6 +14,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ColumnPropertiesDlg.h"
+#include "genlib/stringutils.h"
 
 CColumnPropertiesDlg::CColumnPropertiesDlg(AttributeTable *table, int col, QWidget *parent)
 : QDialog(parent)
@@ -109,16 +110,16 @@ void CColumnPropertiesDlg::UpdateData(bool value)
 		freqrows = true;
 		unit = (summary_all[2] - summary_all[1]) / 10.0;
 		for (int i = 0; i < 10; i++) {
-			pstring name;
+            std::string name;
 			if (i == 0) {
-				name = pstringify(summary_all[1]+unit,"< %f");
+                name = dXstring::formatString(summary_all[1]+unit,"< %f");
 			}
 			else if (i == 9) {
-				name = pstringify(summary_all[2]-unit,"> %f");
+                name = dXstring::formatString(summary_all[2]-unit,"> %f");
 			}
 			else {
-				name = pstringify(summary_all[1]+unit*i,"%f") + " to " +
-					pstringify(summary_all[1]+unit*(i+1),"%f");
+                name = dXstring::formatString(summary_all[1]+unit*i,"%f") + " to " +
+                    dXstring::formatString(summary_all[1]+unit*(i+1),"%f");
 			}
 			// Unicode conversion a bit of a mess here AT (01.02.11)
 			rows.push_back( QString(name.c_str()) );

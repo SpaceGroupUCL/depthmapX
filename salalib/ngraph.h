@@ -20,9 +20,12 @@
 #ifndef __NGRAPH_H__
 #define __NGRAPH_H__
 
+#include <set>
+
 class PointMap;
 struct MetricPair;
 struct MetricTriple;
+struct AngularTriple;
 
 struct PixelVec
 {
@@ -35,10 +38,10 @@ struct PixelVec
    PixelRef end() const
    { return m_end; }
    //
-   ifstream& read(ifstream& stream, int version, const char dir);
-   ifstream& read(ifstream& stream, int version, const char dir, const PixelVec& context);
-   ofstream& write(ofstream& stream, const char dir);
-   ofstream& write(ofstream& stream, const char dir, const PixelVec& context);
+   std::istream &read(std::istream &stream, int version, const char dir);
+   std::istream &read(std::istream &stream, int version, const char dir, const PixelVec& context);
+   std::ofstream& write(std::ofstream& stream, const char dir);
+   std::ofstream& write(std::ofstream& stream, const char dir, const PixelVec& context);
 };
 
 class Bin
@@ -61,10 +64,10 @@ public:
    ~Bin()
    { if (m_pixel_vecs) delete [] m_pixel_vecs; m_pixel_vecs = NULL; }
    //
-   void make(const PixelRefList& pixels, char m_dir);
-   void extractUnseen(PixelRefList& pixels, PointMap *pointdata, int binmark);
-   void extractMetric(pqvector<MetricTriple>& pixels, PointMap *pointdata, const MetricTriple& curs);
-   void extractAngular(pqvector<AngularTriple>& pixels, PointMap *pointdata, const AngularTriple& curs);
+   void make(const PixelRefVector& pixels, char m_dir);
+   void extractUnseen(PixelRefVector& pixels, PointMap *pointdata, int binmark);
+   void extractMetric(std::set<MetricTriple> &pixels, PointMap *pointdata, const MetricTriple& curs);
+   void extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata, const AngularTriple& curs);
    //
    int count() const 
    { return m_node_count; }
@@ -84,16 +87,16 @@ protected:
    mutable int m_curvec;
    mutable PixelRef m_curpix;
 public:
-   void contents(PixelRefList& hood);
+   void contents(PixelRefVector& hood);
    void first() const;
    void next() const;
    bool is_tail() const;
    PixelRef cursor() const;
    //
-   ifstream& read(ifstream& stream, int version);
-   ofstream& write(ofstream& stream, int version);
+   std::istream &read(std::istream &stream, int version);
+   std::ofstream& write(std::ofstream& stream, int version);
    //
-   friend ostream& operator << (ostream& stream, const Bin& bin);
+   friend std::ostream& operator << (std::ostream& stream, const Bin& bin);
 };
 
 class Node
@@ -103,7 +106,7 @@ protected:
    Bin m_bins[32];
 public:
    // testing some agent stuff:
-   pvector<PixelRef> m_occlusion_bins[32];
+   std::vector<PixelRef> m_occlusion_bins[32];
 public:
    Node()
    { ; }
@@ -114,10 +117,10 @@ public:
    ~Node()
    { ; }
    // Note: this function clears the bins as it goes
-   void make(const PixelRef pix, PixelRefList *bins, float *bin_far_dists, int q_octants);
-   void extractUnseen(PixelRefList& pixels, PointMap *pointdata, int binmark);
-   void extractMetric(pqvector<MetricTriple>& pixels, PointMap *pointdata, const MetricTriple& curs);
-   void extractAngular(pqvector<AngularTriple>& pixels, PointMap *pointdata, const AngularTriple& curs);
+   void make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, int q_octants);
+   void extractUnseen(PixelRefVector& pixels, PointMap *pointdata, int binmark);
+   void extractMetric(std::set<MetricTriple> &pixels, PointMap *pointdata, const MetricTriple& curs);
+   void extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata, const AngularTriple& curs);
    bool concaveConnected();
    bool fullyConnected();
    //
@@ -148,16 +151,16 @@ protected:
    // Conversion back to old fashioned schema:
    mutable int m_curbin;
 public:
-   void contents(PixelRefList& hood) const;
+   void contents(PixelRefVector& hood) const;
    void first() const;
    void next() const;
    bool is_tail() const;
    PixelRef cursor() const;
    //
-   ifstream& read(ifstream& stream, int version);
-   ofstream& write(ofstream& stream, int version);
+   std::istream &read(std::istream &stream, int version);
+   std::ofstream& write(std::ofstream& stream, int version);
    //
-   friend ostream& operator << (ostream& stream, const Node& node);
+   friend std::ostream& operator << (std::ostream& stream, const Node& node);
 };
 
 // Two little helpers:

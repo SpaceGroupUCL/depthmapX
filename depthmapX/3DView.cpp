@@ -55,11 +55,10 @@
 // Q3DView
 
 Q3DView::Q3DView(QWidget *parent, QGraphDoc* doc)
-	: QGLWidget(QGLFormat(QGL::SampleBuffers), parent)
+    : QOpenGLWidget(parent)
 {
    m_points = NULL;
    m_pointcount = 0;
-   m_lock_draw = false;
    m_mouse_mode = ID_3D_ROT;//resouce
    m_mouse_mode_on = 0;
    m_key_mode_on = 0;
@@ -137,7 +136,7 @@ void Q3DView::timerEvent(QTimerEvent *event)
       if (!m_animating) {  // if animating will redraw below
          DrawScene();
       }
-      updateGL();
+      update();
    }
    else if (m_key_mode_on) {
       QSize diff(0,0);
@@ -186,10 +185,10 @@ void Q3DView::timerEvent(QTimerEvent *event)
                      PixelRef pix = pointmap.pixelate(p); // note, take the pix before you scale!
                      p.normalScale(m_region);
                      m_mannequins[i].advance(p);
-                     size_t x = m_pixels.searchindex(pix);
-                     if (x != paftl::npos) {
-                        if (m_pixels[x].m_value < 10) {
-                           m_pixels[x].m_value += 1;
+                     auto iter = depthmapX::getMapAtIndex(m_pixels, pix);
+                     if (iter != m_pixels.end()) {
+                        if (iter->second.m_value < 10) {
+                           iter->second.m_value += 1;
                         }
                      }
                   }
@@ -207,10 +206,10 @@ void Q3DView::timerEvent(QTimerEvent *event)
                //
                // pretty coloured pixels
                PixelRef pix = m_agents[j].getNode();
-               size_t x = m_pixels.searchindex(pix);
-               if (x != paftl::npos) {
-                  if (m_pixels[x].m_value < 10) {
-                     m_pixels[x].m_value += 1;
+               auto iter = depthmapX::getMapAtIndex(m_pixels, pix);
+               if (iter != m_pixels.end()) {
+                  if (iter->second.m_value < 10) {
+                     iter->second.m_value += 1;
                   }
                }
             }
@@ -235,10 +234,10 @@ void Q3DView::initializeGL()
 
 void Q3DView::DrawScene()
 {
-   if (m_lock_draw) {
-      return;
-   }
-   m_lock_draw = true;
+    std::unique_lock<std::mutex> lock(m_draw_mutex, std::try_to_lock);
+    if (!lock.owns_lock()){
+        return;
+    }
    
    makeCurrent();
 
@@ -247,7 +246,7 @@ void Q3DView::DrawScene()
    QRgb bg = qRgb(0,0,0);
    QRgb fg = qRgb(128,128,128);
 
-   glClearColor((GLfloat)GetRValue(bg)/255.0f,(GLfloat)GetGValue(bg)/255.0f,(GLfloat)GetBValue(bg)/255.0f, 0.0f);
+   glClearColor((GLfloat)GetRValue(bg)/255.0f,(GLfloat)GetGValue(bg)/255.0f,(GLfloat)GetBValue(bg)/255.0f, 1.0f);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
    glColor3f(1.0f,0.0f,0.0f);
@@ -290,8 +289,8 @@ void Q3DView::DrawScene()
          }
       }
       else {
-         for (size_t i = 0; i < m_pixels.size(); i++) {
-            int& value = m_pixels[i].m_value;
+         for (auto& pixel: m_pixels) {
+            int& value = pixel.second.m_value;
             if (value != -1) {
                if (pafrand() % 10000 == 0) {
                   value--;
@@ -299,7 +298,7 @@ void Q3DView::DrawScene()
                PafColor color;
                color.makeAxmanesque(float(value)/10.0f);
                glColor3f(color.redf(),color.greenf(),color.bluef());
-               Point2f& p = m_pixels[i].m_point;
+               Point2f& p = pixel.second.m_point;
                glPushMatrix();
                glTranslatef(p.x,p.y,0.0f);
                glVertexPointer(3, GL_FLOAT, 0, m_rect);
@@ -323,8 +322,6 @@ void Q3DView::DrawScene()
 #else
     ;
 #endif
-
-   m_lock_draw = false;
 }
 
 void Q3DView::Reshape(int x, int y)
@@ -362,11 +359,8 @@ void Q3DView::ReloadLineData()
 
    if (pDoc->m_meta_graph && pDoc->m_meta_graph->getState() & MetaGraph::LINEDATA) {
       // should really check communicator is not open...
-      pDoc->m_meta_graph->setLock(this);
-      while (m_lock_draw) {
-         //sleep(1);
-      }
-      m_lock_draw = true;
+      auto mgraphLock = pDoc->m_meta_graph->getLock();
+      std::unique_lock<std::mutex> drawLock(m_draw_mutex);
 
       SuperSpacePixel& superspacepix = *(pDoc->m_meta_graph);
 
@@ -374,14 +368,16 @@ void Q3DView::ReloadLineData()
       for (int i = 0; i < superspacepix.size(); i++) {
          for (int j = 0; j < superspacepix.at(i).size(); j++) {
             if (superspacepix.at(i).at(j).isShown()) {
-               if (m_region.isNull()) {
+               if (m_region.atZero()) {
                   m_region = superspacepix.at(i).at(j).getRegion();
                }
                else {
                   m_region = runion(m_region,superspacepix.at(i).at(j).getRegion());
                }
-               for (int k = 0; k < superspacepix.at(i).at(j).getAllShapes().size(); k++) {
-                  SalaShape& shape = superspacepix.at(i).at(j).getAllShapes().at(k);
+
+               auto refShapes = superspacepix.at(i).at(j).getAllShapes();
+               for (auto& refShape: refShapes) {
+                  SalaShape& shape = refShape.second;
                   if (shape.isLine()) {
                      lines.push_back(shape.getLine());
                   }
@@ -427,9 +423,6 @@ void Q3DView::ReloadLineData()
             m_points[i*3+2] = 0.0;
          }
       }
-
-      m_lock_draw = false;
-      pDoc->m_meta_graph->releaseLock(this);
    }
 
    // note: as affects region, will also affect point data:
@@ -452,7 +445,7 @@ void Q3DView::ReloadPointData()
 
    if (pDoc->m_meta_graph && pDoc->m_meta_graph->viewingProcessedPoints()) {
       //
-      if (!m_region.isNull()) {
+      if (!m_region.atZero()) {
          GLfloat unit = pDoc->m_meta_graph->getDisplayedPointMap().getSpacing() / m_region.width();
          m_male_template.Init(unit, true);
          m_female_template.Init(unit, false);
@@ -474,7 +467,7 @@ void Q3DView::ReloadPointData()
          PixelRef pix = table.getRowKey(i);
          Point2f p = map.depixelate(pix);
          p.normalScale(m_region);
-         m_pixels.add(pix,C3DPixelData(p));
+         m_pixels.insert(std::make_pair(pix,C3DPixelData(p)));
       }
    }
    else {
@@ -527,17 +520,14 @@ void Q3DView::OnToolsAgentLoadProgram()
 	   return;
    }
 
-   pstring filename = pstring(infiles[0].toLatin1());
+   std::string filename = infiles[0].toStdString();
    
    if (!filename.empty()) {
       m_animating = false;
-      while (m_lock_draw) {
-         //sleep(1);
-      }
-      m_lock_draw = true;
+      std::unique_lock<std::mutex> lock(m_draw_mutex);
+
       m_agents.clear();
       m_mannequins.clear();
-      m_lock_draw = false;
       if (!m_agent_program.open(filename)) {
 		  QMessageBox::warning(this, tr("depthmapX"), tr("Unable to understand agent program"), QMessageBox::Ok, QMessageBox::Ok);
       }
@@ -573,10 +563,6 @@ void Q3DView::OnLButtonDown(unsigned int nFlags, QPoint point)
 {
     m_right_mouse = false;
 
-   while (m_lock_draw) {
-//      Sleep(1);
-   }
-
    switch (m_mouse_mode) {
    case ID_3D_PAN: case ID_3D_ROT: case ID_3D_ZOOM:
       m_mouse_mode_on = m_mouse_mode;
@@ -610,9 +596,7 @@ void Q3DView::OnRButtonDown(unsigned int nFlags, QPoint point)
 {
    m_right_mouse = true;
 
-   while (m_lock_draw) {
-//      Sleep(1);
-   }
+   std::unique_lock<std::mutex> lock(m_draw_mutex);
 
    m_mouse_origin = point;
 }
@@ -743,11 +727,7 @@ void Q3DView::CreateAgent(QPoint point)
       return;
    }
 
-   while (m_lock_draw) {
-      //sleep(1);
-   }
-   m_lock_draw = true;
-
+   std::unique_lock<std::mutex> lock(m_draw_mutex);
    bool animating = m_animating;
    m_animating = false;
 
@@ -755,7 +735,11 @@ void Q3DView::CreateAgent(QPoint point)
    GLint viewport[4];
    GLdouble mvmatrix[16], projmatrix[16];
 
+   glViewport(0, 0, width(), height());
    glGetIntegerv(GL_VIEWPORT, viewport);
+   Reshape(viewport[2], viewport[3]);
+   SetModelMat();
+
    glGetDoublev(GL_MODELVIEW_MATRIX, mvmatrix);
    glGetDoublev(GL_PROJECTION_MATRIX, projmatrix);
 
@@ -794,7 +778,6 @@ void Q3DView::CreateAgent(QPoint point)
    }
 
    m_animating |= animating;
-   m_lock_draw = false;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////
@@ -1148,19 +1131,15 @@ void Q3DView::OnToolsImportTraces()
 	   return;
    }
 
-   pstring filename = pstring(infiles[0].toLatin1());
+   std::string filename = infiles[0].toStdString();
    
    if (!filename.empty()) {
       m_animating = false;
-      while (m_lock_draw) {
-         //sleep(1);
-      }
-      m_lock_draw = true;
+      std::unique_lock<std::mutex> lock(m_draw_mutex);
       m_agents.clear();
       m_traces.clear();
       m_mannequins.clear();
-      m_lock_draw = false;
-      //
+            //
       ifstream file(filename.c_str());
       // Eva's XMLs do not have the header yet:
       xmlelement traceset;
@@ -1220,8 +1199,8 @@ void Q3DView::OnToolsAgentsStop()
          m_mannequins[i].m_nextloc = m_mannequins[i].m_startloc;
       }
    }
-   for (int j = 0; j < m_pixels.size(); j++) {
-      m_pixels[j].m_value = -1;
+   for (auto& pixel: m_pixels) {
+      pixel.second.m_value = -1;
    }
 }
 

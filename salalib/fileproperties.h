@@ -18,70 +18,71 @@
 #ifndef __FILEPROPERTIES_H__
 #define __FILEPROPERTIES_H__
 
+#include "genlib/stringutils.h"
 class FileProperties
 {
 protected:
-   pstring m_create_person;
-   pstring m_create_organization;
-   pstring m_create_date;
-   pstring m_create_program;
-   pstring m_title;
-   pstring m_location;
-   pstring m_description;
+   std::string m_create_person;
+   std::string m_create_organization;
+   std::string m_create_date;
+   std::string m_create_program;
+   std::string m_title;
+   std::string m_location;
+   std::string m_description;
 public:
    FileProperties() {;}
    virtual ~FileProperties() {;}
    //
-   void setProperties(const pstring& person, const pstring& organization, const pstring& date, const pstring& program)
+   void setProperties(const std::string& person, const std::string& organization, const std::string& date, const std::string& program)
    { m_create_person = person; m_create_organization = organization; m_create_date = date; m_create_program = program; }
-   void setTitle(const pstring& title)
+   void setTitle(const std::string& title)
    { m_title = title; }
-   void setLocation(const pstring& location)
+   void setLocation(const std::string& location)
    { m_location = location; }
-   void setDescription(const pstring& description)
+   void setDescription(const std::string& description)
    { m_description = description; }
    //
-   const pstring& getPerson() const
+   const std::string& getPerson() const
    { return m_create_person; }
-   const pstring& getOrganization() const
+   const std::string& getOrganization() const
    { return m_create_organization; }
-   const pstring& getDate() const
+   const std::string& getDate() const
    { return m_create_date; }
-   const pstring& getProgram() const
+   const std::string& getProgram() const
    { return m_create_program; }
-   const pstring& getTitle() const
+   const std::string& getTitle() const
    { return m_title; }
-   const pstring& getLocation() const
+   const std::string& getLocation() const
    { return m_location; }
-   const pstring& getDescription() const
+   const std::string& getDescription() const
    { return m_description; }
    //
-   bool read( ifstream& stream, int version );
+   bool read(istream &stream, int version );
    bool write( ofstream& stream );
 };
 
-inline bool FileProperties::read(ifstream& stream, int version)
+inline bool FileProperties::read(istream& stream, int version)
 {
-   m_create_person.read(stream);
-   m_create_organization.read(stream);
-   m_create_date.read(stream);
-   m_create_program.read(stream);
-   m_title.read(stream);
-   m_location.read(stream);
-   m_description.read(stream);
+   m_create_person=dXstring::readString(stream);
+   m_create_organization=dXstring::readString(stream);
+   m_create_date=dXstring::readString(stream);
+   m_create_program=dXstring::readString(stream);
+   m_title=dXstring::readString(stream);
+   m_location=dXstring::readString(stream);
+   m_description=dXstring::readString(stream);
 
    return true;
 }
 
 inline bool FileProperties::write(ofstream& stream)
 {
-   m_create_person.write(stream);
-   m_create_organization.write(stream);
-   m_create_date.write(stream);
-   m_create_program.write(stream);
-   m_title.write(stream);
-   m_location.write(stream);
-   m_description.write(stream);
+   dXstring::writeString(stream, m_create_person);
+   dXstring::writeString(stream, m_create_organization);
+   dXstring::writeString(stream, m_create_date);
+   dXstring::writeString(stream, m_create_program);
+   dXstring::writeString(stream, m_title);
+   dXstring::writeString(stream, m_location);
+   dXstring::writeString(stream, m_description);
 
    return true;
 }

@@ -18,7 +18,7 @@
 
 /////////////////////////////////////////////////////////////////////////////
 // Q3DView view
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QRect>
 #include <QPoint>
 #include <QSize>
@@ -88,7 +88,7 @@ struct C3DPixelData
 
 /////////////////////////////////////////////////////////////////////////////
 
-class Q3DView : public QGLWidget
+class Q3DView : public QOpenGLWidget
 {
    Q_OBJECT
 
@@ -106,7 +106,7 @@ public:
    QPainter *m_pDC;
    //
    bool m_quick_draw;
-   bool m_lock_draw;
+   std::mutex m_draw_mutex;
    bool m_animating;
    bool m_drawtrails;
    bool m_fill;
@@ -116,7 +116,7 @@ public:
    QtRegion m_region;
    float *m_points;
    float m_rect[4][3];
-   pqmap<int,C3DPixelData> m_pixels;
+   std::map<int,C3DPixelData> m_pixels;
    //
    int m_pointcount;
    //

@@ -183,13 +183,13 @@ struct AgentProgram
    void mutate();
    friend AgentProgram crossover(const AgentProgram& prog_a, const AgentProgram& prog_b);
    // to reload later:
-   void save(const pstring& filename);
-   bool open(const pstring& filename);
+   void save(const std::string& filename);
+   bool open(const std::string& filename);
 };
 
 struct AgentSet : public AgentProgram, public prefvec<Agent>
 {
-   pvecint m_release_locations;
+   std::vector<int> m_release_locations;
    int m_release_locations_seed = 0;
    double m_release_rate;
    int m_lifetime;
@@ -247,7 +247,7 @@ protected:
    int m_trail_num;
    //
    // for occlusion memory
-   pflipper<PixelRefList> m_occ_memory;
+   pflipper<PixelRefVector> m_occ_memory;
    //
    // extra memory of last observed values for Gibsonian agents:
    float m_last_los[9];

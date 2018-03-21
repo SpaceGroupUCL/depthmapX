@@ -94,4 +94,22 @@ namespace depthmapX {
         std::for_each(links.begin(), links.end(),
                       [&](const PixelRefPair &pair)->void{ currentMap.mergePixels(pair.a,pair.b); });
     }
+
+    std::vector<SimpleLine> getMergedPixelsAsLines(PointMap& currentMap)
+    {
+        std::vector<SimpleLine> mergedPixelsAsLines;
+        std::vector<std::pair<PixelRef, PixelRef>> mergedPixelPairs = currentMap.getMergedPixelPairs();
+
+        std::vector<std::pair<PixelRef, PixelRef>>::const_iterator iter = mergedPixelPairs.begin(), end =
+        mergedPixelPairs.end();
+        for ( ; iter != end; ++iter )
+        {
+            std::pair<PixelRef, PixelRef> pixelPair = *iter;
+            mergedPixelsAsLines.push_back(SimpleLine(
+                                              currentMap.depixelate(pixelPair.first),
+                                              currentMap.depixelate(pixelPair.second)
+                                              ));
+        }
+        return mergedPixelsAsLines;
+    }
 }

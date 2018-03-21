@@ -23,6 +23,8 @@
 #include <salalib/mgraph.h>
 #include <salalib/nagent.h>
 #include <salalib/ngraph.h>
+#include "genlib/stringutils.h"
+#include "genlib/containerutils.h"
 
 int thisrun = 0;
 
@@ -55,7 +57,7 @@ int progcompare(const void *a, const void *b )
 
 //
 
-pvecpoint g_trails[MAX_TRAILS];
+pqvector<Point2f> g_trails[MAX_TRAILS];
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -71,6 +73,11 @@ AgentEngine::AgentEngine()
 
 void AgentEngine::run(Communicator *comm, PointMap *pointmap)
 {
+    for (size_t j = 0; j < size(); j++) {
+        if(at(j).m_sel_type == AgentProgram::SEL_LOS_OCC) {
+            pointmap->requireIsovistAnalysis();
+        }
+    }
    // Quick mod - TV
 #if defined(_WIN32)   
    __time64_t atime = 0;
@@ -395,7 +402,7 @@ AgentProgram crossover(const AgentProgram& prog_a, const AgentProgram& prog_b)
    return child;
 }
 
-void AgentProgram::save(const pstring& filename)
+void AgentProgram::save(const std::string& filename)
 {
    // standard ascii:
    ofstream file(filename.c_str());
@@ -443,21 +450,21 @@ void AgentProgram::save(const pstring& filename)
    file << "Fitness: " << m_fitness << endl;
 }
 
-bool AgentProgram::open(const pstring& filename)
+bool AgentProgram::open(const std::string& filename)
 {
    // standard ascii:
    ifstream file(filename.c_str());
 
-   pstring line;
+   std::string line;
    file >> line;
    if (!line.empty()) {
-      line.makelower();
-      if (!compare(line,"destination selection:",22)) {
+      dXstring::toLower(line);
+      if (line.substr(0,22) != "destination selection:") {
          return false;
       }
       else {
-         pstring method = line.substr(22);
-         method.ltrim();
+         std::string method = line.substr(22);
+         dXstring::ltrim(method);
          if (!method.empty()) {
             if (method == "standard") {
                m_sel_type = SEL_STANDARD;
@@ -489,11 +496,11 @@ bool AgentProgram::open(const pstring& filename)
    bool foundbins = false;
 
    if (!line.empty()) {
-      line.makelower();
-      if (compare(line,"steps:",6)) {
-         pstring steps = line.substr(6);
-         steps.ltrim();
-         m_steps = atoi(steps.c_str());
+      dXstring::toLower(line);
+      if (line.substr(0,6) == "steps:") {
+         std::string steps = line.substr(6);
+         dXstring::ltrim(steps);
+         m_steps = stoi(steps);
          file >> line;
          foundsteps = true;   
       }
@@ -503,11 +510,11 @@ bool AgentProgram::open(const pstring& filename)
    }
 
    if (!line.empty()) {
-      line.makelower();
-      if (compare(line,"bins:",5)) {
-         pstring bins = line.substr(6);
-         bins.ltrim();
-         int binx = atoi(bins.c_str());
+      dXstring::toLower(line);
+      if (line.substr(0,5) == "bins:") {
+         std::string bins = line.substr(6);
+         dXstring::ltrim(bins);
+         int binx = stoi(bins);
          if (binx = 32) {
             m_vbin = -1;
          }
@@ -529,16 +536,16 @@ bool AgentProgram::open(const pstring& filename)
    }
 
    if (!line.empty()) {
-      line.makelower();
-      if (compare(line,"rule order:",11)) {
-         pstring ruleorder = line.substr(11);
-         ruleorder.ltrim();
-         pvecstring orders = ruleorder.tokenize(' ', true);
+      dXstring::toLower(line);
+      if (line.substr(0,11) == "rule order:") {
+         std::string ruleorder = line.substr(11);
+         dXstring::ltrim(ruleorder);
+         auto orders = dXstring::split(ruleorder, ' ');
          if (orders.size() != 4) {
             return false;
          }
          for (int i = 0; i < 4; i++) {
-            m_rule_order[i] = atoi(orders[i].c_str());
+            m_rule_order[i] = stoi(orders[i]);
          }
          file >> line;
       }
@@ -551,25 +558,25 @@ bool AgentProgram::open(const pstring& filename)
    }
    for (int i = 0; i < 4; i++) {
       if (!line.empty()) {
-         line.makelower();
-         if (compare(line,"rule",4)) {
+         dXstring::toLower(line);
+         if (line.substr(0,4) == "rule") {
             file >> line;
          }
-         line.makelower();
-         if (compare(line,"threshold:",10)) {
-            pstring threshold = line.substr(10);
-            threshold.ltrim();
-            m_rule_threshold[i] = (float)atof(threshold.c_str());
+         dXstring::toLower(line);
+         if (line.substr(0,10)  == "threshold:") {
+            auto threshold = line.substr(10);
+            dXstring::ltrim(threshold);
+            m_rule_threshold[i] = stof(threshold);
             file >> line;
          }
          else {
             return false;
          }
-         line.makelower();
-         if (compare(line,"turn probability:",17)) {
-            pstring prob = line.substr(17);
-            prob.ltrim();
-            m_rule_probability[i] = (float)atof(prob.c_str());
+         dXstring::toLower(line);
+         if (line.substr(0,17) == "turn probability:") {
+            auto prob = line.substr(17);
+            dXstring::ltrim(prob);
+            m_rule_probability[i] = stof(prob);
             file >> line;
          }
          else {
@@ -1005,9 +1012,9 @@ Point2f Agent::onOcclusionLook(bool wholeisovist, int looktype)
          if (fardist != -1.0) {
             bool cont = true;
             if (looktype == AgentProgram::SEL_OCC_MEMORY) {
-               m_occ_memory.a().add(nigpix);
+               depthmapX::addIfNotExists(m_occ_memory.a(), nigpix);
                // the turn chance (pafrand() % 2) may have to be modified later...
-               if (!m_at_target && m_occ_memory.b().searchindex(nigpix) != paftl::npos) {
+               if (!m_at_target && std::find(m_occ_memory.b().begin(), m_occ_memory.b().end() ,nigpix) != m_occ_memory.b().end()) {
                   cont = false;
                }
             }

@@ -48,7 +48,7 @@ protected:
 private:
 	int OnRedraw(int wParam, int lParam);
 	void RedoTable();
-	void PrepareCache(int from, int to);
+    void PrepareCache(int to);
 
     bool m_custom;
 };

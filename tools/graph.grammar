@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ufwb version="1.17">
+    <grammar name="GRAPH grammar" start="id:551" author="Petros Koutsolampros, Christian Sailer" fileextension="graph">
+        <description>Grammar for depthmap GRAPH files</description>
+        <scripts>
+            <script name="PointNodeBin" type="DataType" id="458">
+                <description>Parse one bin in a Node in a Point</description>
+                <source language="Python"># custom data type script
+
+def parseByteRange(element, byteView, bitPos, bitLength, results):
+	# this method parses data starting at bitPos, bitLength bits are remaining
+	&quot;&quot;&quot;parseByteRange method&quot;&quot;&quot;
+	
+	dir = byteView.readByte(0)
+	nodeCount = byteView.readSignedInt(1, 2, ENDIAN_LITTLE)
+	
+
+	# create and set new value
+	value = Value()
+	value.setString(&quot;Value of custom element&quot;)
+
+	# how many bytes were processed?
+	processedBytes = 0
+	iteration = 0
+
+	results.addElement(element, processedBytes, iteration, value)
+
+	# return number of processed bytes
+	return processedBytes
+
+def fillByteRange(value, byteArray, bitPos, bitLength):
+	# this method translates edited values back to the file
+	&quot;&quot;&quot;fillByteRange method&quot;&quot;&quot;
+
+	# write an integer back to file
+	# byteArray.writeUnsignedIntBits(highWord, bitPos, bitLength, ENDIAN_BIG)
+</source>
+            </script>
+        </scripts>
+        <structure name="GRAPH file" id="551" encoding="ISO_8859-1:1987" endian="little" signed="no">
+            <structure name="header" id="552" length="0">
+                <string name="grf" mustmatch="yes" id="553" type="fixed-length" length="3">
+                    <fixedvalues>
+                        <fixedvalue name="grf" value="grf"/>
+                    </fixedvalues>
+                </string>
+                <number name="version" id="554" type="integer" length="4"/>
+                <structure name="&lt;new structure&gt;" id="555" length="19"/>
+                <number name="stringDateLength" id="557" type="integer" length="4"/>
+                <string name="stringDate" id="558" type="fixed-length" length="stringDateLength"/>
+                <number name="stringVersionLength" id="559" type="integer" length="4"/>
+                <string name="stringVersion" id="560" type="fixed-length" length="stringVersionLength"/>
+                <binary name="&lt;new binary&gt;" id="561" length="12"/>
+            </structure>
+            <structure name="LineData" id="563" repeatmin="0">
+                <string name="map type" mustmatch="yes" id="564" type="fixed-length" length="1">
+                    <fixedvalues>
+                        <fixedvalue name="map type" value="l"/>
+                    </fixedvalues>
+                </string>
+                <structref name="SuperSpacePixelName" id="566" structure="id:565"/>
+                <structref name="Region" id="568" structure="id:567"/>
+                <number name="numSpacePixel" id="569" type="integer" length="4" signed="yes" endian="little"/>
+                <structref name="SpacePixel" id="571" repeatmin="numSpacePixel" repeatmax="numSpacePixel" structure="id:570"/>
+            </structure>
+            <structure name="PointMaps" id="573" repeatmin="0">
+                <string name="map type" mustmatch="yes" id="574" type="fixed-length" length="1">
+                    <fixedvalues>
+                        <fixedvalue name="map type" value="p"/>
+                    </fixedvalues>
+                </string>
+                <structref name="pointMaps" id="576" structure="id:575"/>
+            </structure>
+            <structure name="ShapeGraphs" id="578">
+                <string name="map type" mustmatch="yes" id="579" type="fixed-length" length="1">
+                    <fixedvalues>
+                        <fixedvalue name="map type" value="x"/>
+                    </fixedvalues>
+                </string>
+                <number name="DisplayedMap" id="580" type="integer" length="4"/>
+                <number name="sg_numShapeMaps" id="581" type="integer" length="4"/>
+                <structref name="shapeGraph" id="583" repeatmin="sg_numShapeMaps" repeatmax="sg_numShapeMaps" structure="id:582"/>
+                <structure name="sg_polyConnectors" id="584">
+                    <number name="sg_numPolyConnectors" id="585" type="integer" length="4"/>
+                    <structref name="sg_polyConnector" id="587" repeatmin="sg_numPolyConnectors" repeatmax="sg_numPolyConnectors" structure="id:586"/>
+                </structure>
+                <structure name="sg_radialLines" id="589">
+                    <number name="sg_numRadialLines" id="590" type="integer" length="4"/>
+                    <structure name="sg_radialLine" id="591" repeatmin="sg_numRadialLines" repeatmax="sg_numRadialLines">
+                        <structref name="sg_radialKey" id="593" structure="id:592"/>
+                        <structref name="rl_openSpace" id="595" structure="id:594"/>
+                        <structref name="rl_keyVertex" id="596" structure="id:594"/>
+                        <structref name="rl_nextVertex" id="597" structure="id:594"/>
+                    </structure>
+                </structure>
+            </structure>
+            <structure name="DataMaps" id="601" repeatmin="0">
+                <string name="map type" mustmatch="yes" id="602" type="fixed-length" length="1">
+                    <fixedvalues>
+                        <fixedvalue name="map type" value="s"/>
+                    </fixedvalues>
+                </string>
+                <number name="Displayed Map" id="603" type="integer" length="4"/>
+                <number name="dm_numShapeMaps" id="604" type="integer" length="4"/>
+                <structref name="dm_shapeMap" id="606" repeatmin="dm_numShapeMaps" repeatmax="dm_numShapeMaps" structure="id:605"/>
+            </structure>
+        </structure>
+        <structure name="fourByteLengthAndString" id="565" length="0" encoding="ISO_8859-1:1987" endian="little" signed="no" valueexpression="Str">
+            <number name="len" id="609" type="integer" length="4" signed="yes" endian="little"/>
+            <string name="Str" id="610" type="fixed-length" length="len"/>
+        </structure>
+        <structure name="pixelRef" id="612" encoding="ISO_8859-1:1987" endian="little" signed="no">
+            <number name="x" id="613" type="integer" length="2"/>
+            <number name="y" id="614" type="integer" length="2"/>
+        </structure>
+        <structure name="pixelVec" id="616" encoding="ISO_8859-1:1987" endian="little" signed="no">
+            <structref name="start" id="617" structure="id:612"/>
+            <number name="length" id="618" type="integer" length="2"/>
+        </structure>
+        <structure name="QtRegion" id="567" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="minX" id="620" type="float" length="64" lengthunit="bit"/>
+            <number name="minY" id="621" type="float" length="64" lengthunit="bit"/>
+            <number name="maxX" id="622" type="float" length="64" lengthunit="bit"/>
+            <number name="maxY" id="623" type="float" length="64" lengthunit="bit"/>
+        </structure>
+        <structure name="SalaShape" id="625" encoding="ISO_8859-1:1987" endian="big" signed="no">
+            <number name="shape key" id="626" type="integer" length="4"/>
+            <number name="shape type" id="627" type="integer" length="1" display="hex">
+                <fixedvalues>
+                    <fixedvalue name="Point" value="0x1"/>
+                    <fixedvalue name="Line" value="0x2"/>
+                    <fixedvalue name="Polygon" value="0x4"/>
+                    <fixedvalue name="Circle" value="0x8"/>
+                    <fixedvalue name="ClosedPoly" value="0x44"/>
+                    <fixedvalue name="Circle" value="0xC4"/>
+                </fixedvalues>
+            </number>
+            <structref name="region" id="629" structure="id:628"/>
+            <structref name="centroid" id="630" structure="id:594"/>
+            <number name="area" id="631" type="float" length="8" signed="yes" endian="little"/>
+            <number name="perimeter" id="632" type="float" length="8" signed="yes" endian="little"/>
+            <number name="pointCount" id="633" type="integer" length="4" signed="yes" endian="little"/>
+            <structref name="point" id="634" repeatmin="pointCount" repeatmax="pointCount" structure="id:594"/>
+        </structure>
+        <structure name="Point2f" id="594" encoding="ISO_8859-1:1987" endian="big" signed="no">
+            <number name="x" id="636" type="float" length="8" signed="yes" endian="little"/>
+            <number name="y" id="637" type="float" length="8" signed="yes" endian="little"/>
+        </structure>
+        <structure name="SpacePixel" id="570" encoding="ISO_8859-1:1987" endian="big" signed="no">
+            <structref name="planFileName" id="639" structure="id:565"/>
+            <structref name="sp_Region" id="640" structure="id:567"/>
+            <number name="sp_numShapeMaps" id="641" type="integer" length="4" signed="yes" endian="little"/>
+            <structref name="sp_layerShapeMap" id="642" repeatmin="sp_numShapeMaps" repeatmax="sp_numShapeMaps" structure="id:605"/>
+        </structure>
+        <structure name="AttributeTable" id="644" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="att_availableLayers" id="645" type="integer" length="8" endian="little"/>
+            <number name="att_visibleLayers" id="646" type="integer" length="8" endian="little"/>
+            <number name="att_layerCount" id="647" type="integer" length="4" endian="little"/>
+            <structure name="att_layer" id="648" repeat="id:647">
+                <number name="att_layerKey" id="649" type="integer" length="8" endian="little"/>
+                <structref name="att_layer" id="650" structure="id:565"/>
+            </structure>
+            <number name="att_colCount" id="652" type="integer" length="4" endian="little"/>
+            <structure name="att_Column" id="653" repeatmin="att_colCount" repeatmax="att_colCount">
+                <structref name="att_colName" id="654" structure="id:565"/>
+                <number name="att_colMin" id="655" type="float" length="32" lengthunit="bit" endian="little"/>
+                <number name="att_colMax" id="656" type="float" length="32" lengthunit="bit" endian="little"/>
+                <number name="att_colTotal" id="657" type="float" length="64" lengthunit="bit" endian="little"/>
+                <number name="att_physicalCol" id="658" type="integer" length="4" endian="little"/>
+                <number name="att_colHidden" id="659" type="integer" length="1" endian="little"/>
+                <number name="att_colLocked" id="660" type="integer" length="1" endian="little"/>
+                <structref name="col_DisplayParams" id="662" structure="id:661"/>
+                <structref name="att_colFormula" id="663" structure="id:565"/>
+            </structure>
+            <number name="att_rowCount" id="665" type="integer" length="4"/>
+            <structure name="att_Row" id="666" repeatmin="att_rowCount" repeatmax="att_rowCount">
+                <number name="att_rowKey" id="667" type="integer" length="4"/>
+                <number name="att_rowNumLayers" id="668" type="integer" length="8"/>
+                <structref name="att_rowValues" id="670" structure="id:669"/>
+            </structure>
+            <structref name="att_DisplayParams" id="672" structure="id:661"/>
+        </structure>
+        <structure name="IntVector" id="674" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="numElements" id="675" type="integer" length="4" signed="no"/>
+            <number name="value" id="676" repeatmin="numElements" repeatmax="numElements" type="integer" length="4"/>
+        </structure>
+        <structure name="SegmentRefFloatMap" id="678" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="length" id="679" type="integer" length="4" signed="no"/>
+            <structure name="kvp" id="680" repeatmin="length" repeatmax="length">
+                <structure name="SegmentRef" id="681">
+                    <number name="dir" id="682" type="integer" length="1"/>
+                    <binary name="padding" id="683" length="3"/>
+                    <number name="ref" id="684" type="integer" length="4"/>
+                </structure>
+                <number name="value" id="686" type="float" length="32" lengthunit="bit"/>
+            </structure>
+        </structure>
+        <structure name="IntPairVector" id="689" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="ipvLength" id="690" type="integer" length="4" signed="no"/>
+            <structure name="OrderedIntPair" id="691" repeatmin="ipvLength" repeatmax="ipvLength">
+                <number name="ip_x" id="692" type="integer" length="4"/>
+                <number name="ip_y" id="693" type="integer" length="4"/>
+            </structure>
+        </structure>
+        <structure name="FloatVector" id="669" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="fv_length" id="696" type="integer" length="4" signed="no"/>
+            <number name="value" id="697" repeatmin="fv_length" repeatmax="fv_length" type="float" length="32" lengthunit="bit"/>
+        </structure>
+        <structure name="DisplayParameters" id="661" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="dp_blue" id="699" type="float" length="32" lengthunit="bit" endian="little"/>
+            <number name="dp_red" id="700" type="float" length="32" lengthunit="bit" endian="little"/>
+            <number name="dp_colorscale" id="701" type="integer" length="4" endian="little"/>
+        </structure>
+        <structure name="MapInfoData" id="703" disabled="yes" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <structref name="mid_version" id="704" structure="id:565"/>
+            <structref name="mid_charset" id="705" structure="id:565"/>
+            <string name="delimiter" id="706" type="fixed-length" length="1"/>
+            <structref name="mid_index" id="707" structure="id:565"/>
+            <structref name="mid_coordsys" id="708" structure="id:703"/>
+            <structref name="mid_bounds" id="709" structure="id:565"/>
+        </structure>
+        <structure name="ShapeMap" id="605" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <structref name="Map Name" id="711" structure="id:565"/>
+            <number name="Map Type" id="712" type="integer" length="4"/>
+            <number name="show map" id="713" type="integer" length="1"/>
+            <number name="is editable" id="714" type="integer" length="1"/>
+            <structref name="Region" id="715" structure="id:567"/>
+            <number name="rows" id="716" type="integer" length="4"/>
+            <number name="cols" id="717" type="integer" length="4"/>
+            <number name="object reference" id="718" type="integer" length="4"/>
+            <number name="shape reference" id="719" type="integer" length="4"/>
+            <structure name="shapes" id="720">
+                <number name="shapesCount" id="721" type="integer" length="4"/>
+                <structref name="shape" id="722" repeatmin="shapesCount" repeatmax="shapesCount" structure="id:625"/>
+            </structure>
+            <number name="numSalaObjects" id="724" type="integer" length="4" endian="little"/>
+            <structure name="SalaObject" id="725" repeatmin="numSalaObjects" repeatmax="numSalaObjects">
+                <number name="objKey" id="726" type="integer" length="4" endian="little"/>
+                <structref name="Centroid" id="727" structure="id:594"/>
+            </structure>
+            <structref name="DataMapAttributes" id="729" repeatmin="0" structure="id:644"/>
+            <number name="dm_displayedAttribute" id="730" type="integer" length="4" endian="little"/>
+            <number name="dm_numConnectors" id="731" type="integer" length="4" endian="little"/>
+            <structure name="DataMapConnector" id="732" repeatmin="dm_numConnectors" repeatmax="dm_numConnectors">
+                <structref name="connections" id="733" structure="id:674"/>
+                <number name="conn_segmentAxialRef" id="734" type="integer" length="4"/>
+                <structref name="forward_segconns" id="735" structure="id:678"/>
+                <structref name="back_segconns" id="736" structure="id:678"/>
+            </structure>
+            <structref name="dm_links" id="738" structure="id:689"/>
+            <structref name="dm_unlinks" id="739" structure="id:689"/>
+            <structure name="MapInfoData" id="740" repeatmin="0">
+                <string name="mapInfoMarker" mustmatch="yes" id="741" type="fixed-length" length="1">
+                    <fixedvalues>
+                        <fixedvalue name="mapInfoMarker" value="m"/>
+                    </fixedvalues>
+                </string>
+                <structref name="&lt;MapInfoData&gt;" id="742" structure="id:703"/>
+            </structure>
+            <structure name="ShapeMapEnd" id="744" repeatmin="0">
+                <string name="end_marker" mustmatch="yes" id="745" type="fixed-length" length="1">
+                    <fixedvalues>
+                        <fixedvalue name="end_marker" value="x"/>
+                    </fixedvalues>
+                </string>
+            </structure>
+        </structure>
+        <structure name="PointMap" id="748" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <structref name="pm_Name" id="749" structure="id:565"/>
+            <number name="pm_spacing" id="750" type="float" length="64" lengthunit="bit"/>
+            <number name="pm_rowCount" id="751" type="integer" length="4"/>
+            <number name="pm_colCount" id="752" type="integer" length="4"/>
+            <number name="pm_pointCount" id="753" type="integer" length="4"/>
+            <structref name="pm_bottomLeft" id="754" structure="id:594"/>
+            <number name="pm_dispAttribute" id="755" type="integer" length="4"/>
+            <structref name="pm_attributes" id="756" structure="id:644"/>
+            <structure name="pm_column" id="757" repeatmin="pm_colCount" repeatmax="pm_colCount">
+                <structref name="point" id="759" repeatmin="pm_rowCount" repeatmax="pm_rowCount" structure="id:758"/>
+            </structure>
+            <number name="pm_processed" id="761" type="integer" length="1"/>
+            <number name="pm_boundaryGraph" id="762" type="integer" length="1"/>
+        </structure>
+        <structure name="SalaPoint" id="758" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="sp_state" id="764" type="integer" length="4"/>
+            <number name="sp_block" id="765" type="integer" length="4"/>
+            <number name="sp_misc" id="766" type="integer" length="4"/>
+            <number name="sp_gridConnections" id="767" type="integer" length="1"/>
+            <structref name="sp_merge" id="768" structure="id:612"/>
+            <number name="sp_haveNode" id="769" type="integer" length="1"/>
+            <structure name="sp_Node" id="770" repeatmin="sp_haveNode" repeatmax="sp_haveNode">
+                <structure name="spn_Bin" id="771" repeatmin="32" repeatmax="32">
+                    <number name="bin_dir" id="772" type="integer" length="1"/>
+                    <number name="bin_nodeCount" id="773" type="integer" length="2" signed="no"/>
+                    <number name="bin_distance" id="774" type="float" length="32" lengthunit="bit"/>
+                    <number name="bin_occDistance" id="775" type="float" length="32" lengthunit="bit"/>
+                    <structure name="bin_Nodes" id="776">
+                        <scriptelement name="bin_pixVec" id="777">
+                            <script name="unnamed" type="Generic">
+                                <source language="Python">def log(msg):
+    logSrc = currentMapper.getCurrentLogSrc()
+    logSrc.logMessage(&quot;&quot;, 111, SEVERITY_INFO, msg)
+
+results = currentMapper.getCurrentResults()
+nodeCount = results.getResultByName(&quot;bin_nodeCount&quot;).getValue().getSigned()
+if nodeCount &gt; 0:
+    byteView = currentMapper.getCurrentByteView()
+    grammar = currentMapper.getCurrentGrammar()
+    #log(&quot;Getting bin_dir&quot;)
+    dir = results.getResultByName(&quot;bin_dir&quot;).getValue().getSigned()
+    #log(&quot;bin_dir is: %d&quot; %dir)
+    if dir &amp; 0x0c:
+        pixelVec = grammar.getStructureByName(&quot;pixelVec&quot;)
+        currentMapper.mapStructure(pixelVec)
+    else:
+        multiPixelVec = grammar.getStructureByName(&quot;NodeBinMultiPixVec&quot;)
+        currentMapper.mapStructure(multiPixelVec)
+        </source>
+                            </script>
+                        </scriptelement>
+                    </structure>
+                </structure>
+                <structure name="spn_OcclusionBin" id="780">
+                    <structref name="occBin" id="781" repeatmin="32" repeatmax="32" structure="id:612"/>
+                </structure>
+            </structure>
+            <structref name="sp_location" id="784" structure="id:594"/>
+        </structure>
+        <structure name="Line" id="628" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <structref name="l_region" id="786" structure="id:567"/>
+            <number name="parity" id="787" type="integer" length="1"/>
+            <number name="dir" id="788" type="integer" length="1"/>
+            <binary name="padding" id="789" length="6"/>
+        </structure>
+        <structure name="PointMaps" id="575" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="Displayed Map" id="791" type="integer" length="4"/>
+            <number name="pms_count" id="792" type="integer" length="4"/>
+            <structref name="pms_pointMap" id="793" repeatmin="pms_count" repeatmax="pms_count" structure="id:748"/>
+        </structure>
+        <structure name="pixelVecWithContext" id="795" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="start" id="796" type="integer" length="2"/>
+            <number name="shift" id="797" type="integer" length="4" lengthunit="bit" signed="no"/>
+            <number name="runlength" id="798" type="integer" length="12" lengthunit="bit" signed="no"/>
+        </structure>
+        <structure name="NodeBinMultiPixVec" id="800" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="bin_numVec" id="801" type="integer" length="2"/>
+            <structref name="pixVec" id="802" structure="id:616"/>
+            <structref name="pixVecC" id="803" repeatmin="bin_numVec - 1" repeatmax="bin_numVec - 1" structure="id:795"/>
+        </structure>
+        <structure name="ShapeGraph" id="582" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="sg_keyVertexCount" id="805" type="integer" length="4"/>
+            <structure name="sg_keyVertices" id="806">
+                <number name="sg_numKeyVertices" id="807" type="integer" length="4"/>
+                <structref name="keyVertices" id="808" repeatmin="sg_numKeyVertices" repeatmax="sg_numKeyVertices" structure="id:674"/>
+            </structure>
+            <structref name="sg_shapeMap" id="810" structure="id:605"/>
+        </structure>
+        <structure name="PolyConnector" id="586" encoding="ISO_8859-1:1987" endian="little" signed="no">
+            <structref name="pc_line" id="812" structure="id:628"/>
+            <structref name="pc_radialKey" id="813" structure="id:592"/>
+        </structure>
+        <structure name="AxialVertexKey" id="815" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <number name="avk_refKey" id="816" type="integer" length="4"/>
+            <number name="avk_refA" id="817" type="integer" length="2"/>
+            <number name="avk_refB" id="818" type="integer" length="2"/>
+        </structure>
+        <structure name="RadialKey" id="592" encoding="ISO_8859-1:1987" endian="little" signed="yes">
+            <structref name="rk_axialVertexKey" id="820" structure="id:815"/>
+            <number name="rk_ang" id="821" type="float" length="32" lengthunit="bit"/>
+            <number name="rk_segend" id="822" type="integer" length="1"/>
+            <binary name="padding" id="823" length="3"/>
+        </structure>
+    </grammar>
+</ufwb>

@@ -32,7 +32,7 @@ void LinkParser::parse(int argc, char *argv[])
 
     for ( int i = 1; i < argc;  )
     {
-        if ( strcmp ("-lf", argv[i]) == 0)
+        if ( std::strcmp ("-lf", argv[i]) == 0)
         {
             if (!linksFile.empty())
             {
@@ -45,7 +45,7 @@ void LinkParser::parse(int argc, char *argv[])
             ENFORCE_ARGUMENT("-lf", i)
             linksFile = argv[i];
         }
-        else if ( strcmp ("-lnk", argv[i]) == 0)
+        else if ( std::strcmp ("-lnk", argv[i]) == 0)
         {
             if (!linksFile.empty())
             {

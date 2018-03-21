@@ -17,6 +17,8 @@
 
 #ifndef __SHAPEGRAPH_H__
 #define __SHAPEGRAPH_H__
+#include "spacepix.h"
+#include "connector.h"
 
 struct AxialVertex;
 struct AxialVertexKey;
@@ -30,7 +32,7 @@ class AxialPolygons : public SpacePixel
 {
    friend class ShapeGraphs;
 protected:
-   pqmap<Point2f,pvecpoint> m_vertex_possibles;
+   std::map<Point2f,pqvector<Point2f>> m_vertex_possibles;
    pvecint m_vertex_polys;
    pvecint **m_pixel_polys;
    pqvector<AxialVertex> m_handled_list;
@@ -49,7 +51,7 @@ public:
    // make axial lines from corner vertices, visible from openspace
    void makeAxialLines(pqvector<AxialVertex>& openvertices, prefvec<Line>& lines, prefvec<pvecint>& keyvertices, prefvec<PolyConnector>& poly_connections, pqvector<RadialLine>& radial_lines);
    // extra: make all the polygons possible from the set of m_vertex_possibles
-   void makePolygons(prefvec<pvecpoint>& polygons);
+   void makePolygons(prefvec<pqvector<Point2f>>& polygons);
 };
 
 struct AxialVertexKey
@@ -93,9 +95,13 @@ struct RadialKey {
    AxialVertexKey vertex;
    float ang;
    bool segend;
-   RadialKey(const AxialVertexKey& v = NoVertex, float a = -1.0f, bool se = false) 
+   // padding the remaining three bytes behind the bool - don't use int : 24 as this will grab the next 4 byte block
+   char pad1 : 8;
+   short pad2 : 16;
+
+   RadialKey(const AxialVertexKey& v = NoVertex, float a = -1.0f, bool se = false) : pad1(0), pad2(0)
    { vertex = v; ang = a; segend = se; }
-   RadialKey(const RadialKey& rk)
+   RadialKey(const RadialKey& rk) : pad1(0), pad2(0)
    { vertex = rk.vertex; ang = rk.ang; segend = rk.segend; }
    friend bool operator < (const RadialKey& a, const RadialKey& b);
    friend bool operator > (const RadialKey& a, const RadialKey& b);
@@ -185,12 +191,11 @@ public:
    bool outputMifPolygons(ostream& miffile, ostream& midfile) const;
    void outputNet(ostream& netfile) const;
 public:
-   ShapeGraph(const pstring& name = "<axial map>", int type = ShapeMap::AXIALMAP);
+   ShapeGraph(const std::string& name = "<axial map>", int type = ShapeMap::AXIALMAP);
    virtual ~ShapeGraph() {;}
    void makeConnections(const prefvec<pvecint>& keyvertices = prefvec<pvecint>());
    //void initAttributes();
-   void makeDivisions(const prefvec<PolyConnector>& polyconnections, const pqvector<RadialLine>& radiallines, pqmap<RadialKey,pvecint>& radialdivisions, pqmap<int,pvecint>& axialdividers, Communicator *comm);
-   void cutLines(const prefvec<Line>& lines, pqmap<int,pvecint>& axcuts);
+   void makeDivisions(const prefvec<PolyConnector>& polyconnections, const pqvector<RadialLine>& radiallines, std::map<RadialKey, pvecint> &radialdivisions, std::map<int,pvecint>& axialdividers, Communicator *comm);
    bool integrate(Communicator *comm = NULL, const pvecint& radius = pvecint(), bool choice = false, bool local = false, bool fulloutput = false, int weighting_col = -1, bool simple_version = true);
    bool stepdepth(Communicator *comm = NULL);
    bool analyseAngular(Communicator *comm, const pvecdouble& radius);
@@ -207,9 +212,12 @@ public:
    void makeSegmentConnections(prefvec<Connector>& connectionset);
    void pushAxialValues(ShapeGraph& axialmap);
    //
-   virtual bool read( ifstream& stream, int version );
-   bool readold( ifstream& stream, int version );
+   virtual bool read( istream& stream, int version );
+   bool readold( istream& stream, int version );
    virtual bool write( ofstream& stream, int version );
+   void writeAxialConnectionsAsDotGraph(ostream &stream);
+   void writeAxialConnectionsAsPairsCSV(ostream &stream);
+   void writeSegmentConnectionsAsPairsCSV(ostream &stream);
    //
    void unlinkFromShapeMap(const ShapeMap& shapemap);
 };
@@ -231,19 +239,19 @@ public:
    // ShapeGraphs just have extra functionality over ShapeMaps here:
    bool makeAllLineMap(Communicator *comm, SuperSpacePixel& superspacepix, const Point2f& seed);
    bool makeFewestLineMap(Communicator *comm, bool replace_existing);
-   int convertDrawingToAxial(Communicator *comm, const pstring& name, SuperSpacePixel& superspacepix);
-   int convertDataToAxial(Communicator *comm, const pstring& name, ShapeMap& shapemap, bool copydata = false);
-   int convertDrawingToConvex(Communicator *comm, const pstring& name, SuperSpacePixel& superspacepix);
-   int convertDataToConvex(Communicator *comm, const pstring& name, ShapeMap& shapemap, bool copydata = false);
-   int convertDrawingToSegment(Communicator *comm, const pstring& name, SuperSpacePixel& superspacepix);
-   int convertDataToSegment(Communicator *comm, const pstring& name, ShapeMap& shapemap, bool copydata = false);
-   int convertAxialToSegment(Communicator *comm, const pstring& name, bool keeporiginal = true, bool pushvalues = false, double stubremoval = 0.0);
+   int convertDrawingToAxial(Communicator *comm, const std::string& name, SuperSpacePixel& superspacepix);
+   int convertDataToAxial(Communicator *comm, const std::string& name, ShapeMap& shapemap, bool copydata = false);
+   int convertDrawingToConvex(Communicator *comm, const std::string& name, SuperSpacePixel& superspacepix);
+   int convertDataToConvex(Communicator *comm, const std::string& name, ShapeMap& shapemap, bool copydata = false);
+   int convertDrawingToSegment(Communicator *comm, const std::string& name, SuperSpacePixel& superspacepix);
+   int convertDataToSegment(Communicator *comm, const std::string& name, ShapeMap& shapemap, bool copydata = false);
+   int convertAxialToSegment(Communicator *comm, const std::string& name, bool keeporiginal = true, bool pushvalues = false, double stubremoval = 0.0);
    //
    bool hasAllLineMap()
    { return m_all_line_map != -1; }
    //
-   bool read( ifstream& stream, int version );
-   bool readold( ifstream& stream, int version );
+   bool read(istream &stream, int version );
+   bool readold( istream& stream, int version );
    bool write( ofstream& stream, int version, bool displayedmaponly = false );
 };
 
@@ -255,7 +263,7 @@ public:
    TidyLines() {;}
    virtual ~TidyLines() {;}
    void tidy(prefvec<Line>& lines, const QtRegion& region);  
-   void quicktidy(pqmap<int,Line>& lines, const QtRegion& region);
+   void quicktidy(std::map<int, Line> &lines, const QtRegion& region);
 };
 
 // helpers... a class to reduce all line maps to fewest line maps
@@ -273,12 +281,12 @@ protected:
    int *m_keyvertexcounts;
    prefvec<Connector> m_axialconns; // <- uses a copy of axial lines as it will remove connections
 public:
-   AxialMinimiser(const ShapeGraph& alllinemap, pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs);
+   AxialMinimiser(const ShapeGraph& alllinemap, std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs);
    ~AxialMinimiser();
-   void removeSubsets(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
-   void fewestLongest(pqmap<int,pvecint>& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
+   void removeSubsets(std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
+   void fewestLongest(std::map<int,pvecint>& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines, prefvec<pvecint>& keyvertexconns, int *keyvertexcounts);
    // advanced topological testing:
-   bool checkVital(int checkindex,pvecint& axsegcuts, pqmap<RadialKey,RadialSegment>& radialsegs, pqmap<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines);
+   bool checkVital(int checkindex,pvecint& axsegcuts, std::map<RadialKey,RadialSegment>& radialsegs, std::map<RadialKey,pvecint>& rlds, pqvector<RadialLine>& radial_lines);
    //
    bool removed(int i) const
    { return m_removed[i]; }

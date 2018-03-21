@@ -25,8 +25,10 @@
 #include "GraphDoc.h"
 #include "ColourScaleDlg.h"
 #include "compatibilitydefines.h"
+#include "settings.h"
 
 #include "version.h"
+#include "glview.h"
 
 class ItemTreeEntry
 {
@@ -51,36 +53,6 @@ class QSignalMapper;
 class QToolButton;
 QT_END_NAMESPACE
 
-enum {
-   ID_MAPBAR_ZOOM_ITEMS = 2,
-   ID_MAPBAR_FILL_ITEMS = 8,
-   ID_MAPBAR_DRAW_ITEMS = 10,
-   ID_MAPBAR_ISOVIST_ITEMS = 12,
-   ID_MAPBAR_JOIN_ITEMS = 15
-};
-
-enum {
-   ID_MAPBAR_ITEM_SELECT = 0,
-   ID_MAPBAR_ITEM_MOVE = 1,
-   ID_MAPBAR_ITEM_ZOOM_IN = 2,
-   ID_MAPBAR_ITEM_ZOOM_OUT = 3,
-   ID_MAPBAR_ITEM_FINDLOC = 4,
-   ID_MAPBAR_ITEM_CENTREVIEW = 5,
-   ID_MAPBAR_ITEM_GRID = 6,
-   ID_MAPBAR_ITEM_FILL = 7,
-   ID_MAPBAR_ITEM_SEMIFILL = 8,
-   ID_MAPBAR_ITEM_PENCIL = 9,
-   ID_MAPBAR_ITEM_LINETOOL = 10,
-   ID_MAPBAR_ITEM_POLYGON = 11,
-   ID_MAPBAR_ITEM_ISOVIST = 12,
-   ID_MAPBAR_ITEM_HALFISOVIST = 13,
-   ID_MAPBAR_ITEM_AL2 = 14,
-   ID_MAPBAR_ITEM_PD = 15,
-   ID_MAPBAR_ITEM_JOIN = 16,
-   ID_MAPBAR_ITEM_UNJOIN = 17,
-   ID_MAPBAR_ITEM_AUGMENT_FILL = 18 // AV test - TV
-};
-
 const int  MaxRecentFiles = 5;
 
 enum { FOCUSGRAPH = 1001, AllTransactionsDone = 1002 };
@@ -99,7 +71,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow();
+    MainWindow(const QString &fileToLoad, Settings &settings);
    // Graph analysis options
     QString m_formula_cache;
     Options m_options;
@@ -113,6 +85,8 @@ public:
     void update3DToolbar();
     void showContextMenu(QPoint &point);
     void UpdateStatus(QString s1, QString s2, QString s3);
+    void updateGLWindows(bool datasetChanged, bool recentreView);
+    void loadFile(QString fileName);
 
 protected:
     QGraphDoc* m_treeDoc;
@@ -122,6 +96,7 @@ protected:
 
 private slots:
     void updateActiveWindows();
+    void updateSubWindowTitles(QString newTitle);
     void updateWindowMenu();
     void setActiveSubWindow(QWidget *window);
     void OnSelchangingTree(QTreeWidgetItem* item, int col);
@@ -152,6 +127,11 @@ private slots:
     void OnLayerConvertDrawing();
     void OnConvertMapShapes();
     void OnFileExport();
+    void OnFileExportLinks();
+    void OnAxialConnectionsExportAsDot();
+    void OnAxialConnectionsExportAsPairCSV();
+    void OnSegmentConnectionsExportAsPairCSV();
+    void OnPointmapExportConnectionsAsCSV();
     void OnAddColumn();
     void OnRenameColumn();
     void OnUpdateColumn();
@@ -175,8 +155,6 @@ private slots:
     void OnToolsPointConvShapeMap();
     void OnToolsOptions();
     void OnShowResearchtoolbar();
-    void OnWindowBackground();
-    void OnWindowForeground();
     void OnViewCentreView();
     void OnViewShowGrid();
     void OnViewSummary();
@@ -189,6 +167,7 @@ private slots:
     void OnWindowMap();
     void OnViewTable();
     void OnWindow3dView();
+    void OnWindowGLView();
     void OnViewScatterplot();
     void OnToolsRun();
     void OnToolsAgentRun();
@@ -246,7 +225,7 @@ private slots:
 private:
     int OnFocusGraph(QGraphDoc* pDoc, int lParam);
     void setCurrentFile(const QString &fileName);
-    void updateRecentFileActions();
+    void updateRecentFileActions(const QStringList &files);
     QString strippedName(const QString &fullFileName);
 
     void createActions();
@@ -255,24 +234,26 @@ private:
     void createStatusBar();
 
     // Settings Files
-    QString m_settingsFile;
+    Settings &mSettings;
     void readSettings();
     void writeSettings();
 
+    bool m_defaultMapWindowIsLegacy;
+
     void switchLayoutDirection();
     QWidget * setupAttributesListWidget();
-    QDepthmapView *createQDepthmapView();
-    QDepthmapView *activeQDepthmapView();
-    QGraphDoc *activeQDepthmapDoc();
-    QMdiSubWindow *findQDepthmapView(const QString &fileName);
+    MapView *createMapView();
+    MapView *activeMapView();
+    QGraphDoc *activeMapDoc();
+    QMdiSubWindow *findMapView(const QString &fileName);
 //////////////////////////////////////////////////////
 //	treeContorl
     QVector<QIcon> m_tree_icon;
-    pqmap<int, pstring> m_view_map_entries;
+    std::map<int, std::string> m_view_map_entries;
 
     pvector<bool> m_attribute_locked;
-    pmap<QTreeWidgetItem*, ItemTreeEntry> m_treegraphmap;
-    pmap<QTreeWidgetItem*, ItemTreeEntry> m_treedrawingmap;
+    std::map<QTreeWidgetItem*, ItemTreeEntry> m_treegraphmap;
+    std::map<QTreeWidgetItem*, ItemTreeEntry> m_treedrawingmap;
     QTreeWidgetItem* m_topgraph;
     QTreeWidgetItem* m_backgraph;
     QTreeWidgetItem* m_treeroots[5];
@@ -308,6 +289,7 @@ private:
     QMenu *fileMenu;
     QMenu *editMenu;
     QMenu *mapMenu;
+    QMenu *exportSubMenu;
     QMenu *attributesMenu;
     QMenu *toolsMenu;
     QMenu *visibilitySubMenu;
@@ -372,6 +354,11 @@ private:
     QAction *convertMapShapesAct;
     QAction *importAct;
     QAction *exportAct;
+    QAction *exportLinksAct;
+    QAction *exportAxialConnectionsDotAct;
+    QAction *exportAxialConnectionsPairAct;
+    QAction *exportSegmentConnectionsPairAct;
+    QAction *exportPointmapConnectionsPairAct;
 
     //Attributes Menu Actions
     QAction *renameColumnAct;
@@ -401,8 +388,6 @@ private:
     QAction *optionsAct;
 
     //View Menu Actions
-    QAction *BackgroundAct;
-    QAction *foregroundAct;
     QAction *showGridAct;
     QAction *attributeSummaryAct;
 
@@ -411,6 +396,7 @@ private:
     QAction *scatterPlotAct;
     QAction *tableAct;
     QAction *thirdDViewAct;
+    QAction *glViewAct;
     QAction *colourRangeAct;
     QAction *cascadeAct;
     QAction *tileAct;
@@ -475,6 +461,39 @@ private:
     QAction *ExportPolyAct;
     QAction *Bindistance1Act;
     QAction *Bindistance2Act;
+
+    int m_selected_mapbar_item = -1;
+
+
+    enum {
+       ID_MAPBAR_ZOOM_ITEMS = 2,
+       ID_MAPBAR_FILL_ITEMS = 8,
+       ID_MAPBAR_DRAW_ITEMS = 10,
+       ID_MAPBAR_ISOVIST_ITEMS = 12,
+       ID_MAPBAR_JOIN_ITEMS = 15
+    };
+
+    enum {
+       ID_MAPBAR_ITEM_SELECT = 0,
+       ID_MAPBAR_ITEM_MOVE = 1,
+       ID_MAPBAR_ITEM_ZOOM_IN = 2,
+       ID_MAPBAR_ITEM_ZOOM_OUT = 3,
+       ID_MAPBAR_ITEM_FINDLOC = 4,
+       ID_MAPBAR_ITEM_CENTREVIEW = 5,
+       ID_MAPBAR_ITEM_GRID = 6,
+       ID_MAPBAR_ITEM_FILL = 7,
+       ID_MAPBAR_ITEM_SEMIFILL = 8,
+       ID_MAPBAR_ITEM_PENCIL = 9,
+       ID_MAPBAR_ITEM_LINETOOL = 10,
+       ID_MAPBAR_ITEM_POLYGON = 11,
+       ID_MAPBAR_ITEM_ISOVIST = 12,
+       ID_MAPBAR_ITEM_HALFISOVIST = 13,
+       ID_MAPBAR_ITEM_AL2 = 14,
+       ID_MAPBAR_ITEM_PD = 15,
+       ID_MAPBAR_ITEM_JOIN = 16,
+       ID_MAPBAR_ITEM_UNJOIN = 17,
+       ID_MAPBAR_ITEM_AUGMENT_FILL = 18 // AV test - TV
+    };
 };
 
 #endif

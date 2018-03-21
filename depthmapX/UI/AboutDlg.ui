@@ -33,7 +33,7 @@
     <item>
      <widget class="QLabel" name="c_version_info">
       <property name="text">
-       <string>Version information</string>
+       <string notr="true">Version information</string>
       </property>
      </widget>
     </item>

@@ -21,10 +21,12 @@
 #include <iostream>
 #include <fstream>
 #include <math.h>
+#include <algorithm>
+#include <string>
+#include "genlib/stringutils.h"
 
 using namespace std;
 
-#include <genlib/paftl.h>
 #include <genlib/comm.h>  // for communicator
 #include <genlib/dxfp.h>
 
@@ -66,40 +68,28 @@ const DxfVertex& DxfParser::getExtMax() const
    return m_region.getExtMax();
 }
 
-const DxfLayer& DxfParser::getLayerNum( const int i ) const
+DxfLayer *DxfParser::getLayer( const std::string& layer_name ) // const <- removed as m_layers may be changed if DXF is poor
 {
-   return m_layers[i];
-}
-
-DxfLayer *DxfParser::getLayer( const pstring& layer_name ) // const <- removed as m_layers may be changed if DXF is poor
-{
-   static DxfLayer layer;
-
-   layer.m_name = layer_name;
-
-   size_t n = m_layers.searchindex( layer );
-   if (n == paftl::npos) {
-      n = m_layers.add( layer, paftl::ADD_HERE );
+   std::map<std::string, DxfLayer>::iterator layerIter = m_layers.find(layer_name);
+   if (layerIter == m_layers.end()) {
+      m_layers.insert( std::pair<std::string, DxfLayer> (layer_name, DxfLayer(layer_name)));
+      return &(m_layers.find(layer_name)->second);
    }
-   return &m_layers[n];
+   return &(layerIter->second);
 }
 
-const DxfLineType& DxfParser::getLineType( const int i ) const
-{
-   return m_line_types[i];
-}
-
-DxfLineType *DxfParser::getLineType( const pstring& line_type_name )  // const <- removed as m_layers may be changed if DXF is poor
+DxfLineType *DxfParser::getLineType( const std::string& line_type_name )  // const <- removed as m_layers may be changed if DXF is poor
 {
    static DxfLineType line_type;
 
    line_type.m_name = line_type_name;
 
-   size_t n = m_line_types.searchindex( line_type );
-   if (n == paftl::npos) {
-      n = m_line_types.add( line_type, paftl::ADD_HERE );
+   std::map<std::string, DxfLineType>::iterator lineTypeIter = m_line_types.find(line_type_name);
+   if (lineTypeIter == m_line_types.end()) {
+      m_line_types.insert( std::pair<std::string, DxfLineType> (line_type_name, line_type));
+      return &(m_line_types.find(line_type_name)->second);
    }
-   return &m_line_types[n];
+   return &(lineTypeIter->second);
 }
 
 int DxfParser::numLayers() const
@@ -205,9 +195,13 @@ istream& DxfParser::open( istream& stream )
    }
    // Get overall bounding box from layers:
    bool first = true;
-   for (size_t i = 0; i < m_layers.size(); i++) {
-      if (!m_layers[i].empty()) {
-         m_region.merge( m_layers[i] );
+
+   std::map<std::string, DxfLayer>::iterator iter = m_layers.begin(), end =
+   m_layers.end();
+   for ( ; iter != end; ++iter )
+   {
+      if (!iter->second.empty()) {
+         m_region.merge( iter->second );
       }
    }
    return stream;
@@ -330,7 +324,7 @@ void DxfParser::openTables( istream& stream )
             stream >> token;
             m_size += token.size;
             if ( line_type.parse( token, this ) ) {
-               m_line_types.add( line_type );
+               m_line_types.insert( std::pair<std::string, DxfLineType>(line_type.m_name, line_type) );
                if (token.data == "ENDTAB") {
                   subsection = ZEROTOKEN;
                }
@@ -395,13 +389,13 @@ void DxfParser::openBlocks( istream& stream )
             stream >> token;
             m_size += token.size;
             if ( block.parse( token, this ) ) {
-               int pos = m_blocks.add( block );
+               m_blocks.insert( std::pair<std::string, DxfBlock> (block.m_name, block) );
                if (token.data == "ENDBLK") {
                   subsection = ZEROTOKEN;
                }
                else {
                   // this drills down to the data for the block:
-                  openEntities(stream, token, &m_blocks[pos] );
+                  openEntities(stream, token, &(m_blocks[block.m_name]) );
                   // only if the block ends should we move up:
                   if (token.data == "ENDBLK") {
                      subsection = ZEROTOKEN;
@@ -445,12 +439,13 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
    DxfPolyLine    poly_line;
    DxfLwPolyLine  lw_poly_line;
    DxfArc         arc;
+   DxfEllipse     ellipse;
    DxfCircle      circle;
    DxfSpline      spline;
    DxfInsert      insert;
 
-   pstring layer_name;
-   pstring line_type_name;
+   std::string layer_name;
+   std::string line_type_name;
 
    while (!stream.eof() && subsection != ENDSEC) {
       switch (subsection) {
@@ -469,6 +464,9 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
             }
             else if (token.data == "ARC") {
                subsection = ARC;
+            }
+            else if (token.data == "ELLIPSE") {
+               subsection = ELLIPSE;
             }
             else if (token.data == "CIRCLE") {
                subsection = CIRCLE;
@@ -497,7 +495,10 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
                layer->m_points.push_back( point );
                layer->merge(point); // <- merge bounding box
                layer->m_total_point_count += 1;
+               point.clear();
+               subsection = ZEROTOKEN;
             }
+            break;
          case LINE:
             stream >> token;
             m_size += token.size;
@@ -544,7 +545,7 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
                   if (layer == NULL) {
                      layer = lw_poly_line.m_p_layer;
                   }
-                  layer->m_poly_lines.push_back( (const DxfPolyLine&) lw_poly_line );
+                  layer->m_poly_lines.push_back( lw_poly_line );
                   int line_count = (lw_poly_line.getAttributes() & DxfPolyLine::CLOSED) ?
                      lw_poly_line.numVertices() - 2 : lw_poly_line.numVertices() - 1;
                   layer->merge(lw_poly_line); // <- merge bounding box
@@ -562,12 +563,26 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
                if (layer == NULL) {
                   layer = arc.m_p_layer;
                }
-               layer->m_arcs.push_back( (const DxfArc&) arc );
+               layer->m_arcs.push_back( arc );
                layer->merge(arc);
                arc.clear(); // (Now reuse)
                subsection = ZEROTOKEN;
             }
             break;
+          case ELLIPSE:
+             stream >> token;
+             m_size += token.size;
+             if ( ellipse.parse( token, this ) ) {
+                DxfLayer *layer = block;
+                if (layer == NULL) {
+                   layer = ellipse.m_p_layer;
+                }
+                layer->m_ellipses.push_back( ellipse );
+                layer->merge(ellipse);
+                ellipse.clear(); // (Now reuse)
+                subsection = ZEROTOKEN;
+             }
+             break;
          case CIRCLE:
             stream >> token;
             m_size += token.size;
@@ -576,7 +591,7 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
                if (layer == NULL) {
                   layer = circle.m_p_layer;
                }
-               layer->m_circles.push_back( (const DxfCircle&) circle );
+               layer->m_circles.push_back( circle );
                layer->merge(circle);
                circle.clear(); // (Now reuse)
                subsection = ZEROTOKEN;
@@ -591,7 +606,7 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
                   if (layer == NULL) {
                      layer = spline.m_p_layer;
                   }
-                  layer->m_splines.push_back( (const DxfSpline&) spline );
+                  layer->m_splines.push_back( spline );
                   int line_count = (spline.getAttributes() & DxfSpline::CLOSED) ?
                     spline.numVertices() - 2 : spline.numVertices() - 1;
                   layer->merge(spline);
@@ -605,12 +620,17 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
             stream >> token;
             m_size += token.size;
             if ( insert.parse( token, this ) ) {
-               if ( insert.m_block ) {
+               if ( insert.m_blockName.length() ) {
                   DxfLayer *layer = block;
                   if (layer == NULL) {
                      layer = insert.m_p_layer;
+                     // we are in the entities section, unwind all the blocks
+                     layer->insert( insert, this );
+                  } else {
+                     // we are within a block, hold on until we load all of them
+                     // before we can unwind them into the entities section
+                     layer->m_inserts.push_back( insert );
                   }
-                  layer->insert( insert, this );
                }
                insert.clear();
                subsection = ZEROTOKEN;
@@ -641,7 +661,7 @@ void DxfParser::openEntities( istream& stream, DxfToken& token, DxfBlock *block 
 
 // Individual parsing of the types
 
-DxfTableRow::DxfTableRow(const pstring& name)
+DxfTableRow::DxfTableRow(const std::string& name)
 {
    m_name = name;
 }
@@ -681,7 +701,7 @@ bool DxfEntity::parse( const DxfToken& token, DxfParser *parser )
 
    switch (token.code) {
       case 5:
-         m_tag = (pstring("0x") + token.data).c_int();   // tag is in hex
+         m_tag = std::stoi(std::string("0x") + token.data);   // tag is in hex
          break;
       case 6:
          m_p_line_type = parser->getLineType( token.data );
@@ -732,13 +752,13 @@ bool DxfVertex::parse( const DxfToken& token, DxfParser *parser )
 
    switch (token.code) {
       case 10:
-         x = token.data.c_double();
+         x = std::stod(token.data);
          break;
       case 20:
-         y = token.data.c_double();
+         y = std::stod(token.data);
          break;
       case 30:
-         z = token.data.c_double();
+         z = std::stod(token.data);
          break;
       case 0: case 9:   // 0 is standard vertex, 9 is for header section variables
          parsed = true;
@@ -768,22 +788,22 @@ bool DxfLine::parse( const DxfToken& token, DxfParser *parser )
 
    switch (token.code) {
       case 10:
-         m_start.x = token.data.c_double();
+         m_start.x = std::stod(token.data);
          break;
       case 20:
-         m_start.y = token.data.c_double();
+         m_start.y = std::stod(token.data);
          break;
       case 30:
-         m_start.z = token.data.c_double();
+         m_start.z = std::stod(token.data);
          break;
       case 11:
-         m_end.x = token.data.c_double();
+         m_end.x = std::stod(token.data);
          break;
       case 21:
-         m_end.y = token.data.c_double();
+         m_end.y = std::stod(token.data);
          break;
       case 31:
-         m_end.z = token.data.c_double();
+         m_end.z = std::stod(token.data);
          break;
       case 0:
          add(m_start);  // <- add to region
@@ -846,7 +866,7 @@ bool DxfPolyLine::parse( const DxfToken& token, DxfParser *parser )
             }
             break;
          case 70:
-            m_attributes = token.data.c_int();
+            m_attributes = std::stoi(token.data);
          default:
             DxfEntity::parse( token, parser ); // base class parse
             break;
@@ -915,9 +935,9 @@ bool DxfLwPolyLine::parse( const DxfToken& token, DxfParser *parser )
          vertex.parse( token, parser );
          break;
       case 70:
-         m_attributes = token.data.c_int();
+         m_attributes = std::stoi(token.data);
       case 90:
-         m_expected_vertex_count = token.data.c_int();
+         m_expected_vertex_count = std::stoi(token.data);
       default:
          DxfEntity::parse( token, parser ); // base class parse
          break;
@@ -947,22 +967,22 @@ bool DxfArc::parse( const DxfToken& token, DxfParser *parser )
 
    switch (token.code) {
       case 10:
-         m_centre.x = token.data.c_double();
+         m_centre.x = std::stod(token.data);
          break;
       case 20:
-         m_centre.y = token.data.c_double();
+         m_centre.y = std::stod(token.data);
          break;
       case 30:
-         m_centre.z = token.data.c_double();
+         m_centre.z = std::stod(token.data);
          break;
       case 40:
-         m_radius = token.data.c_double();
+         m_radius = std::stod(token.data);
          break;
       case 50:
-         m_start = token.data.c_double();
+         m_start = std::stod(token.data);
          break;
       case 51:
-         m_end = token.data.c_double();
+         m_end = std::stod(token.data);
          break;
       case 0:
          {
@@ -1000,7 +1020,9 @@ int DxfArc::numSegments(int segments) const
 DxfVertex DxfArc::getVertex(int i, int segments) const
 {
    DxfVertex v = m_centre;
-   double ang = 2.0 * DXF_PI * double(i)/double(segments);
+   double range = 2.0 * DXF_PI;
+   if(m_start != m_end) range = (m_end - m_start) * DXF_PI / 180.0;
+   double ang = range * double(i)/double(segments);
    if (m_start != m_end) {
       ang += 2.0 * DXF_PI * (m_start / 360.0);
    }
@@ -1012,6 +1034,144 @@ DxfVertex DxfArc::getVertex(int i, int segments) const
 }
 
 void DxfArc::reflect(double x, double y)
+{
+   if (x < 0) {
+      m_start = 180 - m_start;
+      m_end = 180 - m_end;
+   }
+   if (y < 0) {
+      m_start = 360 - m_start;
+      m_end = 360 - m_end;
+   }
+   while (m_start < 0) {
+      m_start += 360;
+   }
+   while (m_end < 0) {
+      m_end += 360;
+   }
+   if (x * y < 0) {
+      double temp;
+      temp = m_start;
+      m_start = m_end;
+      m_end = temp;
+   }
+}
+
+
+DxfEllipse::DxfEllipse(int tag) : DxfEntity( tag )
+{
+}
+
+void DxfEllipse::clear()
+{
+   m_start = 0.0;
+   m_end = 0.0;
+
+   DxfRegion::clear();
+   DxfEntity::clear();
+}
+
+bool DxfEllipse::parse( const DxfToken& token, DxfParser *parser )
+{
+   bool parsed = false;
+
+   switch (token.code) {
+      case 10:
+         m_centre.x = std::stod(token.data);
+         break;
+      case 20:
+         m_centre.y = std::stod(token.data);
+         break;
+      case 30:
+         m_centre.z = std::stod(token.data);
+         break;
+      case 11:
+         m_majorAxisEndPoint.x = std::stod(token.data);
+         break;
+      case 21:
+         m_majorAxisEndPoint.y = std::stod(token.data);
+         break;
+      case 31:
+         m_majorAxisEndPoint.z = std::stod(token.data);
+         break;
+      case 210:
+         m_extrusionDirection.x = std::stod(token.data);
+         break;
+      case 220:
+         m_extrusionDirection.y = std::stod(token.data);
+         break;
+      case 230:
+         m_extrusionDirection.z = std::stod(token.data);
+         break;
+      case 40:
+         m_minorMajorAxisRatio = std::stod(token.data);
+         break;
+      case 41:
+         m_start = std::stod(token.data);
+         break;
+      case 42:
+         m_end = std::stod(token.data);
+         break;
+      case 0:
+         {
+            // just loop round if m_start is bigger than m_end
+            if (m_start > m_end) {
+               m_end += 360;
+            }
+            // technically should check for ellipse limits for tighter bounding box,
+            // but easier to give circular bounding box
+            DxfVertex bounds;
+            double xdiff = fabs(m_majorAxisEndPoint.x);
+            double ydiff = fabs(m_majorAxisEndPoint.y);
+            bounds.x = m_centre.x - xdiff;
+            bounds.y = m_centre.y - ydiff;
+            bounds.z = m_centre.z;
+            add(bounds);  // <- add to region
+            bounds.x = m_centre.x + xdiff;
+            bounds.y = m_centre.y + ydiff;
+            bounds.z = m_centre.z;
+            add(bounds);  // <- add to region
+            parsed = true;
+         }
+         break;
+      default:
+         parsed = DxfEntity::parse( token, parser ); // base class parse
+         break;
+   }
+
+   return parsed;
+}
+
+int DxfEllipse::numSegments(int segments) const
+{
+   return ((m_start == m_end) ? segments : (int(m_end - m_start) * segments / (2 * DXF_PI)));
+}
+
+DxfVertex DxfEllipse::getVertex(int i, int segments) const
+{
+   DxfVertex v = m_centre;
+   double range = 2.0 * DXF_PI;
+   if(m_start != m_end) range = (m_end - m_start);
+   double ang = m_start + range * double(i)/double(segments);
+
+   double c = cos(ang);
+   double s = sin(ang);
+
+   double reverse = 1;
+   if(m_extrusionDirection.z < 0) reverse = -1;
+
+   double xnew = c * m_majorAxisEndPoint.x -
+           m_minorMajorAxisRatio * s * m_majorAxisEndPoint.y;
+   double ynew = c * m_majorAxisEndPoint.y +
+           reverse * m_minorMajorAxisRatio * s * m_majorAxisEndPoint.x;
+
+   v.x = m_centre.x + xnew;
+   v.y = m_centre.y + ynew;
+   v.z = m_centre.z;
+   return v;
+}
+
+void DxfEllipse::reflect(double x, double y)
 {
    if (x < 0) {
       m_start = 180 - m_start;
@@ -1053,16 +1213,16 @@ bool DxfCircle::parse( const DxfToken& token, DxfParser *parser )
 
    switch (token.code) {
       case 10:
-         m_centre.x = token.data.c_double();
+         m_centre.x = std::stod(token.data);
          break;
       case 20:
-         m_centre.y = token.data.c_double();
+         m_centre.y = std::stod(token.data);
          break;
       case 30:
-         m_centre.z = token.data.c_double();
+         m_centre.z = std::stod(token.data);
          break;
       case 40:
-         m_radius = token.data.c_double();
+         m_radius = std::stod(token.data);
          break;
       case 0:
          {
@@ -1139,26 +1299,26 @@ bool DxfSpline::parse( const DxfToken& token, DxfParser *parser )
          parsed = true;
          break;
       case 70:
-         m_attributes = token.data.c_int();
+         m_attributes = std::stoi(token.data);
          break;
       case 72:
-         m_knot_count = token.data.c_int();
+         m_knot_count = std::stoi(token.data);
          break;
       case 73:
-         m_ctrl_pt_count = token.data.c_int();
+         m_ctrl_pt_count = std::stoi(token.data);
          break;
       case 40:
-         m_knots.push_back( token.data.c_double() );
+         m_knots.push_back( std::stod(token.data) );
       case 10:
-         vertex.x = token.data.c_double();
+         vertex.x = std::stod(token.data);
          m_xyz |= 0x0001;
          break;
       case 20:
-         vertex.y = token.data.c_double();
+         vertex.y = std::stod(token.data);
          m_xyz |= 0x0010;
          break;
       case 30:
-         vertex.z = token.data.c_double();
+         vertex.z = std::stod(token.data);
          m_xyz |= 0x0100;
          break;
       default:
@@ -1203,7 +1363,7 @@ DxfInsert::DxfInsert(int tag) : DxfEntity( tag )
 
 void DxfInsert::clear()
 {
-   m_block = NULL;
+   m_blockName = "";
    m_translation.clear();
    m_scale.clear();
 
@@ -1227,34 +1387,28 @@ bool DxfInsert::parse( const DxfToken& token, DxfParser *parser )
          parsed = true;
          break;
       case 2:
-         // lookup in blocks table
-         {
-            size_t index = parser->m_blocks.searchindex(token.data);
-            if (index != paftl::npos) {
-               m_block = &(parser->m_blocks[index]);
-            }
-         }
+         m_blockName = token.data;
          break;
       case 10:
-         m_translation.x = token.data.c_double();
+         m_translation.x = std::stod(token.data);
          break;
       case 20:
-         m_translation.y = token.data.c_double();
+         m_translation.y = std::stod(token.data);
          break;
       case 30:
-         m_translation.z = token.data.c_double();
+         m_translation.z = std::stod(token.data);
          break;
       case 41:
-         m_scale.x = token.data.c_double();
+         m_scale.x = std::stod(token.data);
          break;
       case 42:
-         m_scale.y = token.data.c_double();
+         m_scale.y = std::stod(token.data);
          break;
       case 43:
-         m_scale.z = token.data.c_double();
+         m_scale.z = std::stod(token.data);
          break;
       case 50:
-         m_rotation = token.data.c_double();
+         m_rotation = std::stod(token.data);
          break;
       default:
          DxfEntity::parse( token, parser ); // base class parse
@@ -1266,7 +1420,7 @@ bool DxfInsert::parse( const DxfToken& token, DxfParser *parser )
 
 ///////////////////////////////////////////////////////////////////////////////
 
-DxfLineType::DxfLineType(const pstring& name) : DxfTableRow( name )
+DxfLineType::DxfLineType(const std::string& name) : DxfTableRow( name )
 {
 }
 
@@ -1296,7 +1450,7 @@ DxfVertex& DxfLine::getEnd() const
 
 ///////////////////////////////////////////////////////////////////////////////
 
-DxfLayer::DxfLayer(const pstring& name) : DxfTableRow( name )
+DxfLayer::DxfLayer(const std::string& name) : DxfTableRow( name )
 {
    m_total_line_count = 0;
 }
@@ -1335,6 +1489,11 @@ const DxfArc& DxfLayer::getArc( int i ) const
    return m_arcs[i];
 }
 
+const DxfEllipse& DxfLayer::getEllipse( int i ) const
+{
+   return m_ellipses[i];
+}
+
 const DxfCircle& DxfLayer::getCircle( int i ) const
 {
    return m_circles[i];
@@ -1365,6 +1524,11 @@ int DxfLayer::numArcs() const
    return m_arcs.size();
 }
 
+int DxfLayer::numEllipses() const
+{
+   return m_ellipses.size();
+}
+
 int DxfLayer::numCircles() const
 {
    return m_circles.size();
@@ -1381,69 +1545,93 @@ void DxfLayer::insert(DxfInsert& insert, DxfParser *parser)
 
    // munge in insert...
    bool scale = (insert.m_scale.x != 1.0 || insert.m_scale.y != 1.0 || insert.m_scale.z != 1.0);
-   bool rotate = (insert.m_rotation != 0.0);
+   bool rotate = (insert.m_rotation != 0.0 && insert.m_rotation < 359.9999999);
    if (insert.m_rotation < 0) {
      insert.m_rotation += 360;
    }
 
-   for (i = 0; i < insert.m_block->m_lines.size(); i++) {
-      m_lines.push_back(insert.m_block->m_lines[i]);
-      // rotate, translate, scale each line as specified in the insert
-      if (scale)
-         m_lines.tail().scale(insert.m_block->m_base_point,insert.m_scale);
-      if (rotate)
-         m_lines.tail().rotate(insert.m_block->m_base_point,insert.m_rotation);
-      m_lines.tail().translate(insert.m_translation);
-      merge(m_lines.tail()); // <- merge bounding box
+   // lookup in blocks table
+   if (!parser->m_blocks.count(insert.m_blockName)) {
+       // throw exception
    }
-   for (i = 0; i < insert.m_block->m_poly_lines.size(); i++) {
-      m_poly_lines.push_back(insert.m_block->m_poly_lines[i]);
-      // rotate, translate, scale each line as specified in the insert
-      if (scale)
-         m_poly_lines.tail().scale(insert.m_block->m_base_point,insert.m_scale);
-      if (rotate)
-         m_poly_lines.tail().rotate(insert.m_block->m_base_point,insert.m_rotation);
-      m_poly_lines.tail().translate(insert.m_translation);
-      merge(m_poly_lines.tail()); // <- merge bounding box
+   DxfBlock &block = parser->m_blocks[insert.m_blockName];
+
+   // unwind deeper inserts
+   for(i = 0; i < block.m_inserts.size(); i++) {
+       block.insert( block.m_inserts[i], parser);
    }
-   for (i = 0; i < insert.m_block->m_arcs.size(); i++) {
-      m_arcs.push_back(insert.m_block->m_arcs[i]);
+   // delete inserts at this level to avoid re-inserting them
+   // if the block is re-inserted
+   block.m_inserts.clear();
+
+   for (i = 0; i < block.m_lines.size(); i++) {
+      m_lines.push_back(block.m_lines[i]);
       // rotate, translate, scale each line as specified in the insert
       if (scale)
-         m_arcs.tail().scale(insert.m_block->m_base_point,insert.m_scale);
+         m_lines.back().scale(block.m_base_point,insert.m_scale);
       if (rotate)
-         m_arcs.tail().rotate(insert.m_block->m_base_point,insert.m_rotation);
-      m_arcs.tail().translate(insert.m_translation);
-      merge(m_arcs.tail()); // <- merge bounding box
+         m_lines.back().rotate(block.m_base_point,insert.m_rotation);
+      m_lines.back().translate(insert.m_translation);
+      merge(m_lines.back()); // <- merge bounding box
    }
-   for (i = 0; i < insert.m_block->m_circles.size(); i++) {
-      m_circles.push_back(insert.m_block->m_circles[i]);
+   for (i = 0; i < block.m_poly_lines.size(); i++) {
+      m_poly_lines.push_back(block.m_poly_lines[i]);
       // rotate, translate, scale each line as specified in the insert
       if (scale)
-         m_circles.tail().scale(insert.m_block->m_base_point,insert.m_scale);
+         m_poly_lines.back().scale(block.m_base_point,insert.m_scale);
+      if (rotate)
+         m_poly_lines.back().rotate(block.m_base_point,insert.m_rotation);
+      m_poly_lines.back().translate(insert.m_translation);
+      merge(m_poly_lines.back()); // <- merge bounding box
+   }
+   for (i = 0; i < block.m_arcs.size(); i++) {
+      m_arcs.push_back(block.m_arcs[i]);
+      // rotate, translate, scale each line as specified in the insert
+      if (scale)
+         m_arcs.back().scale(block.m_base_point,insert.m_scale);
+      if (rotate)
+         m_arcs.back().rotate(block.m_base_point,insert.m_rotation);
+      m_arcs.back().translate(insert.m_translation);
+      merge(m_arcs.back()); // <- merge bounding box
+   }
+   for (i = 0; i < block.m_ellipses.size(); i++) {
+      m_ellipses.push_back(block.m_ellipses[i]);
+      // rotate, translate, scale each line as specified in the insert
+      if (scale)
+         m_ellipses.back().scale(block.m_base_point,insert.m_scale);
+      if (rotate)
+         m_ellipses.back().rotate(block.m_base_point,insert.m_rotation);
+      m_ellipses.back().translate(insert.m_translation);
+      merge(m_ellipses.back()); // <- merge bounding box
+   }
+   for (i = 0; i < block.m_circles.size(); i++) {
+      m_circles.push_back(block.m_circles[i]);
+      // rotate, translate, scale each line as specified in the insert
+      if (scale)
+         m_circles.back().scale(block.m_base_point,insert.m_scale);
       // n.b., rotate does nothing with circles
       if (rotate)
-         m_circles.tail().rotate(insert.m_block->m_base_point,insert.m_rotation);
-      m_circles.tail().translate(insert.m_translation);
-      merge(m_circles.tail()); // <- merge bounding box
+         m_circles.back().rotate(block.m_base_point,insert.m_rotation);
+      m_circles.back().translate(insert.m_translation);
+      merge(m_circles.back()); // <- merge bounding box
    }
-   for (i = 0; i < insert.m_block->m_splines.size(); i++) {
-      m_splines.push_back(insert.m_block->m_splines[i]);
+   for (i = 0; i < block.m_splines.size(); i++) {
+      m_splines.push_back(block.m_splines[i]);
       // rotate, translate, scale each line as specified in the insert
       if (scale)
-         m_splines.tail().scale(insert.m_block->m_base_point,insert.m_scale);
+         m_splines.back().scale(block.m_base_point,insert.m_scale);
       if (rotate)
-         m_splines.tail().rotate(insert.m_block->m_base_point,insert.m_rotation);
-      m_splines.tail().translate(insert.m_translation);
-      merge(m_splines.tail()); // <- merge bounding box
+         m_splines.back().rotate(block.m_base_point,insert.m_rotation);
+      m_splines.back().translate(insert.m_translation);
+      merge(m_splines.back()); // <- merge bounding box
    }
 
-   m_total_line_count += insert.m_block->m_total_line_count;
+   m_total_line_count += block.m_total_line_count;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-DxfBlock::DxfBlock(const pstring& name) : DxfLayer( name )
+DxfBlock::DxfBlock(const std::string& name) : DxfLayer( name )
 {
 }
 
@@ -1471,12 +1659,18 @@ DxfToken::DxfToken()
 
 istream& operator >> (istream& stream, DxfToken& token)
 {
-   static pstring inputline;
-   stream >> inputline;
-   token.code = inputline.c_int();
-   stream >> token.data;
-   token.size = inputline.length() + token.data.length() + 2;   // might be missing a few end line characters --- never mind
-   return stream;
+    std::string codeInputLine;
+    std::getline(stream,codeInputLine);
+    token.code = std::stoi(codeInputLine);
+    std::string dataInputLine;
+    std::getline(stream,dataInputLine);
+    dXstring::ltrim(dataInputLine,'\r');
+    dXstring::ltrim(dataInputLine,'\n');
+    dXstring::rtrim(dataInputLine,'\r');
+    dXstring::rtrim(dataInputLine,'\n');
+    token.data = dataInputLine;
+    token.size = codeInputLine.length() + token.data.length() + 2;   // might be missing a few end line characters --- never mind
+    return stream;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

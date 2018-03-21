@@ -18,15 +18,15 @@
 #define VERSION_H
 
 // use these to define the depthmap versions
-#define DEPTHMAPX_VERSION 0.55
-#define DEPTHMAPX_MINOR_VERSION_RAW b   // b Beta version, r is standard release, s is stable release, W - M - L for single OS
+#define DEPTHMAPX_MAJOR_VERSION 0
+#define DEPTHMAPX_MINOR_VERSION 6
+#define DEPTHMAPX_REVISION_VERSION 0
+
 #define DEPTHMAP_MODULE_VERSION 10.04
 
 // leave these alone - C Preprocessor magic to get stuff to the right format
 #define STRINGIFY(v) #v
-#define DEPTHMAPX_MINOR_VERSION_FORMAT(minor) STRINGIFY(minor)
-#define DEPTHMAPX_MINOR_VERSION DEPTHMAPX_MINOR_VERSION_FORMAT(DEPTHMAPX_MINOR_VERSION_RAW)
-#define TITLE_BASE_FORMAT(version, minor) "depthmapX " STRINGIFY(version) STRINGIFY(minor)
-#define TITLE_BASE TITLE_BASE_FORMAT(DEPTHMAPX_VERSION, DEPTHMAPX_MINOR_VERSION_RAW)
+#define TITLE_BASE_FORMAT(version, minor, revision) "depthmapX " STRINGIFY(version) "." STRINGIFY(minor) "." STRINGIFY(revision)
+#define TITLE_BASE TITLE_BASE_FORMAT(DEPTHMAPX_MAJOR_VERSION, DEPTHMAPX_MINOR_VERSION, DEPTHMAPX_REVISION_VERSION)
 
 #endif // VERSION_H

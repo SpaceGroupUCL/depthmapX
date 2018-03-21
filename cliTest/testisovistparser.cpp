@@ -58,7 +58,7 @@ TEST_CASE("Parse isovists from file")
     {
         SelfCleaningFile scf("fullisovists.csv");
         {
-            ofstream file(scf.Filename());
+            std::ofstream file(scf.Filename());
             file << "id,x,y,angle\n1,1,1,27\n2,2.2,1.1,190\n" << std::flush;
         }
 
@@ -79,7 +79,7 @@ TEST_CASE("Parse isovists from file")
     {
         SelfCleaningFile scf("fullisovists.csv");
         {
-            ofstream file(scf.Filename());
+            std::ofstream file(scf.Filename());
             file << "id,x,y,angle,foo,ViewAngle\n1,1,1,27,bar,180\n2,2.2,1.1,180,baz,90\n" << std::flush;
         }
 

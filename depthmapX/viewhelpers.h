@@ -18,13 +18,13 @@
 #define DEPTHMAPX_VIEWHELPERS_H
 
 #include <QPoint>
-#include "genlib/paftl.h"
 #include "genlib/p2dpoly.h"
+#include <string>
 
 namespace ViewHelpers
 {
     Point2f calculateCenter(const QPoint& point, const QPoint &oldCentre, double factor);
-    pstring getCurrentDate();
+    std::string getCurrentDate();
 }
 
 

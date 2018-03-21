@@ -25,6 +25,7 @@
 #include <salalib/mgraph.h> // purely for the version info --- as phased out should replace
 #include <salalib/axialmap.h>
 
+#include "genlib/stringutils.h"
 #include "topomet.h"
 
 bool ShapeGraph::analyseTopoMet(Communicator *comm, int analysis_type, double radius, bool sel_only)
@@ -58,26 +59,26 @@ bool ShapeGraph::analyseTopoMet(Communicator *comm, int analysis_type, double ra
       }
    }
 
-   pstring prefix, suffix;
+   std::string prefix, suffix;
    int maxbin;
    if (analysis_type == TOPOMET_METHOD_METRIC) {
-      prefix = pstring("Metric ");
+      prefix = "Metric ";
       maxbin = 512;
    }
    else {
-      prefix = pstring("Topological ");
+      prefix = "Topological ";
       maxbin = 2;
    }
    if (radius != -1.0) {
-      suffix = pstringify(radius," R%.f metric");
+      suffix = dXstring::formatString(radius," R%.f metric");
    }
-   pstring choicecol = prefix + pstring("Choice") + suffix;
-   pstring wchoicecol = prefix + pstring("Choice [SLW]") + suffix;
-   pstring meandepthcol = prefix + pstring("Mean Depth") + suffix;
-   pstring wmeandepthcol = prefix + pstring("Mean Depth [SLW]") + suffix;
-   pstring totaldcol = prefix + pstring("Total Depth") + suffix;
-   pstring totalcol = prefix + pstring("Total Nodes") + suffix;
-   pstring wtotalcol = prefix + pstring("Total Length") + suffix;
+   std::string choicecol = prefix + "Choice" + suffix;
+   std::string wchoicecol = prefix + "Choice [SLW]" + suffix;
+   std::string meandepthcol = prefix + "Mean Depth" + suffix;
+   std::string wmeandepthcol = prefix + std::string("Mean Depth [SLW]") + suffix;
+   std::string totaldcol = prefix + "Total Depth" + suffix;
+   std::string totalcol = prefix + "Total Nodes" + suffix;
+   std::string wtotalcol = prefix + "Total Length" + suffix;
    //
    if (!sel_only) {
       m_attributes.insertColumn(choicecol.c_str());
@@ -256,16 +257,16 @@ bool ShapeGraph::analyseTopoMetPD(Communicator *comm, int analysis_type)
    }
 
    int maxbin;
-   pstring prefix;
+   std::string prefix;
    if (analysis_type == TOPOMET_METHOD_METRIC) {
-      prefix = pstring("Metric ");
+      prefix = "Metric ";
       maxbin = 512;
    }
    else {
-      prefix = pstring("Topological ");
+      prefix = "Topological ";
       maxbin = 2;
    }
-   pstring depthcol = prefix + pstring("Step Depth");
+   std::string depthcol = prefix + "Step Depth";
 
    m_attributes.insertColumn(depthcol.c_str());
 
@@ -278,9 +279,8 @@ bool ShapeGraph::analyseTopoMetPD(Communicator *comm, int analysis_type)
    {
       seen[i] = 0xffffffff;
    }
-   for (size_t i = 0; i < getSelCount(); i++)
+   for (auto& cursor: getSelSet())
    {
-      size_t cursor = getSelSet().at(i);
       seen[cursor] = 0;
       open++;
       double length = seglengths[cursor];

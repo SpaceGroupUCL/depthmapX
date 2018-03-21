@@ -24,13 +24,13 @@ class CLayerChooserDlg : public QDialog, public Ui::CLayerChooserDlg
 {
 	Q_OBJECT
 public:
-    CLayerChooserDlg(pvecstring names = pvecstring(), QWidget *parent = 0);
+    CLayerChooserDlg(const std::vector<std::string>& names = std::vector<std::string>(), QWidget *parent = 0);
 	QString	m_text;
 	int		m_layer;
 	void UpdateData(bool value);
 	void showEvent(QShowEvent * event);
 
-	pvecstring m_names;
+    const std::vector<std::string>& m_names;
 
 	private slots:
 		void OnOK();

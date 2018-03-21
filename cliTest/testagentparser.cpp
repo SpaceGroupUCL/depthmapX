@@ -71,11 +71,11 @@ TEST_CASE("AgentParserFail", "Parsing errors")
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alife requires an argument"));
     }
 
-    SECTION("Missing argument to -alocrand")
+    SECTION("Missing argument to -alocseed")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-alocrand"};
-        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocrand requires an argument"));
+        ArgumentHolder ah{"prog", "-alocseed"};
+        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocseed requires an argument"));
     }
 
     SECTION("Missing argument to -alocfile")
@@ -112,7 +112,7 @@ TEST_CASE("AgentParserFail", "Parsing errors")
     {
         AgentParser parser;
         ArgumentHolder ah{"prog", "-atrails", "foo"};
-        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-atrails must be a number >=0 or -1 for all, got foo"));
+        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-atrails must be a number >=1 or 0 for all (max possible = 50), got foo"));
     }
 
     SECTION("Non-numeric input to -afov")
@@ -150,10 +150,10 @@ TEST_CASE("AgentParserFail", "Parsing errors")
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alife must be a number >0, got foo"));
     }
 
-    SECTION("Rubbish input to -alocrand")
+    SECTION("Rubbish input to -alocseed")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-alocrand", "foo"};
+        ArgumentHolder ah{"prog", "-alocseed", "foo"};
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Invalid starting location seed provided (foo). Should only contain digits"));
     }
 
@@ -190,35 +190,35 @@ TEST_CASE("AgentParserInputFail", "Bad or missing input")
     SECTION("-ats not provided")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000", "-alocrand", "0"};
+        ArgumentHolder ah{"prog", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000", "-alocseed", "0"};
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Total number of timesteps (-ats <timesteps>) is required"));
     }
 
     SECTION("-arr not provided")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-ats", "5000", "-afov","15", "-asteps", "3", "-alife", "1000", "-alocrand", "0"};
+        ArgumentHolder ah{"prog", "-ats", "5000", "-afov","15", "-asteps", "3", "-alife", "1000", "-alocseed", "0"};
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Release rate (-arr <rate>) is required"));
     }
 
     SECTION("-afov not provided")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-ats", "5000", "-arr", "0.1", "-asteps", "3", "-alife", "1000", "-alocrand", "0"};
+        ArgumentHolder ah{"prog", "-ats", "5000", "-arr", "0.1", "-asteps", "3", "-alife", "1000", "-alocseed", "0"};
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Agent field-of-view (-afov <bins>) is required"));
     }
 
     SECTION("-asteps not provided")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-ats", "5000", "-arr", "0.1", "-afov","15", "-alife", "1000", "-alocrand", "0"};
+        ArgumentHolder ah{"prog", "-ats", "5000", "-arr", "0.1", "-afov","15", "-alife", "1000", "-alocseed", "0"};
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Agent number of steps before turn decision (-asteps <steps>) is required"));
     }
 
     SECTION("-alife not provided")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alocrand", "0"};
+        ArgumentHolder ah{"prog", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alocseed", "0"};
         REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Agent life in timesteps (-alife <timesteps>) is required"));
     }
 
@@ -226,7 +226,7 @@ TEST_CASE("AgentParserInputFail", "Bad or missing input")
     {
         AgentParser parser;
         ArgumentHolder ah{"prog", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
-        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Either -aloc, -alocfile or -alocrand must be given"));
+        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("Either -aloc, -alocfile or -alocseed must be given"));
     }
 
     SECTION("Manual points and pointfile provided")
@@ -256,8 +256,8 @@ TEST_CASE("AgentParserInputFail", "Bad or missing input")
     SECTION("Manual points and random points provided")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-aloc", "0.1,5.2", "-alocrand", "0", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
-        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocrand cannot be used together with -aloc"));
+        ArgumentHolder ah{"prog", "-aloc", "0.1,5.2", "-alocseed", "0", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
+        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocseed cannot be used together with -aloc"));
     }
 
     SECTION("Pointfile and random points provided")
@@ -268,15 +268,15 @@ TEST_CASE("AgentParserInputFail", "Bad or missing input")
             std::ofstream f("testpoints.csv");
             f << "x\ty\n1\t2\n" << std::flush;
         }
-        ArgumentHolder ah{"prog", "-alocfile", "testpoints.csv", "-alocrand", "0", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
-        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocrand cannot be used together with -alocfile"));
+        ArgumentHolder ah{"prog", "-alocfile", "testpoints.csv", "-alocseed", "0", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
+        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocseed cannot be used together with -alocfile"));
     }
 
     SECTION("Random points and manual points provided")
     {
         AgentParser parser;
-        ArgumentHolder ah{"prog", "-alocrand", "0", "-aloc", "0.1,5.2", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
-        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-aloc cannot be used together with -alocrand"));
+        ArgumentHolder ah{"prog", "-alocseed", "0", "-aloc", "0.1,5.2", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
+        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-aloc cannot be used together with -alocseed"));
     }
 
     SECTION("Random points and Pointfile provided")
@@ -287,8 +287,8 @@ TEST_CASE("AgentParserInputFail", "Bad or missing input")
             std::ofstream f("testpoints.csv");
             f << "x\ty\n1\t2\n" << std::flush;
         }
-        ArgumentHolder ah{"prog", "-alocrand", "0", "-alocfile", "testpoints.csv", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
-        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocfile cannot be used together with -alocrand"));
+        ArgumentHolder ah{"prog", "-alocseed", "0", "-alocfile", "testpoints.csv", "-ats", "5000", "-arr", "0.1", "-afov","15", "-asteps", "3", "-alife", "1000"};
+        REQUIRE_THROWS_WITH(parser.parse(ah.argc(), ah.argv()), Catch::Contains("-alocfile cannot be used together with -alocseed"));
     }
 
     SECTION("Non-existing file provided")
@@ -353,7 +353,7 @@ TEST_CASE("AgentParserSuccess", "Read successfully")
 
     SECTION("Random starting locations (points vector should be empty, seed 0)")
     {
-        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocrand", "0"};
+        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocseed", "0"};
         parser.parse(ah.argc(), ah.argv());
 
         auto points = parser.getReleasePoints();
@@ -363,7 +363,7 @@ TEST_CASE("AgentParserSuccess", "Read successfully")
 
     SECTION("Random starting locations (points vector should be empty, seed 1)")
     {
-        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocrand", "1"};
+        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocseed", "1"};
         parser.parse(ah.argc(), ah.argv());
 
         auto points = parser.getReleasePoints();
@@ -411,7 +411,7 @@ TEST_CASE("AgentParserSuccess", "Read successfully")
 
     SECTION("Output type not set")
     {
-        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocrand", "0"};
+        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocseed", "0"};
         parser.parse(ah.argc(), ah.argv());
 
         auto outputTypes = parser.outputTypes();
@@ -420,7 +420,7 @@ TEST_CASE("AgentParserSuccess", "Read successfully")
 
     SECTION("Set output type to graph")
     {
-        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocrand", "0", "-ot", "graph"};
+        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocseed", "0", "-ot", "graph"};
         parser.parse(ah.argc(), ah.argv());
 
         auto outputTypes = parser.outputTypes();
@@ -430,7 +430,7 @@ TEST_CASE("AgentParserSuccess", "Read successfully")
 
     SECTION("Set output type to gatecounts")
     {
-        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocrand", "0", "-ot", "gatecounts"};
+        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocseed", "0", "-ot", "gatecounts"};
         parser.parse(ah.argc(), ah.argv());
 
         auto outputTypes = parser.outputTypes();
@@ -440,8 +440,11 @@ TEST_CASE("AgentParserSuccess", "Read successfully")
 
     SECTION("Set output type to trails")
     {
-        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocrand", "0", "-ot", "trails"};
+        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocseed", "0", "-atrails", "1", "-ot", "trails"};
         parser.parse(ah.argc(), ah.argv());
+
+        auto noOfTrails = parser.recordTrailsForAgents();
+        REQUIRE(noOfTrails == 1);
 
         auto outputTypes = parser.outputTypes();
         REQUIRE(outputTypes.size() == 1);
@@ -450,7 +453,7 @@ TEST_CASE("AgentParserSuccess", "Read successfully")
 
     SECTION("Set two output types")
     {
-        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocrand", "0", "-ot", "graph", "-ot", "gatecounts"};
+        ArgumentHolder ah{"prog", "-ats", ats.str(), "-arr", arr.str(), "-afov", afov.str(), "-asteps", asteps.str(), "-alife", alife.str(), "-alocseed", "0", "-ot", "graph", "-ot", "gatecounts"};
         parser.parse(ah.argc(), ah.argv());
 
         auto outputTypes = parser.outputTypes();

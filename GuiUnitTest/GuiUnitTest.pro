@@ -12,7 +12,8 @@ INCLUDEPATH += ../ThirdParty/Catch
 TEMPLATE = app
 
 SOURCES += main.cpp \
-    testviewhelpers.cpp
+    testviewhelpers.cpp \
+    testsettings.cpp
 
 win32:Release:LIBS += -L../depthmapX/release
 win32:Debug:LIBS += -L../depthmapX/debug
@@ -31,3 +32,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # In order to do so, uncomment the following line.
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+HEADERS += \
+    ../cliTest/selfcleaningfile.h

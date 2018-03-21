@@ -18,6 +18,8 @@
 #include <salalib/attributes.h>
 #include <salalib/shapemap.h>
 #include <salalib/axialmap.h>
+#include <string>
+#include <vector>
 
 class CInsertColumnDlg : public QDialog, public Ui::CInsertColumnDlg
 {
@@ -26,8 +28,8 @@ public:
 	CInsertColumnDlg(AttributeTable *table = NULL, int col = -1, QWidget *parent = 0);
 	bool	m_selection_only;
 	int m_col;
-	pvecstring m_col_names;
-	pstring m_formula_text;
+    std::vector<std::string> m_col_names;
+    std::string m_formula_text;
 	void UpdateData(bool value);
 	void showEvent(QShowEvent * event);
 

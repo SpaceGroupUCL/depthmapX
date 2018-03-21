@@ -18,20 +18,9 @@
 #include <cstdlib>
 #include <sstream>
 
-namespace EntityParsing {
-    std::vector<std::string> split(const std::string &s, char delim)
-    {
-        std::vector<std::string> elems;
-        std::stringstream ss;
-        ss.str(s);
-        std::string item;
-        while (std::getline(ss, item, delim))
-        {
-            elems.push_back(item);
-        }
+#include "genlib/stringutils.h"
 
-        return elems;
-    }
+namespace EntityParsing {
 
     std::vector<Line> parseLines(std::istream& stream, char delimiter = '\t') {
 
@@ -40,7 +29,7 @@ namespace EntityParsing {
         std::string inputline;
         std::getline(stream, inputline);
 
-        std::vector<std::string> strings = split(inputline, delimiter);
+        std::vector<std::string> strings = dXstring::split(inputline, delimiter);
 
         if (strings.size() < 4)
         {
@@ -88,7 +77,7 @@ namespace EntityParsing {
         while (!stream.eof()) {
             std::getline(stream, inputline);
             if (!inputline.empty()) {
-                strings = split(inputline, delimiter);
+                strings = dXstring::split(inputline, delimiter);
                 if (!strings.size())
                 {
                     continue;
@@ -96,7 +85,7 @@ namespace EntityParsing {
                 if (strings.size() < 4)
                 {
                     std::stringstream message;
-                    message << "Error parsing line: " << inputline << flush;
+                    message << "Error parsing line: " << inputline << std::flush;
                     throw EntityParseException(message.str().c_str());
                 }
                 for (i = 0; i < strings.size(); i++)
@@ -131,7 +120,7 @@ namespace EntityParsing {
         std::string inputline;
         std::getline(stream, inputline);
 
-        std::vector<std::string> strings = split(inputline, delimiter);
+        std::vector<std::string> strings = dXstring::split(inputline, delimiter);
 
         if (strings.size() < 2)
         {
@@ -171,7 +160,7 @@ namespace EntityParsing {
         while (!stream.eof()) {
             std::getline(stream, inputline);
             if (!inputline.empty()) {
-                strings = split(inputline, delimiter);
+                strings = dXstring::split(inputline, delimiter);
                 if (!strings.size())
                 {
                     continue;
@@ -179,7 +168,7 @@ namespace EntityParsing {
                 if (strings.size() < 2)
                 {
                     std::stringstream message;
-                    message << "Error parsing line: " << inputline << flush;
+                    message << "Error parsing line: " << inputline << std::flush;
                     throw EntityParseException(message.str().c_str());
                 }
                 for (i = 0; i < strings.size(); i++)
@@ -199,27 +188,27 @@ namespace EntityParsing {
         return points;
     }
 
-    Point2f parsePoint(const string &point, char delimiter)
+    Point2f parsePoint(const std::string &point, char delimiter)
     {
-        std::vector<std::string> strings = split(point, delimiter);
+        std::vector<std::string> strings = dXstring::split(point, delimiter);
 
         if (strings.size() != 2)
         {
             std::stringstream message;
-            message << "Badly formatted point data, should be <number>" << delimiter << "<number>, was " << point << flush;
+            message << "Badly formatted point data, should be <number>" << delimiter << "<number>, was " << point << std::flush;
              throw EntityParseException(message.str());
         }
         return Point2f(atof(strings[0].c_str()), atof(strings[1].c_str()));
     }
 
-    std::vector<IsovistDefinition> parseIsovists(istream &stream, char delimiter)
+    std::vector<IsovistDefinition> parseIsovists(std::istream &stream, char delimiter)
     {
         std::vector<IsovistDefinition> isovists;
 
         std::string inputline;
         std::getline(stream, inputline);
 
-        std::vector<std::string> strings = split(inputline, delimiter);
+        std::vector<std::string> strings = dXstring::split(inputline, delimiter);
 
         if (strings.size() < 2)
         {
@@ -268,7 +257,7 @@ namespace EntityParsing {
             std::getline(stream, inputline);
             if (!inputline.empty())
             {
-                strings = split(inputline, delimiter);
+                strings = dXstring::split(inputline, delimiter);
                 if (!strings.size())
                 {
                     continue;
@@ -276,7 +265,7 @@ namespace EntityParsing {
                 if (strings.size() <= maxCol)
                 {
                     std::stringstream message;
-                    message << "Error parsing line: " << inputline << flush;
+                    message << "Error parsing line: " << inputline << std::flush;
                     throw EntityParseException(message.str().c_str());
                 }
 
@@ -298,9 +287,9 @@ namespace EntityParsing {
         return isovists;
     }
 
-    IsovistDefinition parseIsovist(const string &isovist)
+    IsovistDefinition parseIsovist(const std::string &isovist)
     {
-        auto parts = split(isovist, ',');
+        auto parts = dXstring::split(isovist, ',');
         if (parts.size() == 2)
         {
             return IsovistDefinition(std::atof(parts[0].c_str()), std::atof(parts[1].c_str()));

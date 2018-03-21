@@ -29,7 +29,14 @@ int main(int argc, char *argv[])
         args.parse(argc, argv);
         if (!args.isValid())
         {
-            args.printHelp();
+            if (args.printVersionMode())
+            {
+                args.printVersion();
+            }
+            else
+            {
+                args.printHelp();
+            }
             return 0;
         }
 

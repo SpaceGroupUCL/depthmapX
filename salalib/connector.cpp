@@ -24,7 +24,7 @@
 #include <salalib/mgraph.h> // purely for the version info --- as phased out should replace
 #include <salalib/connector.h>
 
-bool Connector::read( ifstream& stream, int version, pvecint *keyvertices )
+bool Connector::read( istream& stream, int version, pvecint *keyvertices )
 {
    m_connections.clear();
    m_forward_segconns.clear();
@@ -33,18 +33,9 @@ bool Connector::read( ifstream& stream, int version, pvecint *keyvertices )
    // n.b., must set displayed attribute as soon as loaded...
    m_connections.read(stream);
 
-   // keyvertices now stored with axial map itself, but need this read for backward compatibility
-   if (version < VERSION_AXIAL_SHAPES && keyvertices != NULL) {
-      keyvertices->read(stream);
-   }
-
-   if (version >= VERSION_SEGMENT_MAPS) {
-      stream.read((char *)&m_segment_axialref, sizeof(m_segment_axialref));
-      m_forward_segconns.read(stream);
-   }
-   if (version >= VERSION_SEGMENT_MAPS_FIX) {
-      m_back_segconns.read(stream);
-   }
+   stream.read((char *)&m_segment_axialref, sizeof(m_segment_axialref));
+   m_forward_segconns.read(stream);
+   m_back_segconns.read(stream);
 
    return true;
 }
