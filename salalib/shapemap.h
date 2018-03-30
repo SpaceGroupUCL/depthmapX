@@ -24,7 +24,7 @@
 #include "genlib/stringutils.h"
 #include <vector>
 #include <string>
-#include "salalib/importtypedefs.h"
+#include "importlib/importtypedefs.h"
 #include "genlib/bsptree.h"
 #include "genlib/containerutils.h"
 #include <set>

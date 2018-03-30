@@ -3,6 +3,7 @@ CONFIG+=ordered
 SUBDIRS = \
     mgraph440 \
     genlib \
+    importlib \
     salalib \
     settingsdialog \
     depthmapX \
@@ -12,5 +13,6 @@ SUBDIRS = \
     cliTest \
     salaTest \
     genlibTest \
-    depthmapXTest
-GuiApp.depends = depthmapX genlib mgraph440 salalib settingsdialog
+    depthmapXTest \
+    importlibTest
+GuiApp.depends = depthmapX genlib mgraph440 importlib salalib settingsdialog

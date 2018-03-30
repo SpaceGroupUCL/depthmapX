@@ -56,7 +56,7 @@
 #include <windows.h>
 #endif
 #include "compatibilitydefines.h"
-#include "salalib/importutils.h"
+#include "importlib/importutils.h"
 
 QT_BEGIN_NAMESPACE
 Q_DECLARE_METATYPE(std::string)

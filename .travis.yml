@@ -18,5 +18,5 @@ script:
   - mkdir build && cd build
   - /opt/qt57/bin/qmake ../depthmapX.pro
   - make
-  - ./cliTest/cliTest && ./GuiUnitTest/GuiUnitTest && ./salaTest/salaTest && ./genlibTest/genlibTest
+  - ./cliTest/cliTest && ./GuiUnitTest/GuiUnitTest && ./salaTest/salaTest && ./importlibTest/importlibTest && ./genlibTest/genlibTest
   - cd ../RegressionTest/test && python3.5 test_main.py && cd .. && python3.5 RegressionTestRunner.py && python3.5 RegressionTestRunner.py regressionconfig_agents.json

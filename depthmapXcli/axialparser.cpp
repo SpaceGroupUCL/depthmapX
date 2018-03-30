@@ -17,7 +17,7 @@
 #include "axialparser.h"
 #include "parsingutils.h"
 #include "exceptions.h"
-#include "salalib/entityparsing.h"
+#include "importlib/entityparsing.h"
 #include "runmethods.h"
 #include <cstring>
 

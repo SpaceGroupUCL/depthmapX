@@ -16,7 +16,7 @@
 #include "visprepparser.h"
 #include "exceptions.h"
 #include "parsingutils.h"
-#include "salalib/entityparsing.h"
+#include "importlib/entityparsing.h"
 #include "runmethods.h"
 #include <sstream>
 #include <cstring>

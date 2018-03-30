@@ -26,19 +26,15 @@ SOURCES += \
     mgraph.cpp \
     nagent.cpp \
     ngraph.cpp \
-    ntfp.cpp \
     pointdata.cpp \
     salaprogram.cpp \
     shapemap.cpp \
     spacepix.cpp \
     sparksieve2.cpp \
-    tigerp.cpp \
     topomet.cpp \
-    entityparsing.cpp \
     linkutils.cpp \
     gridproperties.cpp \
     geometrygenerators.cpp \
-    importutils.cpp \
     point.cpp \
     pafcolor.cpp
 
@@ -53,22 +49,17 @@ HEADERS += \
     mgraph.h \
     nagent.h \
     ngraph.h \
-    ntfp.h \
     pointdata.h \
     salaprogram.h \
     shapemap.h \
     spacepix.h \
     sparksieve2.h \
-    tigerp.h \
     topomet.h \
-    entityparsing.h \
     linkutils.h \
     gridproperties.h \
     isovistdef.h \
     mgraph_consts.h \
     geometrygenerators.h \
-    importutils.h \
-    importtypedefs.h \
     point.h \
     pixelref.h \
     displayparams.h \

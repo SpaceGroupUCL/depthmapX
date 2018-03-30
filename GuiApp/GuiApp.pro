@@ -10,11 +10,11 @@ SOURCES    = main.cpp \
 
 win32:RC_ICONS += icons/depthmapX.ico
 
-win32:Release:LIBS += -L../depthmapX/release -L../genlib/release -L../mgraph440/release  -L../salalib/release -L../settingsdialog/release
-win32:Debug:LIBS += -L../depthmapX/debug -L../genlib/debug -L../mgraph440/debug -L../salalib/debug -L../settingsdialog/debug
-!win32:LIBS += -L../depthmapX -L../genlib -L../mgraph440 -L../salalib -L../settingsdialog
+win32:Release:LIBS += -L../depthmapX/release -L../genlib/release -L../importlib/release -L../mgraph440/release  -L../salalib/release -L../settingsdialog/release
+win32:Debug:LIBS += -L../depthmapX/debug -L../genlib/debug -L../importlib/debug -L../mgraph440/debug -L../salalib/debug -L../settingsdialog/debug
+!win32:LIBS += -L../depthmapX -L../genlib -L../importlib -L../mgraph440 -L../salalib -L../settingsdialog
 
-LIBS += -ldepthmapX -lsalalib -lmgraph440 -lgenlib -lsettingsdialog
+LIBS += -ldepthmapX -lsalalib -lmgraph440 -lgenlib -limportlib -lsettingsdialog
 
 !win32:!macx:LIBS += -L/usr/lib/i386-linux-gnu/
 

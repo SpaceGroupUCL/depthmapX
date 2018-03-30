@@ -1,6 +1,6 @@
 #-------------------------------------------------
 #
-# Project created by QtCreator 2017-02-09T16:17:22
+# Project created by QtCreator 2018-03-30T01:58:48
 #
 #-------------------------------------------------
 include(../defaults.pri)
@@ -8,14 +8,14 @@ include(../defaults.pri)
 QT       -= qt
 CONFIG   -= qt app_bundle
 
-TARGET = genlib
+TARGET = importlib
 TEMPLATE = lib
 CONFIG        += staticlib c++11
 
-DEFINES += GENLIB_LIBRARY
+DEFINES += IMPORTLIB_LIBRARY
 
 # The following define makes your compiler emit warnings if you use
-# any feature of Qt which as been marked as deprecated (the exact warnings
+# any feature of Qt which has been marked as deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
@@ -26,22 +26,17 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    p2dpoly.cpp \
-    pafmath.cpp \
-    xmlparse.cpp \
-    stringutils.cpp \
-    bsptree.cpp
+        dxfp.cpp \
+        ntfp.cpp \
+        tigerp.cpp \
+        entityparsing.cpp \
+        importutils.cpp
 
 HEADERS += \
-    comm.h \
-    p2dpoly.h \
-    pafmath.h \
-    paftl.h \
-    paftl_old.h \
-    xmlparse.h \
-    exceptions.h \
-    legacyconverters.h \
-    stringutils.h \
-    containerutils.h \
-    linreg.h \
-    bsptree.h
+        dxfp.cpp \
+        ntfp.h \
+        tigerp.h \
+        entityparsing.h \
+        importutils.h \
+        importtypedefs.h
+

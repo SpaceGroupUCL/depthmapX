@@ -15,7 +15,7 @@
 
 #include "linkparser.h"
 #include "salalib/mgraph.h"
-#include "salalib/entityparsing.h"
+#include "importlib/entityparsing.h"
 #include "exceptions.h"
 #include "runmethods.h"
 #include "parsingutils.h"

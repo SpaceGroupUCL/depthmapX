@@ -27,7 +27,7 @@ using namespace std;
 #include <genlib/comm.h> // for communicator
 
 #include "genlib/stringutils.h"
-#include "ntfp.h"
+#include "importlib/ntfp.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 
