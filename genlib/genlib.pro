@@ -28,7 +28,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     p2dpoly.cpp \
     pafmath.cpp \
-    xmlparse.cpp \
     stringutils.cpp \
     bsptree.cpp
 
@@ -38,7 +37,6 @@ HEADERS += \
     pafmath.h \
     paftl.h \
     paftl_old.h \
-    xmlparse.h \
     exceptions.h \
     legacyconverters.h \
     stringutils.h \

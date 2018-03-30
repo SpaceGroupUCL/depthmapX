@@ -30,6 +30,7 @@ SOURCES += \
         ntfp.cpp \
         tigerp.cpp \
         entityparsing.cpp \
+        xmlparse.cpp \
         importutils.cpp
 
 HEADERS += \
@@ -38,5 +39,6 @@ HEADERS += \
         tigerp.h \
         entityparsing.h \
         importutils.h \
+        xmlparse.h \
         importtypedefs.h
 
