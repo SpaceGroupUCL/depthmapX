@@ -22,7 +22,7 @@
 #include <QtOpenGL>
 #include <QTimer>
 #include <QtWidgets/QFileDialog>
-#include <genlib/xmlparse.h>
+#include <importlib/xmlparse.h>
 #include "mainwindow.h"
 #include "3DView.h"
 

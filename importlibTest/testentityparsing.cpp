@@ -14,7 +14,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "catch.hpp"
-#include "salalib/entityparsing.h"
+#include "importlib/entityparsing.h"
 #include "genlib/p2dpoly.h"
 #include <sstream>
 #include <vector>

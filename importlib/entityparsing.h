@@ -18,7 +18,7 @@
 
 #include "genlib/p2dpoly.h"
 #include "genlib/exceptions.h"
-#include "isovistdef.h"
+#include "salalib/isovistdef.h"
 #include <vector>
 #include <iostream>
 #include <string>

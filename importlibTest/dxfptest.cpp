@@ -17,7 +17,8 @@
 #include "genlib/paftl.h"
 #include "genlib/comm.h"
 #include "genlib/p2dpoly.h"
-#include "genlib/dxfp.h"
+#include "genlib/stringutils.h"
+#include "importlib/dxfp.h"
 
 TEST_CASE("DXF Parsing (lines)")
 {

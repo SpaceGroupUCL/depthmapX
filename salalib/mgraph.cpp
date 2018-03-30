@@ -23,17 +23,17 @@
 #include <genlib/paftl.h>
 #include <genlib/pafmath.h>
 #include <genlib/p2dpoly.h>
-#include <genlib/dxfp.h>
+#include <importlib/dxfp.h>
 #include <genlib/comm.h>
 
 #include "isovist.h"
-#include "ntfp.h"
-#include "tigerp.h"
+#include "importlib/ntfp.h"
+#include "importlib/tigerp.h"
 #include <salalib/mgraph.h>
 
 // shouldn't really include this -- required for node in PushValuesToLayer
 #include <salalib/ngraph.h>
-#include <salalib/importutils.h>
+#include <importlib/importutils.h>
 
 #include "mgraph440/mgraph.h"
 #include <sstream>

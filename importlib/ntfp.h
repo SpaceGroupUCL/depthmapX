@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#pragma once
 
-
-#ifndef __NTFP_H__
-#define __NTFP_H__
+#include "genlib/paftl.h"
+#include "genlib/p2dpoly.h"
 
 struct NtfPoint {
    char m_chars;
@@ -70,4 +70,3 @@ protected:
    void addGeom(int layer, NtfGeometry& geom);
 };
 
-#endif

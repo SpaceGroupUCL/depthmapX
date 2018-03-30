@@ -36,7 +36,7 @@
 // Sala
 #include <salalib/mgraph.h>
 #include "salalib/salaprogram.h"
-#include <salalib/entityparsing.h>
+#include <importlib/entityparsing.h>
 #include <salalib/linkutils.h>
 
 

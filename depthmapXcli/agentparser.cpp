@@ -19,7 +19,7 @@
 #include "radiusconverter.h"
 #include "runmethods.h"
 #include "parsingutils.h"
-#include "salalib/entityparsing.h"
+#include "importlib/entityparsing.h"
 #include <sstream>
 
 using namespace depthmapX;
