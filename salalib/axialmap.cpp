@@ -811,13 +811,7 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
             continue;
          }
          else {
-            // Quick mod - TV
-            // TODO: (CS) Is there still any point to that #ifdef?
-#if defined(_WIN32)
-            radialsegs.insert(std::make_pair( (RadialKey)m_radial_lines[i], (RadialKey)m_radial_lines[i-1]));
-#else
             radialsegs.insert(std::make_pair( (RadialKey)m_radial_lines[i], (RadialSegment)m_radial_lines[i-1]));
-#endif
          }
       }
    }

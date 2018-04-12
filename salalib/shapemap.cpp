@@ -518,14 +518,7 @@ int ShapeMap::makeShape(const SalaShape& poly, int override_shape_ref)
       }
    }
 
-   int rowid2 = m_attributes.insertRow(shape_ref);
-
-#ifdef _DEBUG
-   if (rowid1 != rowid2) {
-      // rowids should match, they're both pqmaps, but if someone is stupid enough to change it, they'll know pretty quickly:
-      throw depthmapX::RuntimeException("Arrrrgghhh: important! insertRow does not index in the same way as add shapes, this will badly mess up the system!");
-   }
-#endif
+   m_attributes.insertRow(shape_ref);
 
    m_newshape = true;
 
@@ -2043,13 +2036,7 @@ void ShapeMap::getShapeCuts(const Line& li_orig, pvector<ValuePair>& cuts)
                   int x = shaperef.m_polyrefs[k];
                   if (tested.searchindex(IntPair(shaperef.m_shape_ref,x)) == paftl::npos) {
                      SalaShape& poly = m_shapes.find(shaperef.m_shape_ref)->second;
-                     
-                     // Quick mod - TV
-#if defined(_WIN32)                     
-                     Line& li2 = Line(poly.points[x],poly[(x+1)%poly.points.size()]);
-#else
-             Line li2(poly.m_points[x], poly.m_points[(x+1) % poly.m_points.size()]);
-#endif                     
+                     Line li2(poly.m_points[x], poly.m_points[(x+1) % poly.m_points.size()]);
                      if (intersect_region(li,li2)) {
                         // note: in this case m_region is stored as a line:
                         if (intersect_line(li,li2)) {
