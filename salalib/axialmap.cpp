@@ -194,6 +194,7 @@ void AxialPolygons::init(std::vector<Line>& lines, const QtRegion& region)
    // for easier debugging, the axial code is reused to make segments
    ShapeGraph firstpass;
    firstpass.init(lines.size(),m_region); // used to be double density
+   firstpass.initialiseAttributesAxial();
    size_t i;
    for (i = 0; i < lines.size(); i++) {
       firstpass.makeLineShape(lines[i]);
@@ -721,6 +722,7 @@ bool ShapeGraphs::makeAllLineMap(Communicator *comm, SuperSpacePixel& superspace
 
    region.grow(0.99); // <- this paired with crop code below to prevent error
    alllinemap.init(axiallines.size(),m_polygons.m_region);  // used to be double density here
+   alllinemap.initialiseAttributesAxial();
    for (size_t k = 0; k < axiallines.size(); k++) {
       axiallines[k].crop(region); // <- should be cropped anyway, but causing an error
       alllinemap.makeLineShape(axiallines[k]);
@@ -879,6 +881,7 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
       fewestlinemap_subsets.clearAll();
       fewestlinemap_subsets.init(lines_s.size(),m_polygons.m_region); // used to have a '2' for double pixel density
    }
+   fewestlinemap_subsets.initialiseAttributesAxial();
    for (k = 0; k < lines_s.size(); k++) {
       fewestlinemap_subsets.makeLineShape(lines_s[k]);
    }
@@ -901,6 +904,7 @@ bool ShapeGraphs::makeFewestLineMap(Communicator *comm, bool replace_existing)
       fewestlinemap_minimal.clearAll();
       fewestlinemap_minimal.init(lines_m.size(),m_polygons.m_region); // used to have a '2' for double pixel density
    }
+   fewestlinemap_minimal.initialiseAttributesAxial();
    for (k = 0; k < lines_m.size(); k++) {
       fewestlinemap_minimal.makeLineShape(lines_m[k]);
    }
@@ -1275,13 +1279,18 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
 
 
    usermap.init(lines.size(),region);        // used to be double density
-   int layerCol = -1;
+   std::map<int, float> layerAttributes;
    usermap.initialiseAttributesAxial();
+   int layerCol = -1;
    if (recordlayer)   {
        layerCol = usermap.getAttributeTable().insertColumn("Drawing Layer");
    }
    for (auto & line: lines) {
-      usermap.makeLineShape(line.second,false, false, layerCol,float(layers.find(line.first)->second) );
+      if (recordlayer)
+      {
+          layerAttributes[layerCol] = float(layers.find(line.first)->second);
+      }
+      usermap.makeLineShape(line.second, false, false, layerAttributes );
    }
 
    usermap.makeConnections();
@@ -1344,31 +1353,35 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
    ShapeGraph& usermap = tail();
 
    usermap.init(lines.size(),region);  // used to be double density
+   usermap.initialiseAttributesAxial();
+   std::map<int, float> extraAttributes;
+   std::vector<int> columns;
+   if (copydata)   {
+       AttributeTable& input = shapemap.getAttributeTable();
+       AttributeTable& output = usermap.getAttributeTable();
+       for (int i = 0; i < input.getColumnCount(); i++) {
+          std::string colname = input.getColumnName(i);
+          for (size_t k = 1; output.getColumnIndex(colname) != -1; k++){
+             colname = dXstring::formatString((int)k,input.getColumnName(i) + " copy %d");
+          }
+          columns.push_back( output.insertColumn(colname));
+       }
+   }
+
    for (size_t k = 0; k < lines.size(); k++) {
-      usermap.makeLineShapeWithRef(lines[k], keys[k]);
+      if (copydata){
+          AttributeTable& input = shapemap.getAttributeTable();
+          for ( int i = 0; i < input.getColumnCount(); ++i)
+          {
+              extraAttributes[columns[i]] = input.getValue(k, i);
+          }
+      }
+      usermap.makeLineShapeWithRef(lines[k], keys[k], false, false, extraAttributes);
    }
 
    // n.b. make connections also initialises attributes
-   usermap.makeConnections();
 
-   // use property that segments are still in same order as input in order to copy
-   // data across from ShapeMap
-   if (copydata) {
-      AttributeTable& input = shapemap.getAttributeTable();
-      AttributeTable& output = usermap.getAttributeTable();
-      for (int i = 0; i < input.getColumnCount(); i++) {
-         std::string colname = input.getColumnName(i);
-         for (size_t k = 1; output.getColumnIndex(colname) != -1; k++)
-            colname = dXstring::formatString((int)k,input.getColumnName(i) + " %d");
-         int outcol = output.insertColumn(colname);
-         int j = -1;
-         for (auto line: lines) {
-            j++;
-            int inrow = input.getRowid(keys.find(line.first)->second);
-            output.setValue(j,outcol,input.getValue(inrow,i));
-         }
-      }
-   }
+   usermap.makeConnections();
 
    // if we are inheriting from a mapinfo map, pass on the coordsys and bounds:
    if (shapemap.hasMapInfoData()) {
@@ -1448,12 +1461,31 @@ int ShapeGraphs::convertDataToConvex(Communicator *comm, const std::string& name
 
    pvecint lookup;
    auto refShapes = shapemap.getAllShapes();
+   std::map<int,float> extraAttr;
+   std::vector<int> attrCols;
+   AttributeTable& input = shapemap.getAttributeTable();
+   if (copydata) {
+      AttributeTable& output = usermap.getAttributeTable();
+      for (int i = 0; i < input.getColumnCount(); i++) {
+         std::string colname = input.getColumnName(i);
+         for (int k = 1; output.getColumnIndex(colname) != -1; k++){
+            colname = dXstring::formatString(k,input.getColumnName(i) + " %d");
+         }
+         attrCols.push_back(output.insertColumn(colname));
+      }
+   }
+
    int k = -1;
    for (auto refShape: refShapes) {
       k++;
+      if ( copydata ){
+          for ( int i = 0; i < input.getColumnCount(); ++i ){
+              extraAttr[attrCols[i]] =input.getValue(k, i);
+          }
+      }
       SalaShape& shape = refShape.second;
       if (shape.isPolygon()) {
-         int n = usermap.makeShape(shape);
+         int n = usermap.makeShape(shape, -1, extraAttr);
          usermap.m_connectors.push_back( Connector() );
          usermap.m_attributes.setValue(n,conn_col,0);
          lookup.push_back(k);
@@ -1462,20 +1494,6 @@ int ShapeGraphs::convertDataToConvex(Communicator *comm, const std::string& name
    if (lookup.size() == 0) {
       removeMap(mapref);
       return -1;
-   }
-
-   if (copydata) {
-      AttributeTable& input = shapemap.getAttributeTable();
-      AttributeTable& output = usermap.getAttributeTable();
-      for (int i = 0; i < input.getColumnCount(); i++) {
-         std::string colname = input.getColumnName(i);
-         for (int k = 1; output.getColumnIndex(colname) != -1; k++)
-            colname = dXstring::formatString(k,input.getColumnName(i) + " %d");
-         int outcol = output.insertColumn(colname);
-         for (size_t j = 0; j < lookup.size(); j++) {
-            output.setValue(j,outcol,input.getValue(lookup[j],i));
-         }
-      }
    }
 
    usermap.m_displayed_attribute = -2; // <- override if it's already showing
@@ -1550,13 +1568,18 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
    ShapeGraph& usermap = tail();
 
    usermap.init(lines.size(),region);
+   std::map<int, float> layerAttributes;
+   usermap.initialiseAttributesAxial();
    int layerCol = -1;
-   usermap.initialiseAttributesSegment();
    if (recordlayer)   {
        layerCol = usermap.getAttributeTable().insertColumn("Drawing Layer");
    }
    for (auto & line: lines) {
-      usermap.makeLineShape(line.second, false, false, layerCol, float(layers.find(line.first)->second));
+      if (recordlayer)
+      {
+          layerAttributes[layerCol] = float(layers.find(line.first)->second);
+      }
+      usermap.makeLineShape(line.second, false, false, layerAttributes);
    }
 
    // make it!
@@ -1627,11 +1650,34 @@ int ShapeGraphs::convertDataToSegment(Communicator *comm, const std::string& nam
    }
 
    usermap.init(lines.size(),region);
+   usermap.initialiseAttributesSegment();
+
+   std::map<int,float> extraAttr;
+   std::vector<int> attrCols;
+   AttributeTable& input = shapemap.getAttributeTable();
+   if (copydata) {
+      AttributeTable& output = usermap.getAttributeTable();
+      for (int i = 0; i < input.getColumnCount(); i++) {
+         std::string colname = input.getColumnName(i);
+         for (int k = 1; output.getColumnIndex(colname) != -1; k++){
+            colname = dXstring::formatString(k,input.getColumnName(i) + " %d");
+         }
+         attrCols.push_back(output.insertColumn(colname));
+      }
+   }
+
 
    auto keyIter = keys.begin();
+   int k = 0;
    for (auto& line: lines) {
+       if (copydata){
+           for (int i = 0; i < input.getColumnCount(); ++i){
+               extraAttr[attrCols[i]] = input.getValue(k,i);
+           }
+       }
       usermap.makeLineShapeWithRef(line.second, keyIter->second);
-      keyIter++;
+      ++keyIter;
+      ++k;
    }
 
    // start to be a little bit more efficient about memory now we are hitting the limits
@@ -1700,6 +1746,8 @@ int ShapeGraphs::convertAxialToSegment(Communicator *comm, const std::string& na
    ShapeGraph& segmap = getMap(mapref);
 
    segmap.init(lines.size(),dispmap.m_region);
+   segmap.initialiseAttributesSegment();
+
    for (size_t k = 0; k < lines.size(); k++) {
       segmap.makeLineShape(lines[k]);
    }
@@ -1715,8 +1763,6 @@ int ShapeGraphs::convertAxialToSegment(Communicator *comm, const std::string& na
       segmap.m_hasMapInfoData = true;
    }
 
-   // initialise attributes now separated from making the connections
-   segmap.initialiseAttributesSegment();
 
    segmap.makeSegmentConnections(connectionset);
 

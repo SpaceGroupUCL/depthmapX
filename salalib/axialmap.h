@@ -210,7 +210,6 @@ public:
    void makeNewSegMap();
    void makeSegmentMap(std::vector<Line> &lineset, prefvec<Connector>& connectionset, double stubremoval);
    void initialiseAttributesSegment();
-   void initSegmentAttributes(prefvec<Connector>& connectionset);
    void makeSegmentConnections(prefvec<Connector>& connectionset);
    void pushAxialValues(ShapeGraph& axialmap);
    //
