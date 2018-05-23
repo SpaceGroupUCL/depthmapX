@@ -281,14 +281,14 @@ public:
    int makePointShapeWithRef(const Point2f& point, int shape_ref, bool tempshape = false);
    int makePointShape(const Point2f& point, bool tempshape = false);
    // or a single line into a shape
-   int makeLineShapeWithRef(const Line& line, int shape_ref, bool through_ui = false, bool tempshape = false);
-   int makeLineShape(const Line& line, bool through_ui = false, bool tempshape = false);
+   int makeLineShapeWithRef(const Line& line, int shape_ref, bool through_ui = false, bool tempshape = false, int layerCol = -1, float layerVal = 0.0f);
+   int makeLineShape(const Line& line, bool through_ui = false, bool tempshape = false, int layerCol = -1, float layerVal = 0.0f);
    // or a polygon into a shape
-   int makePolyShapeWithRef(const std::vector<Point2f> &points, bool open, int shape_ref, bool tempshape = false);
-   int makePolyShape(const std::vector<Point2f> &points, bool open, bool tempshape = false);
+   int makePolyShapeWithRef(const std::vector<Point2f> &points, bool open, int shape_ref, bool tempshape = false, int layerCol = -1, float layerVal = 0.0f);
+   int makePolyShape(const std::vector<Point2f> &points, bool open, bool tempshape = false, int layerCol = -1, float layerVal = 0.0f);
 public:
    // or make a shape from a shape
-   int makeShape(const SalaShape& shape, int override_shape_ref = -1);
+   int makeShape(const SalaShape& shape, int override_shape_ref = -1, int layerCol = -1, float layerVal = 0.0f);
    // convert points to polygons
    bool convertPointsToPolys(double poly_radius, bool selected_only);
    // convert a selected pixels to a layer object (note, uses selection attribute on pixel, you must select to make this work):
