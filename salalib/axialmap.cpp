@@ -1569,7 +1569,7 @@ int ShapeGraphs::convertDrawingToSegment(Communicator *comm, const std::string& 
 
    usermap.init(lines.size(),region);
    std::map<int, float> layerAttributes;
-   usermap.initialiseAttributesAxial();
+   usermap.initialiseAttributesSegment();
    int layerCol = -1;
    if (recordlayer)   {
        layerCol = usermap.getAttributeTable().insertColumn("Drawing Layer");
