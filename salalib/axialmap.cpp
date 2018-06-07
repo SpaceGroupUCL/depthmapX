@@ -1277,7 +1277,6 @@ int ShapeGraphs::convertDrawingToAxial(Communicator *comm, const std::string& na
    // we can stop here for all line axial map!
    ShapeGraph& usermap = tail();
 
-
    usermap.init(lines.size(),region);        // used to be double density
    std::map<int, float> layerAttributes;
    usermap.initialiseAttributesAxial();
@@ -1362,7 +1361,7 @@ int ShapeGraphs::convertDataToAxial(Communicator *comm, const std::string& name,
        for (int i = 0; i < input.getColumnCount(); i++) {
           std::string colname = input.getColumnName(i);
           for (size_t k = 1; output.getColumnIndex(colname) != -1; k++){
-             colname = dXstring::formatString((int)k,input.getColumnName(i) + " copy %d");
+             colname = dXstring::formatString((int)k,input.getColumnName(i) + " %d");
           }
           columns.push_back( output.insertColumn(colname));
        }
