@@ -42,6 +42,7 @@
 #include <salalib/importtypedefs.h>
 
 #include <vector>
+#include <deque>
 #include <memory>
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +81,7 @@ public:
    }
 
 
-   std::vector<PointMap>& getPointMaps()
+   std::deque<PointMap>& getPointMaps()
    { return m_pointMaps; }
    PointMap& getDisplayedPointMap()
    { return m_pointMaps[m_displayed_pointmap]; }
@@ -95,7 +96,7 @@ public:
    int addNewPointMap(const std::string& name = std::string("VGA Map"));
 
 private:
-   std::vector<PointMap> m_pointMaps;
+   std::deque<PointMap> m_pointMaps;
    int m_displayed_pointmap;
    SuperSpacePixel *m_spacepix;
 
