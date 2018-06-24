@@ -19,6 +19,10 @@
 #ifndef __MAPINFODATA_H__
 #define __MAPINFODATA_H__
 
+#include <istream>
+#include <ostream>
+#include <string>
+
 // imported and exported data
 // note: this is very basic and designed for axial line import / export only
 
@@ -46,19 +50,19 @@ protected:
 public:
    MapInfoData();
    // 
-   int import(istream& miffile, istream& midfile, ShapeMap& map);
+   int import(std::istream& miffile, std::istream& midfile, ShapeMap& map);
    //bool exportFile(ostream& miffile, ostream& midfile, const ShapeGraph& map);   // n.b., deprecated: use shapemap instead
-   bool exportFile(ostream& miffile, ostream& midfile, const PointMap& points);
-   bool exportFile(ostream& miffile, ostream& midfile, const ShapeMap& map);
-   bool exportPolygons(ostream& miffile, ostream& midfile, const prefvec<pqvector<Point2f>>& polygons, const QtRegion& region);
+   bool exportFile(std::ostream& miffile, std::ostream& midfile, const PointMap& points);
+   bool exportFile(std::ostream& miffile, std::ostream& midfile, const ShapeMap& map);
+   bool exportPolygons(std::ostream& miffile, std::ostream& midfile, const prefvec<pqvector<Point2f>>& polygons, const QtRegion& region);
    //
-   bool readheader(istream& miffile);
-   bool readcolumnheaders(istream& miffile, istream& midfile, std::vector<std::string>& columnheads);
-   void writeheader(ostream& miffile);
-   void writetable(ostream& miffile, ostream& midfile, const AttributeTable& attributes);
+   bool readheader(std::istream& miffile);
+   bool readcolumnheaders(std::istream& miffile, std::istream& midfile, std::vector<std::string>& columnheads);
+   void writeheader(std::ostream& miffile);
+   void writetable(std::ostream& miffile, std::ostream& midfile, const AttributeTable& attributes);
    //
-   istream& read(istream& stream, int version);
-   ostream& write(ostream& stream);
+   std::istream& read(std::istream& stream, int version);
+   std::ostream& write(std::ostream& stream);
 };
 
 #endif

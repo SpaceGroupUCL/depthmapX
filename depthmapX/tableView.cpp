@@ -65,7 +65,6 @@ void tableView::RedoTable()
 
    if (pDoc->m_meta_graph->viewingProcessed()) {
       const AttributeTable& table = pDoc->m_meta_graph->getAttributeTable();
-      const AttributeIndex& index = table.m_display_index;
       int col = pDoc->m_meta_graph->getDisplayedAttribute();
 	  int i;
 

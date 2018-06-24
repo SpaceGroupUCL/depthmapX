@@ -78,12 +78,7 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap)
             pointmap->requireIsovistAnalysis();
         }
     }
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
-   time_t atime =0;
-#endif   
+   time_t atime = 0;
    if (comm) {
       qtimer( atime, 0 );
       comm->CommPostMessage( Communicator::NUM_RECORDS, m_timesteps );
@@ -157,7 +152,7 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap)
    // output agent trails to file:
    if (m_record_trails) {
        // just dump in local file...
-       ofstream trails("trails.cat");
+       std::ofstream trails("trails.cat");
        outputTrails(trails);
    }
 
@@ -166,14 +161,14 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap)
    pointmap->setDisplayedAttribute(displaycol);
 }
 
-void AgentEngine::outputTrails(ostream& trailsFile) {
-    trailsFile << "CAT" << endl;
+void AgentEngine::outputTrails(std::ostream& trailsFile) {
+    trailsFile << "CAT" << std::endl;
     for (int i = 0; i < m_trail_count; i++) {
-       trailsFile << "Begin Polyline" << endl;
+       trailsFile << "Begin Polyline" << std::endl;
        for (size_t j = 0; j < g_trails[i].size(); j++) {
-          trailsFile << g_trails[i][j].x << " " << g_trails[i][j].y << endl;
+          trailsFile << g_trails[i][j].x << " " << g_trails[i][j].y << std::endl;
        }
-       trailsFile << "End Polyline" << endl;
+       trailsFile << "End Polyline" << std::endl;
     }
 }
 
@@ -402,58 +397,59 @@ AgentProgram crossover(const AgentProgram& prog_a, const AgentProgram& prog_b)
    return child;
 }
 
+// TODO: Expose this functionality to the UIs
 void AgentProgram::save(const std::string& filename)
 {
    // standard ascii:
-   ofstream file(filename.c_str());
+   std::ofstream file(filename.c_str());
 
    file << "Destination selection: ";
    switch (m_sel_type) {
    case SEL_STANDARD:
-      file << "Standard" << endl;
+      file << "Standard" << std::endl;
       break;
    case SEL_LENGTH:
-      file << "Gibsonian Length" << endl;
+      file << "Gibsonian Length" << std::endl;
       break;
    case SEL_OPTIC_FLOW:
-      file << "Gibsonian Optic Flow" << endl;
+      file << "Gibsonian Optic Flow" << std::endl;
       break;
    case SEL_COMPARATIVE_LENGTH:
-      file << "Gibsonian Comparative Length" << endl;
+      file << "Gibsonian Comparative Length" << std::endl;
       break;
    case SEL_COMPARATIVE_OPTIC_FLOW:
-      file << "Gibsonian Comparative Optic Flow" << endl;
+      file << "Gibsonian Comparative Optic Flow" << std::endl;
       break;
    default:
-      file << "Unknown" << endl;
+      file << "Unknown" << std::endl;
    }
 
-   file << "Steps: " << m_steps << endl;
-   file << "Bins: " << ((m_vbin == -1) ? 32 : m_vbin * 2 + 1) << endl;
+   file << "Steps: " << m_steps << std::endl;
+   file << "Bins: " << ((m_vbin == -1) ? 32 : m_vbin * 2 + 1) << std::endl;
    /*
-   file << "Ahead bins: " << m_vahead * 2 + 1 << endl;
-   file << "Ahead threshold: " << m_ahead_threshold << endl;
-   file << "Feeler threshold: " << m_feeler_threshold << endl;
-   file << "Feeler probability: " << m_feeler_probability << endl;
+   file << "Ahead bins: " << m_vahead * 2 + 1 << std::endl;
+   file << "Ahead threshold: " << m_ahead_threshold << std::endl;
+   file << "Feeler threshold: " << m_feeler_threshold << std::endl;
+   file << "Feeler probability: " << m_feeler_probability << std::endl;
 */
    file << "Rule order: " << m_rule_order[0] << " "
                           << m_rule_order[1] << " "
                           << m_rule_order[2] << " "
-                          << m_rule_order[3] << endl;
+                          << m_rule_order[3] << std::endl;
 
    for (int i = 0; i < 4; i++) {
-      file << "Rule " << i << " (Bin -" << 1 + (i * 2) << "/+" << 1 + (i * 2) << ")" << endl;
-      file << "Threshold: " << m_rule_threshold[i] << endl;
-      file << "Turn Probability: " << m_rule_probability[i] << endl;
+      file << "Rule " << i << " (Bin -" << 1 + (i * 2) << "/+" << 1 + (i * 2) << ")" << std::endl;
+      file << "Threshold: " << m_rule_threshold[i] << std::endl;
+      file << "Turn Probability: " << m_rule_probability[i] << std::endl;
    }
 
-   file << "Fitness: " << m_fitness << endl;
+   file << "Fitness: " << m_fitness << std::endl;
 }
 
 bool AgentProgram::open(const std::string& filename)
 {
    // standard ascii:
-   ifstream file(filename.c_str());
+   std::ifstream file(filename.c_str());
 
    std::string line;
    file >> line;
@@ -515,7 +511,7 @@ bool AgentProgram::open(const std::string& filename)
          std::string bins = line.substr(6);
          dXstring::ltrim(bins);
          int binx = stoi(bins);
-         if (binx = 32) {
+         if (binx == 32) {
             m_vbin = -1;
          }
          else {
@@ -876,6 +872,7 @@ Point2f Agent::onStandardLook(bool wholeisovist)
    return (m_target - m_loc).normalise();
 }
 
+// TODO: Expose this functionality to the UIs
 Point2f Agent::onWeightedLook(bool wholeisovist)
 {
    if (wholeisovist) {
@@ -884,7 +881,7 @@ Point2f Agent::onWeightedLook(bool wholeisovist)
    }
    int tarpixelate = -1;
    int vbin = m_program->m_vbin;
-   if (vbin = -1) {
+   if (vbin == -1) {
       vbin = 16;
    }
    int aheadbin = binfromvec(m_vector);
@@ -950,7 +947,7 @@ Point2f Agent::onOcclusionLook(bool wholeisovist, int looktype)
    }
    PixelRef tarpixelate = NoPixel;
    int vbin = m_program->m_vbin;
-   if (vbin = -1) {
+   if (vbin == -1) {
       vbin = 16;
    }
    int directionbin = 32 + binfromvec(m_vector) - vbin;

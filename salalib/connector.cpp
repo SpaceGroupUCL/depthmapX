@@ -24,7 +24,7 @@
 #include <salalib/mgraph.h> // purely for the version info --- as phased out should replace
 #include <salalib/connector.h>
 
-bool Connector::read( istream& stream, int version, pvecint *keyvertices )
+bool Connector::read( std::istream& stream, int version, pvecint *keyvertices )
 {
    m_connections.clear();
    m_forward_segconns.clear();
@@ -40,7 +40,7 @@ bool Connector::read( istream& stream, int version, pvecint *keyvertices )
    return true;
 }
 
-bool Connector::write( ofstream& stream )
+bool Connector::write( std::ofstream& stream )
 {
    // n.b., must set displayed attribute as soon as loaded...
    m_connections.write(stream);

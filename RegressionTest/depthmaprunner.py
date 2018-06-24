@@ -36,28 +36,30 @@ class DepthmapRegressionRunner():
     def makeTestDir(self, name):
         return os.path.join(self.__workingDir, name + "_test")
 
-    def runTestCase(self, name, cmd):
+    def runTestCase(self, name, cmds):
         runhelpers.prepareDirectory(self.makeBaseDir(name))
         runhelpers.prepareDirectory(self.makeTestDir(name))
-        return self.runTestCaseImpl(name, cmd)
+        return self.runTestCaseImpl(name, cmds)
 
-    def runTestCaseImpl(self, name, cmd):
+    def runTestCaseImpl(self, name, cmds):
         baseDir = self.makeBaseDir(name)
-        (baseSuccess, baseOut) = self.__baseRunner.runDepthmap(cmd, baseDir)
-        if not baseSuccess:
-            print("Baseline run failed with arguments " + pprint.pformat(cmd.toCmdArray()))
-            print(baseOut)
-            return (False, "Baseline run failed")
+        for step,cmd in enumerate(cmds):
+            (baseSuccess, baseOut) = self.__baseRunner.runDepthmap(cmd, baseDir)
+            if not baseSuccess:
+                print("Baseline run failed at step " + str(step) + " with arguments " + pprint.pformat(cmd.toCmdArray()))
+                print(baseOut)
+                return (False, "Baseline run failed at step: " + str(step))
 
         testDir = self.makeTestDir(name)
-        (testSuccess, testOut) = self.__testRunner.runDepthmap(cmd, testDir)
-        if not testSuccess:
-            print("Test run failed with arguments " + pprint.pformat(cmd.toCmdArray()))
-            print(testOut)
-            return (False, "Test run failed")
+        for step,cmd in enumerate(cmds):
+            (testSuccess, testOut) = self.__testRunner.runDepthmap(cmd, testDir)
+            if not testSuccess:
+                print("Test run failed at step " + str(step) + " with arguments " + pprint.pformat(cmd.toCmdArray()))
+                print(testOut)
+                return (False, "Test run failed at step: " + str(step))
 
-        baseFile = os.path.join(baseDir, cmd.outfile)
-        testFile = os.path.join(testDir, cmd.outfile)
+        baseFile = os.path.join(baseDir, cmds[-1].outfile)
+        testFile = os.path.join(testDir, cmds[-1].outfile)
         if not os.path.exists(baseFile):
             message = "Baseline output {0} does not exist".format(baseFile)
             print (message)

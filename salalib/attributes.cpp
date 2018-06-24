@@ -303,7 +303,7 @@ void AttributeTable::setDisplayColumn(int col, bool override) const
 
 //////////////////////////////////////////////////////////////////////////////////////
 
-bool AttributeTable::read( istream& stream, int version )
+bool AttributeTable::read( std::istream& stream, int version )
 {
 
    m_layers.clear();
@@ -341,7 +341,7 @@ bool AttributeTable::read( istream& stream, int version )
    return true;
 }
 
-bool AttributeTable::write( ofstream& stream, int version )
+bool AttributeTable::write( std::ofstream& stream, int version )
 {
 
    stream.write((char *)&m_available_layers,sizeof(int64));
@@ -372,19 +372,19 @@ bool AttributeTable::write( ofstream& stream, int version )
    return true;
 }
 
-bool AttributeTable::outputHeader( ostream& stream, char delimiter, bool updated_only ) const
+bool AttributeTable::outputHeader( std::ostream& stream, char delimiter, bool updated_only ) const
 {
    for (size_t i = 0; i < m_columns.size(); i++) {
       if (!updated_only || m_columns[i].m_updated) {
          stream << delimiter << m_columns[i].m_name;
       }
    }
-   stream << endl;
+   stream << std::endl;
 
    return true;
 }
 
-bool AttributeTable::outputRow( int row, ostream& stream, char delim, bool updated_only ) const
+bool AttributeTable::outputRow( int row, std::ostream& stream, char delim, bool updated_only ) const
 {
    int prec = stream.precision(8);
 
@@ -393,7 +393,7 @@ bool AttributeTable::outputRow( int row, ostream& stream, char delim, bool updat
          stream << delim << value(row).at(m_columns[i].m_physical_col);
       }
    }
-   stream << endl;
+   stream << std::endl;
 
    stream.precision(prec);
 
@@ -402,7 +402,7 @@ bool AttributeTable::outputRow( int row, ostream& stream, char delim, bool updat
 
 // note, export is a keyword, so use exportTable as function name,
 // similar convention for importTable
-bool AttributeTable::exportTable(ostream& stream, bool updated_only)
+bool AttributeTable::exportTable(std::ostream& stream, bool updated_only)
 {
    stream << "Ref";
    outputHeader(stream,'\t',updated_only);
@@ -420,7 +420,7 @@ bool AttributeTable::exportTable(ostream& stream, bool updated_only)
 // uses ref numbers, does not overwrite geom locations
 // if "merge" is selected, column values are added together,
 // otherwise the columns are cleared
-bool AttributeTable::importTable(istream& stream, bool merge)
+bool AttributeTable::importTable(std::istream& stream, bool merge)
 {
    std::string inputline;
    stream >> inputline;
@@ -518,7 +518,7 @@ void AttributeColumn::reset()
    m_visible_tot = 0.0;
 }
 
-bool AttributeColumn::read( istream& stream, int version )
+bool AttributeColumn::read( std::istream& stream, int version )
 {
    m_updated = false;
    m_name = dXstring::readString(stream);
@@ -540,7 +540,7 @@ bool AttributeColumn::read( istream& stream, int version )
    return true;
 }
 
-bool AttributeColumn::write( ofstream& stream, int version )
+bool AttributeColumn::write( std::ofstream& stream, int version )
 {
    m_updated = false;
    dXstring::writeString(stream, m_name);

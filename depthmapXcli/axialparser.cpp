@@ -73,7 +73,7 @@ void AxialParser::parse(int argc, char **argv)
             {
                 throw CommandLineException("-xa can only be used once");
             }
-            m_radii = depthmapX::parseAxialRadiusList(argv[i]);
+            m_radii = depthmapX::parseRadiusList(argv[i]);
             m_runAnalysis = true;
         }
         else if (std::strcmp(argv[i], "-xal") == 0)

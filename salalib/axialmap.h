@@ -41,8 +41,8 @@ public:
    virtual ~AxialPolygons();
    //
    void clear();
-   void init(prefvec<Line>& lines, const QtRegion& region);
-   void makeVertexPossibles(const prefvec<Line>& lines, const prefvec<Connector>& connectionset);
+   void init(std::vector<Line> &lines, const QtRegion& region);
+   void makeVertexPossibles(const std::vector<Line> &lines, const prefvec<Connector>& connectionset);
    void makePixelPolys();
    //
    AxialVertex makeVertex(const AxialVertexKey& vertexkey, const Point2f& openspace);
@@ -188,11 +188,12 @@ protected:
    int m_keyvertexcount;
 protected:
 public:
-   bool outputMifPolygons(ostream& miffile, ostream& midfile) const;
-   void outputNet(ostream& netfile) const;
+   bool outputMifPolygons(std::ostream& miffile, std::ostream& midfile) const;
+   void outputNet(std::ostream& netfile) const;
 public:
    ShapeGraph(const std::string& name = "<axial map>", int type = ShapeMap::AXIALMAP);
    virtual ~ShapeGraph() {;}
+   void initialiseAttributesAxial();
    void makeConnections(const prefvec<pvecint>& keyvertices = prefvec<pvecint>());
    //void initAttributes();
    void makeDivisions(const prefvec<PolyConnector>& polyconnections, const pqvector<RadialLine>& radiallines, std::map<RadialKey, pvecint> &radialdivisions, std::map<int,pvecint>& axialdividers, Communicator *comm);
@@ -207,17 +208,17 @@ public:
    bool analyseTopoMetPD(Communicator *comm, int analysis_type);
    // lineset and connectionset are filled in by segment map
    void makeNewSegMap();
-   void makeSegmentMap(prefvec<Line>& lineset, prefvec<Connector>& connectionset, double stubremoval);
-   void initSegmentAttributes(prefvec<Connector>& connectionset);
+   void makeSegmentMap(std::vector<Line> &lineset, prefvec<Connector>& connectionset, double stubremoval);
+   void initialiseAttributesSegment();
    void makeSegmentConnections(prefvec<Connector>& connectionset);
    void pushAxialValues(ShapeGraph& axialmap);
    //
-   virtual bool read( istream& stream, int version );
-   bool readold( istream& stream, int version );
-   virtual bool write( ofstream& stream, int version );
-   void writeAxialConnectionsAsDotGraph(ostream &stream);
-   void writeAxialConnectionsAsPairsCSV(ostream &stream);
-   void writeSegmentConnectionsAsPairsCSV(ostream &stream);
+   virtual bool read( std::istream& stream, int version );
+   bool readold( std::istream& stream, int version );
+   virtual bool write( std::ofstream& stream, int version );
+   void writeAxialConnectionsAsDotGraph(std::ostream &stream);
+   void writeAxialConnectionsAsPairsCSV(std::ostream &stream);
+   void writeSegmentConnectionsAsPairsCSV(std::ostream &stream);
    //
    void unlinkFromShapeMap(const ShapeMap& shapemap);
 };
@@ -250,9 +251,9 @@ public:
    bool hasAllLineMap()
    { return m_all_line_map != -1; }
    //
-   bool read(istream &stream, int version );
-   bool readold( istream& stream, int version );
-   bool write( ofstream& stream, int version, bool displayedmaponly = false );
+   bool read(std::istream &stream, int version );
+   bool readold( std::istream& stream, int version );
+   bool write( std::ofstream& stream, int version, bool displayedmaponly = false );
 };
 
 // helpers... a class to tidy up ugly maps people may give me...
@@ -262,7 +263,7 @@ class TidyLines : public SpacePixel
 public:
    TidyLines() {;}
    virtual ~TidyLines() {;}
-   void tidy(prefvec<Line>& lines, const QtRegion& region);  
+   void tidy(std::vector<Line> &lines, const QtRegion& region);
    void quicktidy(std::map<int, Line> &lines, const QtRegion& region);
 };
 
@@ -279,7 +280,7 @@ protected:
    bool *m_vital;
    int *m_radialsegcounts;
    int *m_keyvertexcounts;
-   prefvec<Connector> m_axialconns; // <- uses a copy of axial lines as it will remove connections
+   std::vector<Connector> m_axialconns; // <- uses a copy of axial lines as it will remove connections
 public:
    AxialMinimiser(const ShapeGraph& alllinemap, int no_of_axsegcuts, int no_of_radialsegs);
    ~AxialMinimiser();

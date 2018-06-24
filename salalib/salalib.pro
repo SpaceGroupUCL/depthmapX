@@ -20,7 +20,6 @@ SOURCES += \
     attributes.cpp \
     axialmap.cpp \
     connector.cpp \
-    datalayer.cpp \
     isovist.cpp \
     MapInfoData.cpp \
     mgraph.cpp \
@@ -37,6 +36,9 @@ SOURCES += \
     entityparsing.cpp \
     linkutils.cpp \
     gridproperties.cpp \
+    attributetable.cpp \
+    layermanagerimpl.cpp \
+    attributetableview.cpp \
     geometrygenerators.cpp \
     importutils.cpp \
     point.cpp \
@@ -46,7 +48,6 @@ HEADERS += \
     attributes.h \
     axialmap.h \
     connector.h \
-    datalayer.h \
     fileproperties.h \
     isovist.h \
     MapInfoData.h \
@@ -66,6 +67,12 @@ HEADERS += \
     gridproperties.h \
     isovistdef.h \
     mgraph_consts.h \
+    attributetable.h \
+    attributetableindex.h \
+    layermanager.h \
+    layermanagerimpl.h \
+    attributetablehelpers.h \
+    attributetableview.h \
     geometrygenerators.h \
     importutils.h \
     importtypedefs.h \

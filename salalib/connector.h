@@ -18,6 +18,8 @@
 #ifndef __CONNECTOR_H__
 #define __CONNECTOR_H__
 
+#include <istream>
+#include <ostream>
 /////////////////////////////////////////////////////////////////////////////
 
 // Additional for segment analysis
@@ -82,7 +84,7 @@ struct Connector
    { m_connections.clear(); m_back_segconns.clear(); m_forward_segconns.clear(); }
    //
    bool read(std::istream &stream, int version, pvecint *keyvertices = NULL );
-   bool write( ofstream& stream );
+   bool write( std::ofstream& stream );
    //
    // Cursor extras
    enum { CONN_ALL, SEG_CONN_ALL, SEG_CONN_FW, SEG_CONN_BK };

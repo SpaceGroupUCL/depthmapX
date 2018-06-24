@@ -49,20 +49,13 @@ class Bin
    friend class Node;
 protected:
    char m_dir;
-   unsigned short m_length;
    unsigned short m_node_count;
    float m_distance;
    float m_occ_distance;
-   PixelVec *m_pixel_vecs;
+   std::vector<PixelVec> m_pixel_vecs;
 public:
    Bin()
-   { m_dir = PixelRef::NODIR; m_length = 0; m_pixel_vecs = NULL; m_node_count = 0; m_distance = 0.0f; m_occ_distance = 0.0f; }
-   Bin(const Bin&) 
-   { throw 1; }
-   Bin& operator = (const Bin&)
-   { throw 1; }
-   ~Bin()
-   { if (m_pixel_vecs) delete [] m_pixel_vecs; m_pixel_vecs = NULL; }
+   { m_dir = PixelRef::NODIR; m_node_count = 0; m_distance = 0.0f; m_occ_distance = 0.0f; }
    //
    void make(const PixelRefVector& pixels, char m_dir);
    void extractUnseen(PixelRefVector& pixels, PointMap *pointdata, int binmark);
@@ -108,14 +101,6 @@ public:
    // testing some agent stuff:
    std::vector<PixelRef> m_occlusion_bins[32];
 public:
-   Node()
-   { ; }
-   Node(const Node&) 
-   { throw 1; }
-   Node& operator = (const Node&)
-   { throw 1; }
-   ~Node()
-   { ; }
    // Note: this function clears the bins as it goes
    void make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, int q_octants);
    void extractUnseen(PixelRefVector& pixels, PointMap *pointdata, int binmark);

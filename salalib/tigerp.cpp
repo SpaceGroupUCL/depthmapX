@@ -33,14 +33,9 @@
 void TigerMap::parse(const std::vector<std::string>& fileset, Communicator *comm)
 {
 
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t time = 0;
-#else
-   time_t time = 0;
-#endif   
+   time_t atime = 0;
 
-   qtimer( time, 0 );
+   qtimer( atime, 0 );
      
    for (size_t i = 0; i < fileset.size(); i++) {
       std::ifstream stream(fileset[i].c_str());
@@ -74,7 +69,7 @@ void TigerMap::parse(const std::vector<std::string>& fileset, Communicator *comm
          }
          if (comm)
          {
-            if (qtimer( time, 500 )) {
+            if (qtimer( atime, 500 )) {
                if (comm->IsCancelled()) {
                   throw Communicator::CancelledException();
                }

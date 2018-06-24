@@ -19,6 +19,7 @@
 #define __ATTRIBUTES_H__
 
 #include "salalib/mgraph_consts.h"
+#include "pafcolor.h"
 #include <string>
 
 // yet another way to do attributes, but one that is easily expandable
@@ -202,8 +203,8 @@ public:
    void setLock(bool lock = true)
    { m_locked = lock; }
    //
-   bool read(istream &stream, int version );
-   bool write( ofstream& stream, int version );
+   bool read(std::istream &stream, int version );
+   bool write( std::ofstream& stream, int version );
    friend bool operator == (const AttributeColumn& a, const AttributeColumn& b);
    friend bool operator < (const AttributeColumn& a, const AttributeColumn& b);
    friend bool operator > (const AttributeColumn& a, const AttributeColumn& b);
@@ -396,14 +397,14 @@ public:
    { return m_name; }
    //
    // read / write
-   bool read(istream &stream, int version );
-   bool write( ofstream& stream, int version );
+   bool read(std::istream &stream, int version );
+   bool write( std::ofstream& stream, int version );
    //
-   bool outputHeader( ostream& stream, char delim = '\t', bool updated_only = false ) const;
-   bool outputRow( int row, ostream& stream, char delim = '\t', bool updated_only = false ) const;
+   bool outputHeader( std::ostream& stream, char delim = '\t', bool updated_only = false ) const;
+   bool outputRow( int row, std::ostream& stream, char delim = '\t', bool updated_only = false ) const;
    //
-   bool exportTable(ostream& stream, bool updated_only);
-   bool importTable(istream& stream, bool merge);
+   bool exportTable(std::ostream& stream, bool updated_only);
+   bool importTable(std::istream& stream, bool merge);
 };
 
 #endif

@@ -24,9 +24,6 @@
 #include <windows.h>
 #endif
 
-//////// dX Simple //
-// Search for #ifndef _COMPILE_dX_SIMPLE_VERSION in order to force "simple dX" compile
-
 
 int main(int argc, char *argv[])
 {

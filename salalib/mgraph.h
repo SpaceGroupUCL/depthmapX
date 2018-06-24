@@ -34,7 +34,6 @@
 #include <salalib/connector.h>
 #include <salalib/shapemap.h>
 #include <salalib/axialmap.h>
-#include <salalib/datalayer.h>   // datalayers deprecated
 
 #include <mutex>
 
@@ -55,9 +54,9 @@ class MetaGraph : public SuperSpacePixel, public FileProperties
 {
 public:
    enum { ADD = 0x0001, REPLACE = 0x0002, CAT = 0x0010, DXF = 0x0020, NTF = 0x0040, RT1 = 0x0080, GML = 0x0100 };
-   enum { NONE = 0x0000, /* GRAPH = 0x0001, Deprecated */ POINTMAPS = 0x0002, LINEDATA = 0x0004, 
-          FIXED = 0x0008 /* Deprecated */, ANGULARGRAPH = 0x0010, DATAMAPS = 0x0020, AXIALLINES = 0x0040, /* BOUNDARYGRAPH = 0x0080, Deprecated */ SHAPEGRAPHS = 0x0100,
-          PREWRITTEN = 0x1000, BUGGY = 0x8000 };
+   enum { NONE = 0x0000, POINTMAPS = 0x0002, LINEDATA = 0x0004,
+          ANGULARGRAPH = 0x0010, DATAMAPS = 0x0020, AXIALLINES = 0x0040, SHAPEGRAPHS = 0x0100,
+          BUGGY = 0x8000 };
    enum { NOT_EDITABLE = 0, EDITABLE_OFF = 1, EDITABLE_ON = 2 };
 protected:
    int m_file_version;
@@ -68,7 +67,7 @@ public:
    bool m_showtext;
    //
 public:
-   ShapeMaps<ShapeMap> m_data_maps;
+   std::vector<ShapeMap> m_dataMaps;
    ShapeGraphs m_shape_graphs;
 public:
    MetaGraph();
@@ -103,52 +102,42 @@ private:
    void setSpacePixel(SuperSpacePixel *spacepix)
    { m_spacepix = spacepix; for (auto& pointMap: m_pointMaps) pointMap.setSpacePixel(spacepix); }
    void removePointMap(int i)
-   { if (m_displayed_pointmap >= i) m_displayed_pointmap--; m_pointMaps.erase(m_pointMaps.begin() + i); }
+   {
+       if (m_displayed_pointmap >= i) m_displayed_pointmap--;
+       if(m_displayed_pointmap < 0) m_displayed_pointmap = 0;
+       m_pointMaps.erase(m_pointMaps.begin() + i);
+   }
 
-   bool readPointMaps(istream &stream, int version );
-   bool writePointMaps( ofstream& stream, int version, bool displayedmaponly = false );
+   bool readPointMaps(std::istream &stream, int version );
+   bool writePointMaps( std::ofstream& stream, int version, bool displayedmaponly = false );
 
    std::recursive_mutex mLock;
 public:
     std::unique_lock<std::recursive_mutex> getLock(){
-       return std::unique_lock<recursive_mutex>(mLock);
+       return std::unique_lock<std::recursive_mutex>(mLock);
    }
 
     std::unique_lock<std::recursive_mutex> getLockDeferred(){
         return std::unique_lock<std::recursive_mutex>(mLock, std::defer_lock_t());
     }
 
-   //
-   void copyLineData(const SuperSpacePixel& meta);
-   void copyPointMap(const PointMap& meta);
-   //
    int getState() const
       { return m_state; }
    // use with caution: only very rarely needed outside MetaGraph itself
    void setState(int state)
       { m_state = state; }
-   //
-   // quick loaders from input streams rather than files:
-   bool importCat( istream& stream );
-   // make a graph using the supplied seed and graph spacing:
-   void fastGraph( const Point2f& seed, double spacing );
-   //
+
    int loadLineData( Communicator *communicator, int load_type );
-   int loadCat( istream& stream, Communicator *communicator );
-   int loadRT1(const std::vector<string>& fileset, Communicator *communicator);
+   int loadCat( std::istream& stream, Communicator *communicator );
+   int loadRT1(const std::vector<std::string>& fileset, Communicator *communicator);
    ShapeMap &createNewShapeMap(depthmapX::ImportType mapType, std::string name);
    void deleteShapeMap(depthmapX::ImportType mapType, ShapeMap &shapeMap);
    void updateParentRegions(ShapeMap &shapeMap);
-   int importLinesAsShapeMap(const std::vector<Line> &lines, QtRegion region, std::string name, depthmapX::Table &data );
-   int importPointsAsShapeMap(const std::vector<Point2f> &points, QtRegion region, std::string name, depthmapX::Table &data);
-   bool undoPoints();
    bool clearPoints();
    bool setGrid( double spacing, const Point2f& offset = Point2f() );                 // override of PointMap
    bool makePoints( const Point2f& p, int semifilled, Communicator *communicator = NULL);  // override of PointMap
    bool makeGraph( Communicator *communicator, int algorithm, double maxdist );
    bool analyseGraph(Communicator *communicator, Options options , bool simple_version); // <- options copied to keep thread safe
-   bool analyseAngular( Communicator *communicator, bool analyse_in_memory );
-   bool makeAxialLines( Communicator *communicator, bool analyse_in_memory );
    //
    // helpers for editing maps
    bool isEditableMap();
@@ -175,18 +164,12 @@ public:
    bool convertToDrawing(Communicator *comm, std::string layer_name, int typeflag); // 0 signifies convert from data map, else convert from graph
    bool convertToConvex(Communicator *comm, std::string layer_name, bool keeporiginal, int typeflag); // -1 signifies convert from drawing layer, else convert from data map
    bool convertAxialToSegment(Communicator *comm, std::string layer_name, bool keeporiginal, bool pushvalues, double stubremoval);
-   // note: not same categories
-   bool convertPointsToShape();
-   //bool convertBoundaryGraph( Communicator *communicator );
-   //
-   // some compatibility with older version horrors:
-   int convertDataLayersToShapeMap(DataLayers& datalayers, PointMap& pointmap);
-   //
-   int loadMifMap(Communicator *comm, istream& miffile, istream& midfile);
+   int loadMifMap(Communicator *comm, std::istream& miffile, std::istream& midfile);
    bool makeAllLineMap( Communicator *communicator, const Point2f& seed );
    bool makeFewestLineMap( Communicator *communicator, int replace );
    bool analyseAxial( Communicator *communicator, Options options, bool simple_version ); // <- options copied to keep thread safe
-   bool analyseSegments( Communicator *communicator, Options options ); // <- options copied to keep thread safe
+   bool analyseSegmentsTulip( Communicator *communicator, Options options ); // <- options copied to keep thread safe
+   bool analyseSegmentsAngular( Communicator *communicator, Options options ); // <- options copied to keep thread safe
    bool analyseTopoMet( Communicator *communicator, Options options ); // <- options copied to keep thread safe
    //
    bool hasAllLineMap()
@@ -205,12 +188,43 @@ public:
    //
    ShapeGraph& getDisplayedShapeGraph()
    { return m_shape_graphs.getDisplayedMap(); }
+   size_t m_displayed_datamap = -1;
    ShapeMap& getDisplayedDataMap()
-   { return m_data_maps.getDisplayedMap(); }
+   { return m_dataMaps[m_displayed_datamap]; }
+   const ShapeMap& getDisplayedDataMap() const
+   { return m_dataMaps[m_displayed_datamap]; }
+   size_t getDisplayedDataMapRef() const
+   { return m_displayed_datamap; }
+
+   void removeDataMap(int i)
+   { if (m_displayed_datamap >= i) m_displayed_datamap--; m_dataMaps.erase(m_dataMaps.begin() + i); }
+
+   void setDisplayedDataMapRef(size_t map)
+   {
+      if (m_displayed_datamap != -1 && m_displayed_datamap != map)
+         m_dataMaps[m_displayed_datamap].clearSel();
+      m_displayed_datamap = map;
+   }
+
+   template <class T>
+   size_t getMapRef(std::vector<T>& maps, const std::string& name) const
+   {
+      // note, only finds first map with this name
+      for (size_t i = 0; i < maps.size(); i++) {
+         if (maps[i].getName() == name)
+            return i;
+      }
+      return -1;
+   }
+
    ShapeGraphs& getShapeGraphs()
    { return m_shape_graphs; }
-   ShapeMaps<ShapeMap>& getDataMaps()
-   { return m_data_maps; }
+   std::vector<ShapeMap>& getDataMaps()
+   { return m_dataMaps; }
+
+   bool readDataMaps(std::istream &stream, int version );
+   bool writeDataMaps( std::ofstream& stream, int version, bool displayedmaponly = false );
+
    //
    int getDisplayedMapType();
    //
@@ -223,28 +237,20 @@ public:
    bool isAttributeLocked(int col);
    AttributeTable& getAttributeTable(int type = -1, int layer = -1);
    const AttributeTable& getAttributeTable(int type = -1, int layer = -1) const;
-   //
-   void loadGraphAgent();
-   void unloadGraphAgent();
-   //
+
    int getLineFileCount() const
-      { return (int) SuperSpacePixel::size(); }
+      { return (int) m_spacePixels.size(); }
 
    // Quick mod - TV
    const std::string& getLineFileName(int file) const
-      { return SuperSpacePixel::at(file).getName(); }
+      { return m_spacePixels[file].getName(); }
    int getLineLayerCount(int file) const
-      { return (int) SuperSpacePixel::at(file).size(); }
+      { return (int) m_spacePixels[file].m_spacePixels.size(); }
 
-   //
-/*   SpacePixel& getLineLayer(int file, int layer)
-      { return SuperSpacePixel::at(file).at(layer); }
-   const SpacePixel& getLineLayer(int file, int layer) const
-      { return SuperSpacePixel::at(file).at(layer); }*/
    ShapeMap& getLineLayer(int file, int layer)
-      { return SuperSpacePixel::at(file).at(layer); }
+      { return m_spacePixels[file].m_spacePixels[layer]; }
    const ShapeMap& getLineLayer(int file, int layer) const
-      { return SuperSpacePixel::at(file).at(layer); }
+      { return m_spacePixels[file].m_spacePixels[layer]; }
    //
    // Some error handling -- the idea is that you catch the error in MetaGraph,
    // return a generic error code and then get your front end to interrogate the 
@@ -269,7 +275,7 @@ protected:
 public:
    enum { SHOWHIDEVGA = 0x0100, SHOWVGATOP = 0x0200, SHOWHIDEAXIAL = 0x0400, SHOWAXIALTOP = 0x0800, SHOWHIDESHAPE = 0x1000, SHOWSHAPETOP = 0x2000 };
    enum { VIEWNONE = 0x00, VIEWVGA = 0x01, VIEWBACKVGA = 0x02, VIEWAXIAL = 0x04, VIEWBACKAXIAL = 0x08,
-          VIEWLINKS = 0x10, VIEWDATA = 0x20, VIEWBACKDATA = 0x40, VIEWFRONT = 0x25, VIEWBACK = 0x4a };
+          VIEWDATA = 0x20, VIEWBACKDATA = 0x40, VIEWFRONT = 0x25 };
    //
    int getViewClass()
    { return m_view_class; }
@@ -301,7 +307,7 @@ public:
       else if (m_view_class & VIEWAXIAL) 
          return m_shape_graphs.getDisplayedMap().isSelected();
       else if (m_view_class & VIEWDATA) 
-         return m_data_maps.getDisplayedMap().isSelected();
+         return getDisplayedDataMap().isSelected();
       else 
          return false;
    }
@@ -309,13 +315,13 @@ public:
    {  if (m_view_class & VIEWAXIAL) 
          return m_shape_graphs.getDisplayedMap().setCurSel(r, add);
       else if (m_view_class & VIEWDATA)
-         return m_data_maps.getDisplayedMap().setCurSel( r, add );
+         return getDisplayedDataMap().setCurSel( r, add );
       else if (m_view_class & VIEWVGA)
          return getDisplayedPointMap().setCurSel( r, add );
       else if (m_state & POINTMAPS && !getDisplayedPointMap().isProcessed()) // this is a default select application
          return getDisplayedPointMap().setCurSel( r, add );
       else if (m_state & DATAMAPS) // I'm not sure why this is a possibility, but it appears you might have state & DATAMAPS without VIEWDATA...
-         return m_data_maps.getDisplayedMap().setCurSel( r, add );
+         return getDisplayedDataMap().setCurSel( r, add );
       else 
          return false;
    }
@@ -327,7 +333,7 @@ public:
       else if (m_view_class & VIEWAXIAL) 
          return m_shape_graphs.getDisplayedMap().clearSel();
       else if (m_view_class & VIEWDATA) 
-         return m_data_maps.getDisplayedMap().clearSel();
+         return getDisplayedDataMap().clearSel();
       else
          return false;
    }
@@ -338,7 +344,7 @@ public:
       else if (m_view_class & VIEWAXIAL) 
          return (int) m_shape_graphs.getDisplayedMap().getSelCount();
       else if (m_view_class & VIEWDATA) 
-         return (int) m_data_maps.getDisplayedMap().getSelCount();
+         return (int) getDisplayedDataMap().getSelCount();
       else
          return 0;
    }
@@ -349,7 +355,7 @@ public:
       else if (m_view_class & VIEWAXIAL) 
          return (float)m_shape_graphs.getDisplayedMap().getAttributeTable().getSelAvg();
       else if (m_view_class & VIEWDATA) 
-         return (float)m_data_maps.getDisplayedMap().getAttributeTable().getSelAvg();
+         return (float)getDisplayedDataMap().getAttributeTable().getSelAvg();
       else
          return -1.0f;
    }
@@ -360,7 +366,7 @@ public:
       else if (m_view_class & VIEWAXIAL) 
          return m_shape_graphs.getDisplayedMap().getSelBounds();
       else if (m_view_class & VIEWDATA) 
-         return m_data_maps.getDisplayedMap().getSelBounds();
+         return getDisplayedDataMap().getSelBounds();
       else
          return QtRegion();
    }
@@ -371,21 +377,21 @@ public:
       else if (m_view_class & VIEWAXIAL) 
          m_shape_graphs.getDisplayedMap().setCurSel(selset,add);
       else // if (m_view_class & VIEWDATA) 
-         m_data_maps.getDisplayedMap().setCurSel(selset,add); }
+         getDisplayedDataMap().setCurSel(selset,add); }
    std::set<int>& getSelSet()
    {  if (m_view_class & VIEWVGA && m_state & POINTMAPS)
          return getDisplayedPointMap().getSelSet();
       else if (m_view_class & VIEWAXIAL) 
          return m_shape_graphs.getDisplayedMap().getSelSet();
       else // if (m_view_class & VIEWDATA) 
-         return m_data_maps.getDisplayedMap().getSelSet(); }
+         return getDisplayedDataMap().getSelSet(); }
    const std::set<int>& getSelSet() const
    {  if (m_view_class & VIEWVGA && m_state & POINTMAPS)
          return getDisplayedPointMap().getSelSet();
       else if (m_view_class & VIEWAXIAL) 
          return m_shape_graphs.getDisplayedMap().getSelSet();
       else // if (m_view_class & VIEWDATA) 
-         return m_data_maps.getDisplayedMap().getSelSet(); }
+         return getDisplayedDataMap().getSelSet(); }
 //
 public:
    // no longer supported
@@ -422,15 +428,12 @@ public:
    enum { OK, WARN_BUGGY_VERSION, WARN_CONVERTED, NOT_A_GRAPH, DAMAGED_FILE, DISK_ERROR, NEWER_VERSION, DEPRECATED_VERSION };
    // likely to use communicator if too slow...
    int readFromFile( const std::string& filename );
-   int readFromStream( istream &stream, const std::string& filename );
+   int readFromStream( std::istream &stream, const std::string& filename );
    int write( const std::string& filename, int version, bool currentlayer = false);
    //
    std::vector<SimpleLine> getVisibleDrawingLines();
 protected:
-   int convertVirtualMem( ifstream& stream, int version );
-   //
-   streampos skipVirtualMem(istream &stream, int version);
-   streampos copyVirtualMem(istream& reader, ofstream& writer, int version);
+   std::streampos skipVirtualMem(std::istream &stream, int version);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

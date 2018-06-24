@@ -60,14 +60,14 @@ void BSPTree::make(Communicator *communicator, time_t atime, const std::vector<T
         lineStack.pop();
 
         if (!currLines.first.empty()) {
-           currNode->m_left = new BSPNode(currNode);
-           nodeStack.push(currNode->m_left);
-           lineStack.push(makeLines(communicator,atime,currLines.first,currNode->m_left));
+           currNode->m_left = std::unique_ptr<BSPNode>(new BSPNode(currNode));
+           nodeStack.push(currNode->m_left.get());
+           lineStack.push(makeLines(communicator,atime,currLines.first,currNode->m_left.get()));
         }
         if (!currLines.second.empty()) {
-           currNode->m_right = new BSPNode(currNode);
-           nodeStack.push(currNode->m_right);
-           lineStack.push(makeLines(communicator,atime,currLines.second,currNode->m_right));
+           currNode->m_right = std::unique_ptr<BSPNode>(new BSPNode(currNode));
+           nodeStack.push(currNode->m_right.get());
+           lineStack.push(makeLines(communicator,atime,currLines.second,currNode->m_right.get()));
         }
     }
 }

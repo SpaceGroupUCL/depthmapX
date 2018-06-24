@@ -18,6 +18,7 @@
 #pragma once
 
 #include "p2dpoly.h"
+#include <memory>
 
 // Binary Space Partition
 
@@ -30,17 +31,15 @@ private:
 
 public:
    enum { BSPLEFT, BSPRIGHT };
-   BSPNode *m_left;
-   BSPNode *m_right;
+   std::unique_ptr<BSPNode> m_left;
+   std::unique_ptr<BSPNode> m_right;
    BSPNode *m_parent;
 
-   BSPNode(BSPNode *parent = NULL)
-   { m_left = NULL; m_right = NULL; m_parent = parent; m_tag = -1; }
-   virtual ~BSPNode()
-   { if (m_left) delete m_left; m_left = NULL; if (m_right) delete m_right; m_right = NULL; }
+   BSPNode(BSPNode *parent = NULL) : m_left(nullptr), m_right(nullptr)
+   {m_parent = parent; m_tag = -1; }
    //
    bool isLeaf() {
-      return m_left == NULL && m_right == NULL;
+      return m_left == nullptr && m_right == nullptr;
    }
    int classify(const Point2f& p) {
        Point2f v0 = m_line.end() - m_line.start();

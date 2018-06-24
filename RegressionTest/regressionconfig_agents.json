@@ -3,7 +3,7 @@
     "basebinlocation": "../../BaselineBinaries",
     "testbinlocation": "../../../build",
     "testcases": {
-        "agents_defaults": {
+        "agents_defaults": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -16,8 +16,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_line_of_sight_length_look": {
+        }],
+        "agents_line_of_sight_length_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -30,8 +30,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_occluded_length_look": {
+        }],
+        "agents_occluded_length_look": [{
             "infile": "../../../testdata/gallery_connected_with_isovist.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -44,8 +44,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_any_occlusion_look": {
+        }],
+        "agents_any_occlusion_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -58,8 +58,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_occlusion_group_bins_45_look": {
+        }],
+        "agents_occlusion_group_bins_45_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -72,8 +72,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_occlusion_group_bins_60_look": {
+        }],
+        "agents_occlusion_group_bins_60_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -86,8 +86,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_furthest_occlusion_per_bin_look": {
+        }],
+        "agents_furthest_occlusion_per_bin_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -100,8 +100,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_per_bin_far_distance_look": {
+        }],
+        "agents_per_bin_far_distance_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -114,8 +114,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_per_bin_angle_look": {
+        }],
+        "agents_per_bin_angle_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -128,8 +128,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_per_bin_far_distance_and_angle_look": {
+        }],
+        "agents_per_bin_far_distance_and_angle_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -142,8 +142,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_per_bin_memory_look": {
+        }],
+        "agents_per_bin_memory_look": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "AGENTS",
@@ -156,8 +156,8 @@
                 "-alife": "1000",
                 "-alocseed": "0"
             }
-        },
-        "agents_gatecounts": {
+        }],
+        "agents_gatecounts": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.tsv",
             "mode": "AGENTS",
@@ -171,8 +171,8 @@
                 "-alocseed": "5",
                 "-ot": "gatecounts"
             }
-        },
-        "agents_trails_all": {
+        }],
+        "agents_trails_all": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.cat",
             "mode": "AGENTS",
@@ -187,8 +187,8 @@
                 "-atrails": "0",
                 "-ot": "trails"
             }
-        },
-        "agents_trails_1": {
+        }],
+        "agents_trails_1": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.cat",
             "mode": "AGENTS",
@@ -203,6 +203,6 @@
                 "-atrails": "1",
                 "-ot": "trails"
             }
-        }
+        }]
     }
 }

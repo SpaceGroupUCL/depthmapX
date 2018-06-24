@@ -32,12 +32,12 @@ TEST_CASE("Testing ShapeGraph::writeAxialConnections"){
 
     std::unique_ptr<SuperSpacePixel> spacePixel(new SuperSpacePixel("Test SuperSpacePixel"));
 
-    spacePixel->push_back(SpacePixelFile("Test SpacePixelGroup"));
-    spacePixel->tail().push_back(ShapeMap("Test ShapeMap"));
+    spacePixel->m_spacePixels.emplace_back("Test SpacePixelGroup");
+    spacePixel->m_spacePixels.back().m_spacePixels.emplace_back("Test ShapeMap");
 
-    spacePixel->tail().tail().makeLineShape(Line(line1Start, line1End));
-    spacePixel->tail().tail().makeLineShape(Line(line2Start, line2End));
-    spacePixel->tail().tail().makeLineShape(Line(line3Start, line3End));
+    spacePixel->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(line1Start, line1End));
+    spacePixel->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(line2Start, line2End));
+    spacePixel->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(line3Start, line3End));
 
     std::unique_ptr<ShapeGraphs> shapeGraphs(new ShapeGraphs());
     shapeGraphs->convertDrawingToAxial(0, "Test axial", (*spacePixel));
@@ -89,12 +89,12 @@ TEST_CASE("Testing ShapeGraph::writeSegmentConnections")
 
     std::unique_ptr<SuperSpacePixel> spacePixel(new SuperSpacePixel("Test SuperSpacePixel"));
 
-    spacePixel->push_back(SpacePixelFile("Test SpacePixelGroup"));
-    spacePixel->tail().push_back(ShapeMap("Test ShapeMap"));
+    spacePixel->m_spacePixels.emplace_back("Test SpacePixelGroup");
+    spacePixel->m_spacePixels.back().m_spacePixels.emplace_back("Test ShapeMap");
 
-    spacePixel->tail().tail().makeLineShape(Line(line1Start, line1End));
-    spacePixel->tail().tail().makeLineShape(Line(line2Start, line2End));
-    spacePixel->tail().tail().makeLineShape(Line(line3Start, line3End));
+    spacePixel->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(line1Start, line1End));
+    spacePixel->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(line2Start, line2End));
+    spacePixel->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(line3Start, line3End));
 
     std::unique_ptr<ShapeGraphs> shapeGraphs(new ShapeGraphs());
     shapeGraphs->convertDrawingToSegment(0, "Test segment", (*spacePixel));

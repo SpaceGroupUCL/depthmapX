@@ -20,7 +20,7 @@
 #include <cstring>
 #include "exceptions.h"
 
-std::vector<double> depthmapX::parseAxialRadiusList(const std::string &radiusList)
+std::vector<double> depthmapX::parseRadiusList(const std::string &radiusList)
 {
     std::vector<double> result;
     std::stringstream stream(radiusList);

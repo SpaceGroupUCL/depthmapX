@@ -52,12 +52,12 @@ void Isovist::makeit(BSPNode *root, const Point2f& p, const QtRegion& region, do
    bool parity = false;
 
    if (startangle > endangle) {
-      m_gaps.push_back(IsoSeg(0.0,endangle));
-      m_gaps.push_back(IsoSeg(startangle,2.0*M_PI));
+      m_gaps.insert(IsoSeg(0.0,endangle));
+      m_gaps.insert(IsoSeg(startangle,2.0*M_PI));
    }
    else {
       parity = true;
-      m_gaps.push_back(IsoSeg(startangle,endangle));
+      m_gaps.insert(IsoSeg(startangle,endangle));
    }
 
    make(root);
@@ -128,7 +128,7 @@ int Isovist::getClosestLine(BSPNode *root, const Point2f& p)
    m_blocks.clear();
    m_gaps.clear();
 
-   m_gaps.push_back(IsoSeg(0.0,2.0*M_PI));
+   m_gaps.insert(IsoSeg(0.0,2.0*M_PI));
 
    make(root);
 
@@ -151,18 +151,18 @@ void Isovist::make(BSPNode *here)
    if (m_gaps.size()) {
       int which = here->classify(m_centre);
       if (which == BSPNode::BSPLEFT) {
-         if (here->m_left)
-            make(here->m_left);
+         if (here->m_left.get())
+            make(here->m_left.get());
          drawnode(here->getLine(),here->getTag());
          if (here->m_right)
-            make(here->m_right);
+            make(here->m_right.get());
       }
       else {
-         if (here->m_right)
-            make(here->m_right);
+         if (here->m_right.get())
+            make(here->m_right.get());
          drawnode(here->getLine(),here->getTag());
          if (here->m_left)
-            make(here->m_left);
+            make(here->m_left.get());
       }
    }
 }
@@ -197,46 +197,64 @@ void Isovist::drawnode(const Line& li, int tag)
          addBlock(li,tag,angle2,angle1);
       }
    }
-   // 
-   for (size_t i = m_gaps.size() - 1; i != paftl::npos; i--) {
-      if (m_gaps[i].tagdelete) {
-         m_gaps.remove_at(i);
-      }
+   //
+   for (auto it = m_gaps.begin(); it != m_gaps.end(); ) {
+       if (it->tagdelete) {
+           it = m_gaps.erase(it);
+       }
+       else {
+           ++it;
+       }
    }
 }
 
 void Isovist::addBlock(const Line& li, int tag, double startangle, double endangle)
 {
-   int gap = 0;
+   auto gap = m_gaps.begin();
    bool finished = false;
 
    while (!finished) {
-      while (gap < (int)m_gaps.size() && m_gaps[gap].endangle < startangle) {
+      while (gap != m_gaps.end() && gap->endangle < startangle) {
          gap++;
       }
-      if (gap < (int)m_gaps.size() && m_gaps[gap].startangle < endangle + 1e-9) {
+      if (gap != m_gaps.end() && gap->startangle < endangle + 1e-9) {
          double a,b;
-         if (m_gaps[gap].startangle > startangle - 1e-9) {
-            a = m_gaps[gap].startangle;
-            if (m_gaps[gap].endangle < endangle + 1e-9) {
-               b = m_gaps[gap].endangle;
-               m_gaps[gap].tagdelete = true;
+         if (gap->startangle > startangle - 1e-9) {
+            a = gap->startangle;
+            if (gap->endangle < endangle + 1e-9) {
+               b = gap->endangle;
+               gap->tagdelete = true;
             }
             else {
                b = endangle;
-               m_gaps[gap].startangle = endangle;
+               IsoSeg isoseg = *gap;
+               isoseg.startangle = endangle;
+               auto hint = gap;
+               hint++;
+               m_gaps.erase(gap);
+               gap = m_gaps.insert(hint, isoseg);
             }
          }
          else {
             a = startangle;
-            if (m_gaps[gap].endangle < endangle + 1e-9) {
-               b = m_gaps[gap].endangle;
-               m_gaps[gap].endangle = startangle;
+            if (gap->endangle < endangle + 1e-9) {
+               b = gap->endangle;
+               IsoSeg isoseg = *gap;
+               isoseg.endangle = startangle;
+               auto hint = gap;
+               hint++;
+               m_gaps.erase(gap);
+               gap = m_gaps.insert(hint, isoseg);
             }
             else {
                b = endangle;
-               m_gaps.add(IsoSeg(endangle, m_gaps[gap].endangle, m_gaps[gap].quadrant));
-               m_gaps[gap].endangle = startangle;
+               m_gaps.insert(IsoSeg(endangle, gap->endangle, gap->quadrant));
+               IsoSeg isoseg = *gap;
+               isoseg.endangle = startangle;
+               auto hint = gap;
+               hint++;
+               m_gaps.erase(gap);
+               gap = m_gaps.insert(hint, isoseg);
                gap++; // advance past gap just added
             }
          }
@@ -247,6 +265,7 @@ void Isovist::addBlock(const Line& li, int tag, double startangle, double endang
       else {
          finished = true;
       }
+      if(gap == m_gaps.end()) break;
       gap++;
    }
 }
@@ -296,10 +315,6 @@ void Isovist::setData(AttributeTable& table, int row, bool simple_version)
    table.setValue(row,col,(float)area);
 
 
-
-   // dX simple version test // TV
-//#define _COMPILE_dX_SIMPLE_VERSION
-#ifndef _COMPILE_dX_SIMPLE_VERSION
    if(!simple_version) {
        col = table.getColumnIndex("Isovist Compactness");
        if (col == -1) {
@@ -341,6 +356,5 @@ void Isovist::setData(AttributeTable& table, int row, bool simple_version)
        }
        table.setValue(row,col,(float)m_perimeter);
    }
-#endif
 
 }

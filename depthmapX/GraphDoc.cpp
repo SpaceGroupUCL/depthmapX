@@ -168,7 +168,7 @@ void QGraphDoc::UpdateMainframestatus()
        }
        // either showing or constructing the VGA graph
        else if ((state & MetaGraph::POINTMAPS) && m_meta_graph->getViewClass() & MetaGraph::VIEWVGA) {
-          n = (int) m_meta_graph->getDisplayedPointMap().getPointCount();
+          n = (int) m_meta_graph->getDisplayedPointMap().getFilledPointCount();
        }
        if (n > 0) {
           s1 = QString("%1   ").arg(n);
@@ -216,7 +216,7 @@ void QGraphDoc::OnLayerNew()
       ShapeMap *map;
       if (dlg.m_layer_type == 0) {
           int ref = m_meta_graph->addShapeMap(dlg.m_name.toStdString());
-         map = &(m_meta_graph->getDataMaps().getMap(ref));
+         map = &(m_meta_graph->getDataMaps()[ref]);
       }
       else if (dlg.m_layer_type == 1) {
          int ref = m_meta_graph->addShapeGraph(dlg.m_name.toStdString(),ShapeMap::CONVEXMAP);
@@ -1049,7 +1049,7 @@ void QGraphDoc::OnEditGrid()
       // this can happen if there are no displayed maps -- so flag new map required:
       newmap = true;
    }
-   else if (m_meta_graph->getDisplayedPointMap().getPointCount() != 0) {
+   else if (m_meta_graph->getDisplayedPointMap().getFilledPointCount() != 0) {
       if ( QMessageBox::Yes != QMessageBox::question(this, tr("depthmapX"), tr("This will clear existing points.  Do you want to continue?"), QMessageBox::Yes|QMessageBox::No, QMessageBox::No) )
          return;
    }
@@ -1065,22 +1065,6 @@ void QGraphDoc::OnEditGrid()
       SetUpdateFlag(NEW_TABLE);
       SetRedrawFlag(VIEW_ALL,REDRAW_GRAPH, NEW_DATA);
    }
-}
-
-void QGraphDoc::OnEditFixgrid() 
-{
-}
-
-void QGraphDoc::OnEditFixFill() 
-{
-   // only used in Developer mode
-   if (m_communicator) {
-	  QMessageBox::warning(this, tr("Notice"), tr("Please wait, another task is running"), QMessageBox::Ok, QMessageBox::Ok);
-      return;
-   }
-   m_meta_graph->getDisplayedPointMap().fillLines();
-
-   SetRedrawFlag(VIEW_ALL,REDRAW_GRAPH, NEW_DATA);
 }
 
 // AV TV // semifilled
@@ -1112,29 +1096,6 @@ void QGraphDoc::OnFillPoints( const Point2f& p, int fill_type ) // semifilled = 
 
    m_thread.render(this);
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void QGraphDoc::OnToolsBoundaryToAxial() 
-{
-   int state = m_meta_graph->getState();
-   if (m_communicator) {
-	  QMessageBox::warning(this, tr("Notice"), tr("Please wait, another task is running"), QMessageBox::Ok, QMessageBox::Ok);
-      return;
-   }
-   if (!m_meta_graph->getDisplayedPointMap().isProcessed()) {
-	  QMessageBox::warning(this, tr("Notice"), tr("Sorry, a graph must exist to construct map"), QMessageBox::Ok, QMessageBox::Ok);
-      return;
-   }
-
-   // This is easy too... too easy... hmm... crossed-fingers, here goes:
-   m_communicator = new CMSCommunicator();
-   CreateWaitDialog(tr("Constructing boundary axial map..."));
-   m_communicator->SetFunction( CMSCommunicator::MAKEBOUNDARYMAP );
-
-   m_thread.render(this);
-}
-
 
 // convert any shape layer to any other (certain rules apply)
 
@@ -1420,7 +1381,8 @@ void QGraphDoc::OnToolsRunSeg()
    if (QDialog::Accepted == dlg.exec()) {
       m_communicator = new CMSCommunicator();
       CreateWaitDialog(tr("Performing segment line analysis..."));
-      m_communicator->SetFunction( CMSCommunicator::SEGMENTANALYSIS );
+      m_communicator->SetFunction( dlg.m_analysis_type == 1 ? CMSCommunicator::SEGMENTANALYSISANGULAR :
+                                                              CMSCommunicator::SEGMENTANALYSISTULIP );
       m_thread.render(this);
    }
 }
@@ -1440,7 +1402,7 @@ void QGraphDoc::OnToolsTopomet()
       ((MainWindow*)m_mainFrame)->m_options.output_type = dlg.m_topological;
       ((MainWindow*)m_mainFrame)->m_options.radius = dlg.m_dradius;
       ((MainWindow*)m_mainFrame)->m_options.sel_only = dlg.m_selected_only;
-      if (dlg.m_topological == 0) {
+      if (dlg.isAnalysisTopological()) {
          CreateWaitDialog(tr("Performing topological analysis..."));
       }
       else {
@@ -1448,22 +1410,6 @@ void QGraphDoc::OnToolsTopomet()
       }
       m_communicator->SetFunction( CMSCommunicator::TOPOMETANALYSIS );
       m_thread.render(this);
-   }
-}
-
-////////////////////////////////////////////////////////////////////////
-
-void QGraphDoc::OnToolsAxialClearLinks() 
-{
-   if(QMessageBox::Yes == QMessageBox::warning(this, tr("depthmapX"),
-										tr("Are you sure you want to clear all links and unlinks?"),
-										QMessageBox::Yes | QMessageBox::No
-										| QMessageBox::Yes,
-										QMessageBox::No))
-   {
-      m_meta_graph->getDisplayedShapeGraph().clearLinks();
-      // if currently in join mode, then redraw:
-      SetRedrawFlag(VIEW_ALL, REDRAW_GRAPH, NEW_DATA );
    }
 }
 
@@ -1500,8 +1446,8 @@ void QGraphDoc::OnToolsAgentRun()
    dlg.m_record_trails = eng.m_record_trails;
    dlg.m_trail_count = eng.m_trail_count;
    dlg.m_names.push_back("<None>");
-   for (size_t i = 0; i < m_meta_graph->getDataMaps().getMapCount(); i++) {
-       dlg.m_names.push_back(m_meta_graph->getDataMaps().getMap(i).getName());
+   for (size_t i = 0; i < m_meta_graph->getDataMaps().size(); i++) {
+       dlg.m_names.push_back(m_meta_graph->getDataMaps()[i].getName());
    }
    dlg.m_gatelayer = eng.m_gatelayer;
 
@@ -1554,36 +1500,6 @@ void QGraphDoc::OnToolsAgentRun()
    m_communicator->SetFunction( CMSCommunicator::AGENTANALYSIS );
 
    m_thread.render(this);
-}
-
-// some evo agent code... not sure if this works or not!
-
-void QGraphDoc::OnEvoAgent() 
-{
-/*   if (!m_evoagent) {
-      m_evoagent = (CEvoAgent *) AfxBeginThread(RUNTIME_CLASS(CEvoAgent));
-      if (!m_evoagent) {
-         AfxMessageBox(tr("An error occurred trying to start the agent simulation module"));
-         return;
-      }
-      else {
-         CEvoAgentSetup dlg;
-         if (dlg.DoModal() == IDOK) {
-            m_evoagent->Init(this,dlg.m_evolveapply,dlg.m_filename,dlg.m_seed);
-            m_evoagent->PostThreadMessage(WM_DMP_RUN,0,0);
-         }
-         else {
-            m_evoagent->PostThreadMessage(WM_DMP_FINISHED_MESSAGE,0,0);
-            m_evoagent = NULL;
-         }
-      }
-   }
-   else {
-      // turn off pause (typically pauses after evaluation run)
-      m_evoagent->m_paused = false;
-      m_evoagent->PostThreadMessage(WM_DMP_RUN,0,0);
-   }
-   */
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1647,9 +1563,6 @@ void QGraphDoc::OnToolsMakeGraph()
 	   QMessageBox::warning(this, tr("Warning"), tr("Sorry, you need an unprocessed set of points to make the visibility graph"), QMessageBox::Ok, QMessageBox::Ok);
       return;
    }
-   /*if (!CheckMemory()) {
-      return;
-   }*/
 
    CMakeOptionsDlg dlg;
    dlg.m_boundarygraph = false;
@@ -1678,19 +1591,6 @@ void QGraphDoc::OnToolsMakeGraph()
 
 /////////////////////////////////////////////////////////////////////////////
 
-
-void QGraphDoc::OnVGAOptions() 
-{
-   COptionsDlg dlg;
-
-   dlg.m_layer_names.push_back("<None>");
-   for (size_t i = 0; i < m_meta_graph->getDataMaps().getMapCount(); i++) {
-       dlg.m_layer_names.push_back(m_meta_graph->getDataMaps().getMap(i).getName());
-   }
-
-   dlg.exec();
-}
-
 void QGraphDoc::OnToolsRun() 
 {
    if (m_communicator) {
@@ -1702,8 +1602,8 @@ void QGraphDoc::OnToolsRun()
    COptionsDlg dlg;
 
    dlg.m_layer_names.push_back("<None>");
-   for (size_t i = 0; i < m_meta_graph->getDataMaps().getMapCount(); i++) {
-       dlg.m_layer_names.push_back(m_meta_graph->getDataMaps().getMap(i).getName());
+   for (auto& dataMap: m_meta_graph->getDataMaps()) {
+       dlg.m_layer_names.push_back(dataMap.getName());
    }
 
    if (QDialog::Accepted != dlg.exec()) {
@@ -1778,17 +1678,6 @@ void QGraphDoc::OnToolsAPD()
       }
    }
 }
-/*
-void QGraphDoc::OnUpdateToolsTPD()//CCmdUI *pCmdUI)
-{
-   // segment maps only (with selection)
-   if (m_meta_graph->viewingProcessedLines() && m_meta_graph->getDisplayedShapeGraph().isSegmentMap() && m_meta_graph->isSelected()) {
-      pCmdUI->Enable(TRUE);
-   }
-   else {
-      pCmdUI->Enable(FALSE);
-   }	
-}*/
 
 void QGraphDoc::OnToolsTPD()
 {
@@ -1808,42 +1697,6 @@ void QGraphDoc::OnToolsTPD()
          m_thread.render(this);
       }
    }
-}
-
-void QGraphDoc::OnBinDisplay() 
-{
-   if (m_communicator) {
-      QMessageBox::warning(this, tr("Warning"), tr("Please wait, another process is running"), QMessageBox::Ok, QMessageBox::Ok);
-      return;
-   }
-
-   if (m_meta_graph->viewingProcessedPoints()) {
-      if (m_meta_graph->isSelected()) {
-
-         // This is easy too... too easy... hmm... crossed-fingers, here goes:
-         m_communicator = new CMSCommunicator();
-         CreateWaitDialog(tr("Showing bins..."));
-         m_communicator->SetFunction( CMSCommunicator::BINDISPLAY );
-
-         m_thread.render(this);
-      }
-   }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-void QGraphDoc::OnToolsAxialLines() 
-{
-   if (m_communicator) {
-      QMessageBox::warning(this, tr("Warning"), tr("Please wait, another process is running"), QMessageBox::Ok, QMessageBox::Ok);
-      return;
-   }
-
-   // This is easy too... too easy... hmm... crossed-fingers, here goes:
-   m_communicator = new CMSCommunicator();
-   CreateWaitDialog(tr("Analysing graph..."));
-   m_communicator->SetFunction( CMSCommunicator::MAKEAXIALLINES );
-   m_thread.render(this);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -2056,26 +1909,6 @@ bool QGraphDoc::OnCloseDocument(int index)
     return true;
 }
 
-void QGraphDoc::OnAddGate() 
-{
-   if (m_communicator) {
-      QMessageBox::warning(this, tr("Warning"), tr("Please wait, another process is running"), QMessageBox::Ok, QMessageBox::Ok);
-      return;
-   }
-   if (m_meta_graph->getViewClass() & MetaGraph::VIEWVGA) {
-      // try the new thingy:
-      if (m_meta_graph->convertPointsToShape()) {
-         // redraw all as change of view is affected here:
-         // (also possibly even the sidebar menu:
-//         GetApp()->GetMainWnd()->PostMessage( WM_DMP_FOCUS_GRAPH, (WPARAM) this, QGraphDoc::CONTROLS_LOADGRAPH );
-         SetRedrawFlag(VIEW_ALL, REDRAW_GRAPH, NEW_DEPTHMAPVIEW_SETUP );
-      }
-      else {
-		  QMessageBox::warning(this, tr("Warning"), tr("There was an error trying to convert points to a shape.\nPlease check that you have selected a single polygon without holes.") );
-      }
-   }
-}
-
 void QGraphDoc::OnPushToLayer() 
 {
    if (m_meta_graph->viewingProcessed()) {
@@ -2110,10 +1943,10 @@ void QGraphDoc::OnPushToLayer()
       }
       // layers to push to:
       size_t i;
-      ShapeMaps<ShapeMap>& datamaps = m_meta_graph->getDataMaps();
-      for (i = 0; i < datamaps.getMapCount(); i++) {
-         if (toplayerclass != MetaGraph::VIEWDATA || i != datamaps.getDisplayedMapRef()) {
-            names.insert(std::make_pair(IntPair(MetaGraph::VIEWDATA,int(i)),std::string("Data Maps: ") + datamaps.getMap(i).getName()));
+      std::vector<ShapeMap>& datamaps = m_meta_graph->getDataMaps();
+      for (i = 0; i < datamaps.size(); i++) {
+         if (toplayerclass != MetaGraph::VIEWDATA || i != m_meta_graph->getDisplayedDataMapRef()) {
+            names.insert(std::make_pair(IntPair(MetaGraph::VIEWDATA,int(i)),std::string("Data Maps: ") + datamaps[i].getName()));
          }
       }
       ShapeGraphs& shapegraphs = m_meta_graph->getShapeGraphs();
@@ -2145,8 +1978,6 @@ void QGraphDoc::OnPushToLayer()
       }
    }
 }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void QGraphDoc::OnAddColumn() 
 {
@@ -2500,67 +2331,6 @@ void QGraphDoc::OnFileProperties()
    }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-// a bit of testing
-
-void QGraphDoc::OnMagiMif() 
-{
-   if (m_meta_graph && !m_communicator) {
-      if (m_meta_graph->getState() & MetaGraph::SHAPEGRAPHS) {
-
-         QFilePath path(m_opened_name);
-         QString defaultname = path.m_path + (path.m_name.isEmpty() ? "" : path.m_name) + tr("_polys");
-		 
-		 QFileDialog::Options options = 0;
-		 QString outfile = QFileDialog::getOpenFileName(
-								   0, tr("Save As"),
-								   defaultname,
-								   tr("MapInfo file (*.mif)"),
-								   0,
-								   options);
-         
-		 if(!outfile.isEmpty()){
-            QFilePath filepath(outfile);
-            QString ext = filepath.m_ext;         
-            if (ext == QString("MIF")) 
-            {
-               int thedot = outfile.indexOf('.');
-               QString outfile2 = outfile.left(thedot+1) + tr("mid");
-               
-               ofstream miffile(outfile.toLatin1());
-               if (miffile.fail() || miffile.bad()) {
-                  QMessageBox::warning(this, tr("Warning"), tr("Sorry, unable to open file for export"), QMessageBox::Ok, QMessageBox::Ok);
-               }
-               
-               ofstream midfile(outfile2.toLatin1());
-               if (midfile.fail() || midfile.bad()) {
-	               QMessageBox::warning(this, tr("Warning"), tr("Sorry, unable to open associated .mid file for export"), QMessageBox::Ok, QMessageBox::Ok);
-               }             
-               m_meta_graph->getDisplayedShapeGraph().outputMifPolygons(miffile,midfile);
-            }
-         }
-      }
-   }
-}
-
-void QGraphDoc::OnBinDistances() 
-{
-   m_meta_graph->getDisplayedPointMap().binMap(NULL);
-}
-
-void QGraphDoc::OnShowBinDistances() 
-{
-   std::set<int> a = m_meta_graph->getDisplayedPointMap().getSelSet();
-   Point& p = m_meta_graph->getDisplayedPointMap().getPoint(*a.begin());
-   QString all;
-   for (int i = 0; i < 32; i++) {
-      QString blah = QString(tr("%2d: %f\n")).arg(i).arg(p.getBinDistance(i));
-      all += blah;
-   }
-   QMessageBox::information(this, tr("BinDistances"), all, QMessageBox::Ok, QMessageBox::Ok);
-}
-
 void QGraphDoc::OnViewShowGrid() 
 {
    if (m_meta_graph->m_showgrid) {
@@ -2572,36 +2342,12 @@ void QGraphDoc::OnViewShowGrid()
    SetRedrawFlag(VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DEPTHMAPVIEW_SETUP);
 }
 
-void QGraphDoc::OnViewShowText() 
-{
-   if (m_meta_graph->m_showtext) {
-      m_meta_graph->m_showtext = false;
-   }
-   else {
-      m_meta_graph->m_showtext = true;
-   }
-   SetRedrawFlag(VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DEPTHMAPVIEW_SETUP);
-}
-
 //#include "AttributeSummary.h"
 
 void QGraphDoc::OnViewSummary() 
 {
    CAttributeSummary dlg(this);
    dlg.exec();
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////
-
-// Red button tests the rapid agent program:
-
-void QGraphDoc::OnRedButton() 
-{
-/*   AfxMessageBox(tr("Disabled: use main through vision calculator (with vga analysis) instead"));
-   // m_meta_graph->analyseThruVision();
-   //
-   SetUpdateFlag(QGraphDoc::NEW_DATA);
-   SetRedrawFlag(VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );*/
 }
 
 void QGraphDoc::OnToolsPointConvShapeMap() 
@@ -2616,14 +2362,14 @@ void QGraphDoc::OnToolsPointConvShapeMap()
 // this is unlink from a set of points!
 void QGraphDoc::OnToolsAxialConvShapeMap() 
 {
-   if (m_meta_graph->getDataMaps().getMapCount() == 0) {
+   if (m_meta_graph->getDataMaps().empty()) {
 	   QMessageBox::warning(this, tr("Warning"), tr("No data source layers for unlink points"), QMessageBox::Ok, QMessageBox::Ok);
       return;
    }
 
    std::vector<std::string> names;
-   for (size_t i = 0; i < m_meta_graph->getDataMaps().getMapCount(); i++) {
-      names.push_back(std::string("Data Maps: ") + m_meta_graph->getDataMaps().getMap(i).getName());
+   for (size_t i = 0; i < m_meta_graph->getDataMaps().size(); i++) {
+      names.push_back(std::string("Data Maps: ") + m_meta_graph->getDataMaps()[i].getName());
    }
 
    // choose shape map...
@@ -2632,7 +2378,7 @@ void QGraphDoc::OnToolsAxialConvShapeMap()
 
    if (dlg.exec()) {
       //CWaitCursor wait;
-      m_meta_graph->getDisplayedShapeGraph().unlinkFromShapeMap(m_meta_graph->getDataMaps().getMap(dlg.m_layer));
+      m_meta_graph->getDisplayedShapeGraph().unlinkFromShapeMap(m_meta_graph->getDataMaps()[dlg.m_layer]);
       m_meta_graph->setViewClass(MetaGraph::SHOWAXIALTOP);
       SetUpdateFlag(QGraphDoc::NEW_TABLE);
       SetRedrawFlag(VIEW_ALL,REDRAW_GRAPH, NEW_DATA);
@@ -2688,103 +2434,6 @@ void QGraphDoc::OnConvertMapShapes()
          }
       }
    }
-}
-
-// Point depth either lines, axials or segments: 
-
-// Deprecated, now in CViewSelector
-
-bool QGraphDoc::ViewHandler(int nCode, void *pExtra, int viewing, int layer)
-{
-/*
-   if (nCode == CN_COMMAND) {
-      if (layer != -1) {
-         if (!m_meta_graph->setCurrentLayerRef(layer)) {
-            // Layer doesn't exist for some reason...
-            return false;
-         }
-         SetTitle(m_base_title + " - " + m_meta_graph->getCurrentLayer().getLayerName().c_str());
-      }
-      else {
-         SetTitle(m_base_title + " - Attributes");
-      }
-      if (m_meta_graph->getViewing() != viewing) {
-         m_meta_graph->setViewing(viewing, *m_meta_graph);
-      }
-      SetRedrawFlag(VIEW_ALL, true );
-      SetRedrawFlag(VIEW_ALL, QGraphDoc::REDRAW_GRAPH );
-   }
-   else if (nCode == CN_UPDATE_COMMAND_UI) {
-      (()//CCmdUI*)pExtra)->Enable(TRUE);
-      if (m_meta_graph->getViewing() == viewing && 
-          (layer == -1 || m_meta_graph->getCurrentLayerRef() == layer)) {
-         (()//CCmdUI*)pExtra)->SetCheck(1);
-      }
-      else {
-         (()//CCmdUI*)pExtra)->SetCheck(0);
-      }
-   }
-*/
-   return true;
-}
-
-bool QGraphDoc::CheckMemory(const QString& filename) 
-{
-/*   // Check there's enough memory to hold the graph (based on benchmarks)
-   MEMORYSTATUS memstat;
-   memstat.dwLength = sizeof(MEMORYSTATUS);
-   GlobalMemoryStatus(&memstat);
-   double avail = double(memstat.dwAvailPhys) / double(1024 * 1024);
-
-   double min_required = double(m_meta_graph->getDisplayedPointMap().getPointCount()) * 0.0050;
-   double absolute_min_req = double(m_meta_graph->getDisplayedPointMap().getPointCount()) * 0.0025;
-
-   if (!filename.IsEmpty()) {
-      ifstream test(filename, ios::binary);
-      if (test.fail()) {
-         AfxMessageBox(QString("Couldn't open ") + filename);
-         if (test.is_open()) {
-            test.close();
-         }
-         return false;
-      }
-      char header[3];
-      test.read( (char *) &header, 3 );
-      if (header[0] != 'g' || header[1] != 'r' || header[2] != 'f') {
-         AfxMessageBox(tr("Sorry: this is not a depthmapX graph file"));
-         test.close();
-         return false;
-      }
-      int version;
-      test.read( (char *) &version, sizeof(version));
-      test.seekg(0,ios::end);
-      if (version < VERSION_NGRAPH_INTROD) {
-         // Should be able to fit old graphs into about the same memory:
-         min_required = 1.1 * double(test.tellg()) / double(1024 * 1024);
-      }
-      else {
-         // Don't know why, but the current version appears double the file size when in memory:
-         min_required = 1.1 * double(test.tellg()) / double(1024 * 1024); // .... did use to be 2.2
-      }
-      test.close();
-      if (version < VERSION_NGRAPH_INTROD) {
-         if (IDYES != AfxMessageBox(tr("Warning, this graph will require conversion, which may take a few minutes.\nDo you want to continue?"), MB_YESNO)) {
-            return false;
-         }
-      }
-   }
-
-   if (avail < min_required) {
-      QString str;
-      str.Format(tr("%.1f MB available, %.1f MB advised"), avail, min_required );
-      if ( IDYES != AfxMessageBox( QString("According to benchmark stats, there may not be enough memory to process this graph.\n") +
-                                   tr("(") + str + tr(")\n") +
-                                   tr("The analysis may take much longer than usual.  Do you still want to continue?"), MB_YESNO ) ) {
-         return false;
-      }
-   }
-*/
-   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

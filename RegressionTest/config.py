@@ -8,15 +8,18 @@ class ConfigError(Exception):
     def __init__(self, message):
         self.message = message
 
-def buildCmd(testcase):
-    cmd = cmdlinewrapper.DepthmapCmd()
-    cmd.infile = testcase["infile"]
-    cmd.outfile = testcase["outfile"]
-    cmd.mode = testcase["mode"]
-    if "simple" in testcase and not testcase["simple"]  == "false":
-        cmd.simpleMode = True
-    cmd.extraArgs = testcase.get("extraArgs", {})
-    return cmd
+def buildCmd(testcaseSet):
+    cmds = [];
+    for testcase in testcaseSet:
+        cmd = cmdlinewrapper.DepthmapCmd()
+        cmd.infile = testcase["infile"]
+        cmd.outfile = testcase["outfile"]
+        cmd.mode = testcase["mode"]
+        if "simple" in testcase and not testcase["simple"]  == "false":
+            cmd.simpleMode = True
+        cmd.extraArgs = testcase.get("extraArgs", {})
+        cmds.append(cmd)
+    return cmds
 
 class RegressionConfig():
     def __init__(self, filename):

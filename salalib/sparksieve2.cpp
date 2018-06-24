@@ -26,7 +26,6 @@
 
 #include <salalib/mgraph.h>
 #include <salalib/spacepix.h>
-#include <salalib/datalayer.h>
 #include <salalib/pointdata.h>
 
 #include "sparksieve2.h"
@@ -43,7 +42,7 @@ sparkSieve2::~sparkSieve2()
 {
 }
 
-bool sparkSieve2::testblock( const Point2f& point, const std::map<int,Line>& lines, double tolerance )
+bool sparkSieve2::testblock( const Point2f& point, const std::vector<Line>& lines, double tolerance )
 {
    Line l(m_centre, point);
 
@@ -55,7 +54,7 @@ bool sparkSieve2::testblock( const Point2f& point, const std::map<int,Line>& lin
    for (auto line: lines)
    {
       // Note: must check regions intersect before using this intersect_line test -- see notes on intersect_line
-      if (intersect_region(l,line.second,tolerance) && intersect_line(l,line.second,tolerance)) {
+      if (intersect_region(l,line,tolerance) && intersect_line(l,line,tolerance)) {
          return true;
       }
    }
@@ -65,11 +64,11 @@ bool sparkSieve2::testblock( const Point2f& point, const std::map<int,Line>& lin
 
 //
 
-void sparkSieve2::block( const std::map<int,Line>& lines, int q )
+void sparkSieve2::block( const std::vector<Line>& lines, int q )
 {
    for (auto line: lines) {
-      double a = tanify(line.second.start(), q);
-      double b = tanify(line.second.end(), q);
+      double a = tanify(line.start(), q);
+      double b = tanify(line.end(), q);
 
       sparkZone2 block;
       if (a < b) {
@@ -81,48 +80,52 @@ void sparkSieve2::block( const std::map<int,Line>& lines, int q )
          block.end = a + 1e-10;
       }
       // this creates a list of blocks sorted by start location
-      m_blocks.add(block);
+      m_blocks.push_back(block);
    }
+   std::sort( m_blocks.begin(), m_blocks.end() );
+   m_blocks.erase( std::unique( m_blocks.begin(), m_blocks.end() ), m_blocks.end() );
 }
 
 void sparkSieve2::collectgarbage()
 {
    auto iter = m_gaps.begin();
+   auto blockIter = m_blocks.begin();
 
-   for (size_t i = 0; i < m_blocks.size() && iter != m_gaps.end(); i++)
+   for (; blockIter != m_blocks.end() && iter != m_gaps.end();)
    {
-      if (m_blocks[i].end < iter->start) {
+      if (blockIter->end < iter->start) {
+         blockIter++;
          continue;
       }
-      sparkZone2& block = m_blocks[i];
       bool create = true;
-      if (block.start <= iter->start) {
+      if (blockIter->start <= iter->start) {
          create = false;
-         if (block.end > iter->start) {
+         if (blockIter->end > iter->start) {
             // simply move the start in front of us
-            iter->start = block.end;
+            iter->start = blockIter->end;
          }
       }
-      if (block.end >= iter->end) {
+      if (blockIter->end >= iter->end) {
          create = false;
-         if (block.start < iter->end) {
+         if (blockIter->start < iter->end) {
             // move the end behind us
-            iter->end = block.start;
+            iter->end = blockIter->start;
          }
       }
       if (iter->end <= iter->start + 1e-10) { // 1e-10 required for floating point error
-         i--;  // on the next iteration, stay with this block
          iter = m_gaps.erase(iter);
+         continue;  // on the next iteration, stay with this block
       }
-      else if (block.end > iter->end) {
-         i--;  // on the next iteration, stay with this block
+      else if (blockIter->end > iter->end) {
          ++iter;
+         continue; // on the next iteration, stay with this block
       }
       else if (create) {
          // add a new gap (has to be behind us), and move the start in front of us
-         m_gaps.insert(iter, sparkZone2( iter->start, block.start ) );
-         iter->start = block.end;
+         m_gaps.insert(iter, sparkZone2( iter->start, blockIter->start ) );
+         iter->start = blockIter->end;
       }
+      blockIter++;
    }
    // reset blocks for next row:
    m_blocks.clear();

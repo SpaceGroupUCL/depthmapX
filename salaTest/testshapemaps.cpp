@@ -79,10 +79,10 @@ TEST_CASE("Testing ShapeMap::getAllShapes variants")
 
         REQUIRE(colouredLines.size() == 2);
 
-        REQUIRE(colouredLines[0].first.start().x == Approx(min(line0Start.x, line0End.x)).epsilon(EPSILON));
-        REQUIRE(colouredLines[0].first.start().y == Approx(min(line0Start.y, line0End.y)).epsilon(EPSILON));
-        REQUIRE(colouredLines[0].first.end().x == Approx(max(line0Start.x, line0End.x)).epsilon(EPSILON));
-        REQUIRE(colouredLines[0].first.end().y == Approx(max(line0Start.y, line0End.y)).epsilon(EPSILON));
+        REQUIRE(colouredLines[0].first.start().x == Approx(std::min(line0Start.x, line0End.x)).epsilon(EPSILON));
+        REQUIRE(colouredLines[0].first.start().y == Approx(std::min(line0Start.y, line0End.y)).epsilon(EPSILON));
+        REQUIRE(colouredLines[0].first.end().x == Approx(std::max(line0Start.x, line0End.x)).epsilon(EPSILON));
+        REQUIRE(colouredLines[0].first.end().y == Approx(std::max(line0Start.y, line0End.y)).epsilon(EPSILON));
         REQUIRE(colouredLines[0].second.redf() == Approx(0.49804f).epsilon(EPSILON));
         REQUIRE(colouredLines[0].second.greenf() == Approx(0.49804f).epsilon(EPSILON));
         REQUIRE(colouredLines[0].second.bluef() == Approx(0.49804f).epsilon(EPSILON));

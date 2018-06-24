@@ -190,15 +190,15 @@ private:
    void DrawPointHandle(QPainter *pDC, QPoint pt);
 
    //
-   void OutputEPS(ofstream& stream, QGraphDoc *pDoc , bool includeScale = true);
-   void OutputEPSMap(ofstream& stream, ShapeMap& map, QtRegion& logicalviewport, QRect& rect, float spacer);
-   void OutputEPSLine(ofstream& stream, Line& line, int spacer, QtRegion& logicalviewport, QRect& rect);
-   void OutputEPSPoly(ofstream& stream, const SalaShape& shape, int spacer, QtRegion& logicalviewport, QRect& rect);
+   void OutputEPS(std::ofstream& stream, QGraphDoc *pDoc , bool includeScale = true);
+   void OutputEPSMap(std::ofstream& stream, ShapeMap& map, QtRegion& logicalviewport, QRect& rect, float spacer);
+   void OutputEPSLine(std::ofstream& stream, Line& line, int spacer, QtRegion& logicalviewport, QRect& rect);
+   void OutputEPSPoly(std::ofstream& stream, const SalaShape& shape, int spacer, QtRegion& logicalviewport, QRect& rect);
 
-   void OutputSVG( ofstream& stream, QGraphDoc *pDoc );
-   void OutputSVGMap(ofstream& stream, ShapeMap& map, QtRegion& logicalviewport, int h);
-   void OutputSVGLine(ofstream& stream, Line& line, QtRegion& logicalviewport, int h);
-   void OutputSVGPoly(ofstream& stream, const SalaShape& shape, QtRegion& logicalviewport, int h);
+   void OutputSVG( std::ofstream& stream, QGraphDoc *pDoc );
+   void OutputSVGMap(std::ofstream& stream, ShapeMap& map, QtRegion& logicalviewport, int h);
+   void OutputSVGLine(std::ofstream& stream, Line& line, QtRegion& logicalviewport, int h);
+   void OutputSVGPoly(std::ofstream& stream, const SalaShape& shape, QtRegion& logicalviewport, int h);
 
    void FillLocation(QPainter *pDC, QPoint& p, int spacer, unsigned int blocked, QRgb color);
    void DrawLine(QPainter *pDC, QRect& line, bool drawit);

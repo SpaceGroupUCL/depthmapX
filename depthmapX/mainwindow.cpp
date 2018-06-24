@@ -631,16 +631,6 @@ void MainWindow::OnToolsOptions()
     }
 }
 
-void MainWindow::OnShowResearchtoolbar()
-{
-    //if (GetApp()->m_show_researchtoolbar) {
-    //	m_wndResearchToolBar.show();
-    //}
-    //else {
-    //	m_wndResearchToolBar.hide();
-    //}
-}
-
 void MainWindow::OnViewCentreView()
 {
     activeMapDoc()->SetRedrawFlag(QGraphDoc::VIEW_MAP, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DEPTHMAPVIEW_SETUP, this);
@@ -1141,14 +1131,6 @@ void MainWindow::updateGLWindows(bool datasetChanged, bool recentreView) {
     }
 }
 
-void MainWindow::switchLayoutDirection()
-{
-    if (layoutDirection() == Qt::LeftToRight)
-        qApp->setLayoutDirection(Qt::RightToLeft);
-    else
-        qApp->setLayoutDirection(Qt::LeftToRight);
-}
-
 void MainWindow::setActiveSubWindow(QWidget *win)
 {
     if (!win) return;
@@ -1333,15 +1315,15 @@ void MainWindow::OnSelchangingTree(QTreeWidgetItem* hItem, int col)
                     break;
                 case 2:
                    if (graph->getViewClass() & MetaGraph::VIEWDATA) {
-                      if (graph->getDataMaps().getDisplayedMapRef() == entry.m_cat) {
+                      if (graph->getDisplayedDataMapRef() == entry.m_cat) {
                          graph->setViewClass(MetaGraph::SHOWHIDESHAPE);
                       }
                       else {
-                         graph->getDataMaps().setDisplayedMapRef(entry.m_cat);
+                         graph->setDisplayedDataMapRef(entry.m_cat);
                       }
                    }
                    else {
-                      graph->getDataMaps().setDisplayedMapRef(entry.m_cat);
+                      graph->setDisplayedDataMapRef(entry.m_cat);
                       graph->setViewClass(MetaGraph::SHOWSHAPETOP);
                    }
                     remenu = true;
@@ -1367,7 +1349,7 @@ void MainWindow::OnSelchangingTree(QTreeWidgetItem* hItem, int col)
                     }
                 }
                 if (entry.m_type == 2) {
-                    graph->getDataMaps().getMap(entry.m_cat).setEditable(m_indexWidget->isItemSetEditable(hItem));
+                    graph->getDataMaps()[entry.m_cat].setEditable(m_indexWidget->isItemSetEditable(hItem));
                     update = true;
                 }
                 if (update) {
@@ -1384,7 +1366,7 @@ void MainWindow::OnSelchangingTree(QTreeWidgetItem* hItem, int col)
                 }
                 else if (entry.m_type == 2) {
                    update = true;
-                   graph->getDataMaps().getMap(entry.m_cat).setLayerVisible(entry.m_subcat, m_indexWidget->isItemSetVisible(hItem));
+                   graph->getDataMaps()[entry.m_cat].setLayerVisible(entry.m_subcat, m_indexWidget->isItemSetVisible(hItem));
                 }
                 if (update) {
                     m_treeDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_TABLE );
@@ -1448,11 +1430,11 @@ void MainWindow::SetGraphTreeChecks()
                         }
                         break;
                     case 2:
-                        if (viewclass & MetaGraph::VIEWDATA && graph->getDataMaps().getDisplayedMapRef() == entry.m_cat) {
+                        if (viewclass & MetaGraph::VIEWDATA && graph->getDisplayedDataMapRef() == entry.m_cat) {
                             checkstyle = 5;
                             m_topgraph = key;
                         }
-                        else if (viewclass & MetaGraph::VIEWBACKDATA && graph->getDataMaps().getDisplayedMapRef() == entry.m_cat) {
+                        else if (viewclass & MetaGraph::VIEWBACKDATA && graph->getDisplayedDataMapRef() == entry.m_cat) {
                             checkstyle = 6;
                             m_backgraph = key;
                         }
@@ -1489,7 +1471,7 @@ void MainWindow::SetGraphTreeChecks()
                         }
                         break;
                     case 2:
-                        editable = graph->getDataMaps().getMap(entry.m_cat).isEditable() ? MetaGraph::EDITABLE_ON : MetaGraph::EDITABLE_OFF;
+                        editable = graph->getDataMaps()[entry.m_cat].isEditable() ? MetaGraph::EDITABLE_ON : MetaGraph::EDITABLE_OFF;
                         break;
                 }
                 switch (editable) {
@@ -1512,7 +1494,7 @@ void MainWindow::SetGraphTreeChecks()
                     show = graph->getShapeGraphs().getMap(entry.m_cat).isLayerVisible(entry.m_subcat);
                 }
                 else if (entry.m_type == 2) {
-                    show = graph->getDataMaps().getMap(entry.m_cat).isLayerVisible(entry.m_subcat);
+                    show = graph->getDataMaps()[entry.m_cat].isLayerVisible(entry.m_subcat);
                 }
                 if (show) {
                       m_indexWidget->setItemVisibility(key, Qt::Checked);
@@ -1635,15 +1617,15 @@ void MainWindow::MakeGraphTree()
             m_treegraphmap[hItem] = entry;
             m_treeroots[2] = hItem;
         }
-        for (size_t i = 0; i < m_treeDoc->m_meta_graph->getDataMaps().getMapCount(); i++) {
-            QString name = QString(m_treeDoc->m_meta_graph->getDataMaps().getMap(i).getName().c_str());
+        for (size_t i = 0; i < m_treeDoc->m_meta_graph->getDataMaps().size(); i++) {
+            QString name = QString(m_treeDoc->m_meta_graph->getDataMaps()[i].getName().c_str());
             QTreeWidgetItem* hItem = m_indexWidget->addNewItem(name, m_treeroots[2]);
             m_indexWidget->setItemVisibility(hItem, Qt::Unchecked);
             m_indexWidget->setItemEditability(hItem, Qt::Unchecked);
             ItemTreeEntry entry(2,(short)i,-1);
             m_treegraphmap[hItem] = entry;
 
-            AttributeTable& table = m_treeDoc->m_meta_graph->getDataMaps().getMap(i).getAttributeTable();
+            AttributeTable& table = m_treeDoc->m_meta_graph->getDataMaps()[i].getAttributeTable();
             if(table.getLayerCount() > 1) {
                 for (int j = 0; j < table.getLayerCount(); j++) {
                     QString name = QString(table.getLayerName(j).c_str());

@@ -150,14 +150,6 @@ void RenderThread::run()
          pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
-      case CMSCommunicator::ANALYSEANGULAR:
-         ok = pDoc->m_meta_graph->analyseAngular( comm, pMain->m_options.process_in_memory );
-         if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
-         }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
-         break;
-
       case CMSCommunicator::MAKEISOVIST:
          if (comm->GetSeedAngle() == -1.0) {
             ok = pDoc->m_meta_graph->makeIsovist( comm, comm->GetSeedPoint() );
@@ -343,8 +335,16 @@ void RenderThread::run()
          pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
-      case CMSCommunicator::SEGMENTANALYSIS:
-         ok = pDoc->m_meta_graph->analyseSegments( comm, pMain->m_options );
+      case CMSCommunicator::SEGMENTANALYSISTULIP:
+         ok = pDoc->m_meta_graph->analyseSegmentsTulip( comm, pMain->m_options );
+         if (ok) {
+            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+         }
+         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         break;
+
+      case CMSCommunicator::SEGMENTANALYSISANGULAR:
+         ok = pDoc->m_meta_graph->analyseSegmentsAngular( comm, pMain->m_options );
          if (ok) {
             pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
          }
@@ -353,14 +353,6 @@ void RenderThread::run()
 
       case CMSCommunicator::TOPOMETANALYSIS:
          ok = pDoc->m_meta_graph->analyseTopoMet( comm, pMain->m_options );
-         if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
-         }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
-         break;
-
-      case CMSCommunicator::MAKEAXIALLINES:
-         ok = pDoc->m_meta_graph->makeAxialLines( comm, pMain->m_options.process_in_memory );
          if (ok) {
             pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
          }
@@ -436,106 +428,6 @@ void RenderThread::run()
             } catch (depthmapX::PointMapException const & e) {
               emit runtimeExceptionThrown(e.getErrorType(), e.what());
           }
-         }
-         break;
-
-      case CMSCommunicator::BINDISPLAY:
-         {
-            // Set up for options metric point depth selection
-            Options options;
-            options.global = 0;
-            options.point_depth_selection = 4;
-
-            ok = pDoc->m_meta_graph->analyseGraph( comm, options, comm->simple_version );
-            if (ok) {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
-            }
-            pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
-         }
-         break;     
-
-      case CMSCommunicator::IMPORTEDANALYSIS:
-         {
-/*            int analysis_type = comm->GetModule().m_analysis_type[ comm->GetOption() ];
-
-            // temporarily disable VGA from the metagraph to avoid redraw problems:
-            int state = pDoc->m_meta_graph->getState();
-            if (analysis_type & DLL_GRAPH_FILE_ANALYSIS) {
-               state &= ~(MetaGraph::POINTMAPS | MetaGraph::SHAPEGRAPHS | MetaGraph::DATAMAPS);
-            }
-            else if (analysis_type & DLL_VGA_ANALYSIS) {
-               state &= ~MetaGraph::POINTMAPS;
-            }
-            else if (analysis_type & (DLL_AXIAL_ANALYSIS | DLL_SEGMENT_ANALYSIS)) {
-               state &= ~MetaGraph::SHAPEGRAPHS;
-            }
-            else if (analysis_type & DLL_DATA_ANALYSIS) {
-               state &= ~MetaGraph::DATAMAPS;
-            }
-            pDoc->m_meta_graph->setState(state);
-            //
-            FUNC_PROCESSVGA processVGA = (FUNC_PROCESSVGA)GetProcAddress(comm->GetModule().m_inst,"processVGA");
-            FUNC_PROCESSSHAPE processShape = (FUNC_PROCESSSHAPE)GetProcAddress(comm->GetModule().m_inst,"processShape");
-            FUNC_PROCESSATTRIBUTES processAttributes = (FUNC_PROCESSATTRIBUTES)GetProcAddress(comm->GetModule().m_inst,"processAttributes");
-            FUNC_PROCESSGRAPHFILE processGraphFile = (FUNC_PROCESSGRAPHFILE)GetProcAddress(comm->GetModule().m_inst,"processGraphFile");
-            FUNC_POSTPROCESS postprocess = (FUNC_POSTPROCESS)GetProcAddress(comm->GetModule().m_inst,"postprocess");
-            //
-            IComm dllcomm;
-            dllcomm.setData( (void *) comm );
-            IVGAMap dllvga;
-            IShapeMap dllshape;
-            IGraphFile dllgraph;
-            if (analysis_type & DLL_GRAPH_FILE_ANALYSIS) {
-               dllgraph.setData( (void *) pDoc->m_meta_graph );
-            }
-            if (analysis_type & DLL_VGA_ANALYSIS) {
-               dllvga.setData( (void *) &(pDoc->m_meta_graph->getDisplayedPointMap()) );
-            }
-            if (analysis_type & (DLL_AXIAL_ANALYSIS | DLL_SEGMENT_ANALYSIS)) {
-               dllshape.setData( (void *) &(pDoc->m_meta_graph->getDisplayedShapeGraph()) );
-            }
-            else if (analysis_type & DLL_DATA_ANALYSIS) {
-               dllshape.setData( (void *) &(pDoc->m_meta_graph->getDisplayedDataMap()) );
-            }
-            IAttributes dllattr;
-            dllattr.setData( (void *) &(pDoc->m_meta_graph->getAttributeTable()), analysis_type );
-            //
-            ok = false;
-            if ((analysis_type & DLL_GRAPH_FILE_ANALYSIS) && processGraphFile != NULL) {
-               ok = processGraphFile( comm->GetOption(), &dllcomm, &dllgraph );
-            }
-            else if ((analysis_type & DLL_VGA_ANALYSIS) && processVGA != NULL) {
-               ok = processVGA( comm->GetOption(), &dllcomm, &dllvga, &dllattr );
-            }
-            else if ((analysis_type & (DLL_AXIAL_ANALYSIS | DLL_SEGMENT_ANALYSIS | DLL_DATA_ANALYSIS)) && processShape != NULL) {
-               ok = processShape( comm->GetOption(), &dllcomm, &dllshape, &dllattr );
-            }
-            else if ((analysis_type & DLL_ATTRIBUTE_ANALYSIS) && processAttributes != NULL) {
-               ok = processAttributes( comm->GetOption(), &dllcomm, &dllattr );
-            }
-            //
-            // Now, the new file stuff could have added new layers or deleted them... we'll need to just explicitly check what's in the file and set the state accordingly:
-            if (pDoc->m_meta_graph->PointMaps::size() > 0) {
-               state |= MetaGraph::POINTMAPS;
-            }
-            if (pDoc->m_meta_graph->m_data_maps.getMapCount() > 0) {
-               state |= MetaGraph::DATAMAPS;
-            }
-            if (pDoc->m_meta_graph->m_shape_graphs.getMapCount() > 0) {
-               state |= MetaGraph::SHAPEGRAPHS;
-            }
-            // at this stage, before redraw, it is time to set the old state back on:
-            pDoc->m_meta_graph->setState(state);
-            //
-            //
-            if (ok) {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE); // includes set modified flag (note: 10.04.08 NEW_TABLE required because analysis may create a new table)
-               if (postprocess != NULL) {
-                  postprocess( comm->GetOption() );
-               }
-            }
-            // note: a total redraw is required in case new geometry has been added (new to Dmap 8)
-            pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DATA );*/
          }
          break;
       }

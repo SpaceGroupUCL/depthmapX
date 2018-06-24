@@ -3,23 +3,23 @@
     "basebinlocation": "../../BaselineBinaries",
     "testbinlocation": "../../../build",
     "testcases": {
-        "links_manual": {
+        "links_manual": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "LINK",
             "extraArgs": {
                "-lnk": ["1.32,7.24,4.88,5.24","1.16,5.28,3.28,7.12"]
             }
-        },
-        "links_file": {
+        }],
+        "links_file": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "LINK",
             "extraArgs": {
                 "-lf": "../../../testdata/gallery_connected_merge_links.txt"
             }
-        },
-        "visibility_local": {
+        }],
+        "visibility_local": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "VGA",
@@ -27,8 +27,18 @@
                 "-vm": "visibility",
                 "-vl": ""
             }
-        },
-        "visibility_global_3": {
+        }],
+        "visibility_global_with_multiple_pointmaps": [{
+            "infile": "../../../testdata/gallery_two_pointmaps.graph",
+            "outfile": "out.graph",
+            "mode": "VGA",
+            "extraArgs": {
+                "-vm": "visibility",
+                "-vg": "",
+                "-vr": "3"
+            }
+        }],
+        "visibility_global_3": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "VGA",
@@ -37,8 +47,25 @@
                 "-vg": "",
                 "-vr": "3"
             }
-        },
-        "visibility_global_n": {
+        }],
+        "visibility_global_3_only_map": [{
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "VGA",
+            "extraArgs": {
+                "-vm": "visibility",
+                "-vg": "",
+                "-vr": "3"
+            }
+        },{
+            "infile": "out.graph",
+            "outfile": "out.csv",
+            "mode": "EXPORT",
+            "extraArgs": {
+                "-em": "pointmap-data-csv"
+            }
+        }],
+        "visibility_global_n": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "VGA",
@@ -47,24 +74,24 @@
                 "-vg": "",
                 "-vr": "n"
             }
-        },
-        "vga_isovist": {
+        }],
+        "vga_isovist": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "VGA",
             "extraArgs": {
                 "-vm": "isovist"
             }
-        },
-        "vga_angular": {
+        }],
+        "vga_angular": [{
             "infile": "../../../testdata/turns_connected.graph",
             "outfile": "out.graph",
             "mode": "VGA",
             "extraArgs": {
                 "-vm": "angular"
             }
-        },
-        "vga_metric": {
+        }],
+        "vga_metric": [{
             "infile": "../../../testdata/turns_connected.graph",
             "outfile": "out.graph",
             "mode": "VGA",
@@ -72,16 +99,16 @@
                 "-vm": "metric",
                 "-vr": "n"
             }
-        },
-        "vga_thru_vision": {
+        }],
+        "vga_thru_vision": [{
             "infile": "../../../testdata/gallery_connected.graph",
             "outfile": "out.graph",
             "mode": "VGA",
             "extraArgs": {
                 "-vm": "thruvision"
             }
-        },
-        "isovist_args": {
+        }],
+        "isovist_args": [{
             "infile": "../../../testdata/gallery_empty.graph",
             "outfile": "out.graph",
             "mode": "ISOVIST",
@@ -89,8 +116,8 @@
             {
                 "-ii":  ["1.77,6.6,90,30", "3.1,5.6,270,90" ]
             }
-        },
-        "isovist_file": {
+        }],
+        "isovist_file": [{
             "infile": "../../../testdata/gallery_empty.graph",
             "outfile": "out.graph",
             "mode": "ISOVIST",
@@ -98,8 +125,8 @@
             {
                 "-if":  "../../../testdata/isovists.csv"
             }
-        },
-        "axial_makelines": {
+        }],
+        "axial_makelines": [{
             "infile": "../../../testdata/gallery_empty.graph",
             "outfile": "out.graph",
             "mode": "AXIAL",
@@ -107,24 +134,24 @@
                 "-xl": "3,5",
                 "-xf": ""
             }
-        },
-        "axial_rn":{
+        }],
+        "axial_rn": [{
             "infile": "../../../testdata/simple_axlines.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
             "extraArgs": {
                 "-xa": "n"
             }
-        },
-        "axial_r3":{
+        }],
+        "axial_r3": [{
             "infile": "../../../testdata/simple_axlines.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
             "extraArgs": {
                 "-xa": "3"
             }
-        },
-        "axial_rn_rra":{
+        }],
+        "axial_rn_rra": [{
             "infile": "../../../testdata/simple_axlines.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
@@ -132,8 +159,8 @@
                 "-xa": "n",
                 "-xar": ""
             }
-        },
-        "axial_rn_choice":{
+        }],
+        "axial_rn_choice": [{
             "infile": "../../../testdata/simple_axlines.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
@@ -141,8 +168,8 @@
                 "-xa": "n",
                 "-xac": ""
             }
-        },
-        "axial_rn_local":{
+        }],
+        "axial_rn_local": [{
             "infile": "../../../testdata/simple_axlines.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
@@ -150,24 +177,24 @@
                 "-xa": "n",
                 "-xal": ""
             }
-        },
-        "axial_rn_noncont_keys":{
+        }],
+        "axial_rn_noncont_keys": [{
             "infile": "../../../testdata/axmap_noncont_keys.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
             "extraArgs": {
                 "-xa": "n"
             }
-        },
-        "axial_r3_noncont_keys":{
+        }],
+        "axial_r3_noncont_keys": [{
             "infile": "../../../testdata/axmap_noncont_keys.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
             "extraArgs": {
                 "-xa": "3"
             }
-        },
-        "axial_rn_rra_noncont_keys":{
+        }],
+        "axial_rn_rra_noncont_keys": [{
             "infile": "../../../testdata/axmap_noncont_keys.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
@@ -175,8 +202,8 @@
                 "-xa": "n",
                 "-xar": ""
             }
-        },
-        "axial_rn_choice_noncont_keys":{
+        }],
+        "axial_rn_choice_noncont_keys": [{
             "infile": "../../../testdata/axmap_noncont_keys.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
@@ -184,8 +211,8 @@
                 "-xa": "n",
                 "-xac": ""
             }
-        },
-        "axial_rn_local_noncont_keys":{
+        }],
+        "axial_rn_local_noncont_keys": [{
             "infile": "../../../testdata/axmap_noncont_keys.graph",
             "outfile": "out,graph",
             "mode": "AXIAL",
@@ -193,8 +220,15 @@
                 "-xa": "n",
                 "-xal": ""
             }
-        }
-
-
+        }],
+        "vis_prep_dense_pointmap":[{
+            "infile": "../../../testdata/rect1x1.graph",
+            "outfile": "out.graph",
+            "mode": "VISPREP",
+            "extraArgs": {
+                "-pg": "0.02",
+                "-pp": "0.5,0.5"
+            }
+        }]
     }
 }

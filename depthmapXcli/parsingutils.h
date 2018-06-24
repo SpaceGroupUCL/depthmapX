@@ -26,10 +26,15 @@
 #include <string>
 
 namespace depthmapX{
+
+    inline bool has_only_digits(const std::string &s){
+      return s.find_first_not_of( "0123456789" ) == std::string::npos;
+    }
+
     inline bool has_only_digits_dots_commas(const std::string &s){
         return s.find_first_not_of( "0123456789,.-" ) == std::string::npos;
     }
 
-    std::vector<double> parseAxialRadiusList(const std::string &radiusList);
+    std::vector<double> parseRadiusList(const std::string &radiusList);
 
 }

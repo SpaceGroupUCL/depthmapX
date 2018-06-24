@@ -23,7 +23,6 @@
 
 #include <salalib/mgraph.h>
 #include <salalib/spacepix.h>
-#include <salalib/datalayer.h>
 #include <salalib/pointdata.h>
 #include "MapInfoData.h"
 #include "isovist.h"
@@ -43,10 +42,9 @@ PointMap::PointMap(const std::string& name)
 {
    m_name = name;
 
-   m_points = NULL;
    m_cols = 0;
    m_rows = 0;
-   m_point_count = 0;
+   m_filled_point_count = 0;
 
    m_spacepix = NULL;
    m_spacing = 0.0;
@@ -72,103 +70,7 @@ PointMap::PointMap(const std::string& name)
    m_displayed_attribute = -2;
 }
 
-PointMap::~PointMap()
-{
-   if (m_points) {
-      // Trying to clear out the memory quicker -> predelete nodes and bins
-      for (int i = 0; i < m_cols; i++) {
-         delete [] m_points[i];
-      }
-      delete [] m_points;
-      m_points = NULL;
-      m_cols = 0;
-      m_rows = 0;
-      m_point_count = 0;
-   }
-}
-
-PointMap::PointMap(const PointMap& pointdata)
-{
-   construct(pointdata);
-}
-
-PointMap& PointMap::operator = (const PointMap& pointdata)
-{
-   if (this != &pointdata) {
-
-      if (m_points) {
-         for (int i = 0; i < m_cols; i++) {
-            delete [] m_points[i];
-         }
-         delete [] m_points;
-         m_points = NULL;
-         m_cols = 0;
-         m_rows = 0;         
-      }
-      construct(pointdata);
-   }
-   return *this;
-}
-
-// Technically should not call a function from constructor!
-
-void PointMap::construct(const PointMap& pointdata)
-{
-   // NB Does not set SpacePixel 
-   // You *must* set SpacePixel manually
-
-   m_name = pointdata.m_name;
-
-   m_cols = pointdata.m_cols;
-   m_rows = pointdata.m_rows;
-
-   if (m_cols) {
-      m_points = new Point *[m_cols];
-      for (int i = 0; i < m_cols; i++) {
-         m_points[i] = new Point [m_rows];
-         for (int j = 0; j < m_rows; j++) {
-            m_points[i][j] = pointdata.m_points[i][j];
-         }
-      }
-   }
-   else {
-      m_points = NULL;
-
-   }
-
-   m_point_count = pointdata.m_point_count;
-
-   // You *must* set SpacePixel manually
-   m_spacepix = NULL;
-   m_spacing = pointdata.m_point_count;
-
-   m_initialised = pointdata.m_initialised;
-   m_blockedlines = false;       // <- always false for a new point data
-   m_processed = pointdata.m_processed;
-   m_boundarygraph = pointdata.m_boundarygraph;
-
-   // All selection is turned off in new pointdata layer:
-   m_selection = NO_SELECTION;
-   m_undocounter = 0;
-
-   // screen: all default params
-   m_viewing_deprecated = -1;
-   m_draw_step = 1;
-
-   s_bl = NoPixel;
-   s_tr = NoPixel;
-   curmergeline = -1;
-
-   m_displayed_attribute = pointdata.m_displayed_attribute;
-}
-
-
-// Quick mod - TV
-#if defined(_WIN32)
-void PointMap::communicate( __time64_t& atime, Communicator *comm, int record )
-#else
 void PointMap::communicate( time_t& atime, Communicator *comm, int record )
-#endif
 {
    if (comm) {
       if (qtimer( atime, 500 )) {
@@ -208,13 +110,9 @@ bool PointMap::setGrid(double spacing, const Point2f& offset)
 
    m_offset = Point2f(-xoffset, -yoffset);
 
-   if (m_points) {
-      for (int i = 0; i < m_cols; i++) {
-         delete [] m_points[i];
-      }
-      delete [] m_points;
-      m_points = NULL;
-      m_point_count = 0;
+   if (!m_points.empty()) {
+      m_points.clear();
+      m_filled_point_count = 0;
    }
    m_undocounter = 0;  // <- reset the undo counter... sorry... once you've done this you can't undo
 
@@ -230,11 +128,11 @@ bool PointMap::setGrid(double spacing, const Point2f& offset)
       Point2f(m_bottom_left.x+double(m_cols-1)*m_spacing + m_spacing/2.0,
               m_bottom_left.y+double(m_rows-1)*m_spacing + m_spacing/2.0) );
 
-   m_points = new Point *[m_cols];
+   m_points.clear();
+   m_points.resize(m_cols*m_rows);
    for (int j = 0; j < m_cols; j++) {
-      m_points[j] = new Point [m_rows];
       for (int k = 0; k < m_rows; k++) {
-         m_points[j][k].m_location = depixelate(PixelRef(j,k));
+         m_points[size_t(j*m_rows + k)].m_location = depixelate(PixelRef(j,k));
       }
    }
 
@@ -250,7 +148,7 @@ bool PointMap::setGrid(double spacing, const Point2f& offset)
 
 bool PointMap::clearPoints()
 {
-   if (!m_point_count) {
+   if (!m_filled_point_count) {
       return false;
    }
 
@@ -260,29 +158,28 @@ bool PointMap::clearPoints()
 
    m_undocounter++;
    if (m_selection == NO_SELECTION) {
-      for (int i = 0; i < m_cols; i++) {
-         for (int j = 0; j < m_rows; j++) {
-            if (m_points[i][j].filled()) {
-               m_points[i][j].set( Point::EMPTY, m_undocounter );
-            }
+      for(auto& point: m_points) {
+         if(point.filled()) {
+             point.set( Point::EMPTY, m_undocounter );
          }
       }
-      m_point_count = 0;
+      m_filled_point_count = 0;
       m_merge_lines.clear();
    }
    else if (m_selection & SINGLE_SELECTION) {
       m_undocounter++;
       for (int i = s_bl.x; i <= s_tr.x; i++) {
          for (int j = s_bl.y; j <= s_tr.y; j++) {
-            if (m_points[i][j].m_state & (Point::SELECTED | Point::FILLED)) {
-               m_points[i][j].set( Point::EMPTY, m_undocounter );
-               if (!m_points[i][j].m_merge.empty()) {
-                  PixelRef p = m_points[i][j].m_merge;
+            Point& pnt = m_points[size_t(i*m_rows + j)];
+            if (pnt.m_state & (Point::SELECTED | Point::FILLED)) {
+               pnt.set( Point::EMPTY, m_undocounter );
+               if (!pnt.m_merge.empty()) {
+                  PixelRef p = pnt.m_merge;
                   depthmapX::findAndErase(m_merge_lines, PixelRefPair(PixelRef(i,j),p));
                   getPoint(p).m_merge = NoPixel;
                   getPoint(p).m_state &= ~Point::MERGED;
                }
-               m_point_count--;
+               m_filled_point_count--;
             }
          }
       }
@@ -290,18 +187,19 @@ bool PointMap::clearPoints()
    else { // COMPOUND_SELECTION (note, need to test bitwise now)
       for (int i = 0; i < m_cols; i++) {
          for (int j = 0; j < m_rows; j++) {
-            if (m_points[i][j].m_state & (Point::SELECTED | Point::FILLED)) {
-               m_points[i][j].set( Point::EMPTY, m_undocounter );
-               if (!m_points[i][j].m_merge.empty()) {
-                  PixelRef p = m_points[i][j].m_merge;
+            Point& pnt = m_points[size_t(i*m_rows + j)];
+            if (pnt.m_state & (Point::SELECTED | Point::FILLED)) {
+               pnt.set( Point::EMPTY, m_undocounter );
+               if (!pnt.m_merge.empty()) {
+                  PixelRef p = pnt.m_merge;
                   depthmapX::findAndErase(m_merge_lines, PixelRefPair(PixelRef(i,j),p));
                   getPoint(p).m_merge = NoPixel;
                   getPoint(p).m_state &= ~Point::MERGED;
                }
-               m_point_count--;
+               m_filled_point_count--;
             }
          }
-      }      
+      }
    }
 
    m_selection_set.clear();
@@ -315,25 +213,21 @@ bool PointMap::undoPoints()
    if (!m_undocounter) {
       return false;
    }
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
-
-         if ( m_points[i][j].m_misc == m_undocounter) {
-            Point& p = m_points[i][j];
+   for (auto& p: m_points) {
+        if ( p.m_misc == m_undocounter) {
             if (p.m_state & Point::FILLED) {
-               p.m_state &= ~Point::FILLED;
-               p.m_state |= Point::EMPTY;
-               p.m_misc = 0; // probably shouldn't set to 0 (can't undo)  Eventually will implement 'redo' counter as well
-               m_point_count--;
+                p.m_state &= ~Point::FILLED;
+                p.m_state |= Point::EMPTY;
+                p.m_misc = 0; // probably shouldn't set to 0 (can't undo)  Eventually will implement 'redo' counter as well
+                m_filled_point_count--;
             }
             else if (p.m_state & Point::EMPTY) {
-               p.m_state |= Point::FILLED;
-               p.m_state &= ~Point::EMPTY;
-               p.m_misc = 0; // probably shouldn't set to 0 (can't undo)  Eventually will implement 'redo' counter as well
-               m_point_count++;
+                p.m_state |= Point::FILLED;
+                p.m_state &= ~Point::EMPTY;
+                p.m_misc = 0; // probably shouldn't set to 0 (can't undo)  Eventually will implement 'redo' counter as well
+                m_filled_point_count++;
             }
-         }
-      }
+        }
    }
    m_undocounter--;  // reduce undo counter
 
@@ -364,41 +258,20 @@ PixelRef PointMap::pixelate( const Point2f& p, bool constrain, int scalefactor )
    return ref;
 }
 
-// I've reverted to actually filling the lines, provided there's space to put a filled point in
-
-bool PointMap::fillLines()
-{
-   if (!m_spacepix || !m_initialised || !m_points) {
-      return false;
-   }
-   m_undocounter++;
-   for (size_t file = 0; file < m_spacepix->size(); file++) {
-      for (size_t layer = 0; layer < m_spacepix->at(file).size(); layer++) {
-         if (m_spacepix->at(file).at(layer).isShown()) {
-             std::vector<SimpleLine> newLines = m_spacepix->at(file).at(layer).getAllShapesAsLines();
-             for (auto line: newLines) {
-                fillLine(Line(line.start(), line.end()));
-             }
-         }
-      }
-   }
-   return true;
-}
-
 void PointMap::fillLine(const Line& li)
 {
    PixelRefVector pixels = pixelateLine( li, 1 );
    for (size_t j = 0; j < pixels.size(); j++) {
       if (getPoint(pixels[j]).empty()) {
          getPoint(pixels[j]).set( Point::FILLED, m_undocounter );
-         m_point_count++;
+         m_filled_point_count++;
       }
    }
 }
 
 bool PointMap::blockLines()
 {
-   if (!m_spacepix || !m_initialised || !m_points) {
+   if (!m_spacepix || !m_initialised || m_points.empty()) {
       return false;
    }
    if (m_blockedlines) {
@@ -413,13 +286,13 @@ bool PointMap::blockLines()
    // would require a key with (file, layer, shaperef, seg) when used with shaperef,
    // so just switched to an integer key:
 
-   for (size_t i = 0; i < m_spacepix->size(); i++) {
-      for (size_t j = 0; j < m_spacepix->at(i).size(); j++) {
+   for (const auto& pixelGroup: m_spacepix->m_spacePixels) {
+      for (const auto& pixel: pixelGroup.m_spacePixels) {
          // chooses the first editable layer it can find:
-         if (m_spacepix->at(i).at(j).isShown()) {
-             std::vector<SimpleLine> newLines = m_spacepix->at(i).at(j).getAllShapesAsLines();
-             for (auto line: newLines) {
-                blockLine(count++, Line(line.start(), line.end()));
+         if (pixel.isShown()) {
+             std::vector<SimpleLine> newLines = pixel.getAllShapesAsLines();
+             for (const auto& line: newLines) {
+                blockLine(Line(line.start(), line.end()));
              }
          }
       }
@@ -430,9 +303,9 @@ bool PointMap::blockLines()
          PixelRef curs = PixelRef( i, j );
          Point& pt = getPoint( curs );
          QtRegion viewport = regionate( curs, 1e-10 );
-         std::map<int, Line>::iterator iter = pt.m_lines.begin(), end = pt.m_lines.end();
+         std::vector<Line>::iterator iter = pt.m_lines.begin(), end = pt.m_lines.end();
          for(; iter != end; ) {
-             if (!iter->second.crop( viewport )) {
+             if (!iter->crop( viewport )) {
                  // the pixelation is fairly rough to make sure that no point is missed: this just
                  // clears up if any point has been added in error:
                  iter = pt.m_lines.erase(iter);
@@ -449,14 +322,14 @@ bool PointMap::blockLines()
    return true;
 }
 
-void PointMap::blockLine(int key, const Line& li)
+void PointMap::blockLine(const Line& li)
 {
    std::vector<PixelRef> pixels = pixelateLineTouching(li,1e-10);
    // touching is generally better for ensuring lines pixelated completely, 
    // although it may catch extra points...
    for (size_t n = 0; n < pixels.size(); n++)
    {
-      getPoint(pixels[n]).m_lines.insert(std::make_pair(key,li));
+      getPoint(pixels[n]).m_lines.push_back(li);
       getPoint(pixels[n]).setBlock(true);
    }
 }
@@ -475,155 +348,6 @@ void PointMap::unblockLines(bool clearblockedflag)
    }
 }
 
-// New blockLines code replaces:
-   
-/*   
-   char blah[64];
-   sprintf(blah,"times %f\nsubtimes %f\n", times, subtimes);
-   MessageBox(NULL,blah,"Blah",MB_OK);
-   
-   for (int file = 0; file < m_spacepix->size(); file++) {
-      for (int layer = 0; layer < m_spacepix->at(file).size(); layer++) {
-         if (m_spacepix->at(file).at(layer).isShown()) {
-            const prefvec<Line>& lineset = m_spacepix->at(file).at(layer).getAllLines();
-            for (int i = 0; i < lineset.size(); i++) {
-               Line line = lineset[i];
-               // line.denormalScale( m_spacepix->m_region ); <- no longer required since standardised PointMap and SpacePixel
-               PixelRefVector pixels = pixelateLine( line, 4 ); // pixelate at quadruple precision
-               for (int j = 0; j < pixels.size(); j++) {
-                  PixelRef actual = pixels[j] / 4;
-                  // now which bits a filled:
-                  int block = 1;
-                  block <<= (pixels[j].x % 4);
-                  block <<= 4 * (pixels[j].y % 4);
-                  getPoint(actual).addBlock( block );
-                  if (getPoint(actual).filled() && getPoint(actual).fillBlocked() ) {
-                     m_point_count--;
-                     getPoint(actual).set( Point::EMPTY, 0 ); // <- note, can't undo this
-                  }
-               }
-            }
-         }
-      }
-   }
-   return true;
-}
-*/
-
-/////////////////////////////////////////////////////////////////////
-
-/*
-// These have not been recoded to work with shape maps rather than space pixels
-// -- note that LineKey cannot be recoded due to possible changes in line mode
-
-// Instead use blocklines each time a line is added, removed or changed
-// (That could be speeded up somewhat with a pixelate of the old and new positions of the line)
-
-void PointMap::addLineDynamic(LineKey ref,const Line& line)
-{
-   if (!m_spacepix || !m_initialised || !m_points) {
-      return;
-   }
-
-   pvector<PixelRef> pixels = pixelateLineTouching(line,1e-10);
-   for (int n = 0; n < pixels.size(); n++)
-   {
-      // right... we have a line over us... we need to tell everyone we can see that there's a change taking place
-      Point& pt = getPoint(pixels[n]);
-      if (pt.filled()) {
-         // just go through our current viewshed
-         for (int i = 0; i < 32; i++) {
-            pt.m_node->bin(i).first();
-            while (!pt.m_node->bin(i).is_tail()) {
-               getPoint(pt.m_node->bin(i).cursor()).m_processflag |= q_opposite(i);
-               pt.m_node->bin(i).next();
-            }
-         }
-         // and we'll have to reprocess ourselves:
-         pt.m_processflag = 0x00FF;
-      }
-      else {
-         // slightly trickier... we don't know who can see us!  Go forth and find out:
-         sparkPixel2(pixels[n],2);  // <- 2 means tell q_opposites that can see you to reprocess
-      }
-   }
-   // now everything's marked, we can go and add the line:
-   for (n = 0; n < pixels.size(); n++) 
-   {
-      Point& pt = getPoint(pixels[n]);
-      int pos = pt.m_lines.add(ref,line);
-      QtRegion viewport = regionate( pixels[n], 1e-10 );
-      if (!pt.m_lines[pos].crop( viewport )) {
-         // the pixelation is fairly rough to make sure that no point is missed: this just
-         // clears up if any point has been added in error:
-         pt.m_lines.remove_at(pos);
-      }
-   }
-}
-
-void PointMap::removeLineDynamic(LineKey ref, const Line& line)
-{
-   if (!m_spacepix || !m_initialised || !m_points) {
-      return;
-   }
-
-   pvector<PixelRef> pixels = pixelateLineTouching(line,1e-10);
-   for (int n = 0; n < pixels.size(); n++)
-   {
-      Point& pt = getPoint(pixels[n]);
-      size_t pos = pt.m_lines.searchindex(ref);
-      if (pos != paftl::npos) {
-         pt.m_lines.remove_at(pos);
-      }
-   }
-   for (n = 0; n < pixels.size(); n++) {
-      // okay, line removed, now reprocess everything that can see us:
-      Point& pt = getPoint(pixels[n]);
-      pt.m_processflag = 0x00FF;
-      if (pt.filled()) {
-         sparkPixel2(pixels[n],3);  // <- 3 means both reprocess us, and tell q_opposites that can see you to reprocess
-      }
-      else {
-         sparkPixel2(pixels[n],2);  // <- 2 means tell q_opposites that can see you to reprocess
-      }
-   }
-   for (n = 0; n < pixels.size(); n++) {
-      // the pixels in the line will automatically flag *each other* as needing reprocessing:
-      // cancel this out since we've just done it!
-      Point& pt = getPoint(pixels[n]);
-      pt.m_processflag = 0x0000;
-   }
-}
-*/
-/////////////////////////////////////////////////////////////////////////////////
-
-// no longer used -- block points through block lines only
-/*
-bool PointMap::blockPoint(const Point2f& p, bool add)
-{
-   PixelRef pix = pixelate(p,true,4);
-   PixelRef actual = pix / 4;
-   // now which bits a filled:
-   int block = 1;
-   block <<= (pix.x % 4);
-   block <<= 4 * (pix.y % 4);
-   if (add) {
-      getPoint(actual).addBlock( block );
-      if (getPoint(actual).fillBlocked()) {
-         if (getPoint(actual).filled()) {
-            m_point_count--;
-            getPoint(actual).set( Point::EMPTY, 0 ); // <- note, can't undo this
-         }
-      }
-   }
-   else {
-      int newblock = getPoint(actual).getBlock() & ~block;
-      getPoint(actual).setBlock( newblock );
-   }
-
-   return true;
-}
-*/
 // still used through pencil tool
 
 bool PointMap::fillPoint(const Point2f& p, bool add)
@@ -635,11 +359,11 @@ bool PointMap::fillPoint(const Point2f& p, bool add)
    }
    Point& pt = getPoint(pix);
    if (add && !pt.filled()) {
-      m_point_count++;
+      m_filled_point_count++;
       pt.set( Point::FILLED, ++m_undocounter );
    }
    else if (!add && (pt.m_state & Point::FILLED)) {
-      m_point_count--;
+      m_filled_point_count--;
       pt.set( Point::EMPTY, ++m_undocounter );
    }
    return true;
@@ -655,7 +379,7 @@ bool PointMap::makePoints(const Point2f& seed, int fill_type, Communicator *comm
    if (!m_spacepix) {
       return false;
    }
-   if (!m_initialised || !m_points) {
+   if (!m_initialised || m_points.empty()) {
       return false;
    }
    if (comm) {
@@ -668,6 +392,14 @@ bool PointMap::makePoints(const Point2f& seed, int fill_type, Communicator *comm
 
    if (!includes(seedref) || getPoint(seedref).filled()) {
       return false;
+   }
+
+   // check if seed point is actually visible from the centre of the cell
+   std::vector<Line>& linesTouching = getPoint(seedref).m_lines;
+   for(auto line: linesTouching) {
+       if(intersect_line_no_touch(line, Line(seed, getPoint(seedref).m_location))) {
+           return false;
+       }
    }
 
    if (!m_blockedlines) {
@@ -687,7 +419,7 @@ bool PointMap::makePoints(const Point2f& seed, int fill_type, Communicator *comm
        filltype = Point::AUGMENTED;
 
    getPoint(seedref).set( filltype, m_undocounter );
-   m_point_count++;
+   m_filled_point_count++;
 
    // Now... start making lines:
    pflipper<PixelRefVector> surface;
@@ -696,12 +428,7 @@ bool PointMap::makePoints(const Point2f& seed, int fill_type, Communicator *comm
 
    int added = 0;
 
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
    time_t atime = 0;
-#endif   
    qtimer( atime, 0 );
 
    while (surface.a().size() > 0) {
@@ -742,22 +469,22 @@ int PointMap::expand( const PixelRef p1, const PixelRef p2, PixelRefVector& list
       return 2;
    }
    Line l(depixelate(p1),depixelate(p2));
-   for (size_t i = 0; i < getPoint(p1).m_lines.size(); i++)
+   for (auto& line: getPoint(p1).m_lines)
    {
-      if (intersect_region(l, getPoint(p1).m_lines[i], m_spacing * 1e-10) && intersect_line(l, getPoint(p1).m_lines[i], m_spacing * 1e-10)) {
+      if (intersect_region(l, line, m_spacing * 1e-10) && intersect_line(l, line, m_spacing * 1e-10)) {
          // 4 = blocked
          return 4;
       }
    }
-   for (size_t j = 0; j < getPoint(p2).m_lines.size(); j++)
+   for (auto& line: getPoint(p2).m_lines)
    {
-      if (intersect_region(l, getPoint(p2).m_lines[j], m_spacing * 1e-10) && intersect_line(l, getPoint(p2).m_lines[j], m_spacing * 1e-10)) {
+      if (intersect_region(l, line, m_spacing * 1e-10) && intersect_line(l, line, m_spacing * 1e-10)) {
          // 4 = blocked
          return 4;
       }
    }
    getPoint(p2).set( filltype, m_undocounter );
-   m_point_count++;
+   m_filled_point_count++;
    list.push_back( p2 ); 
 
    // 8 = success
@@ -765,9 +492,9 @@ int PointMap::expand( const PixelRef p1, const PixelRef p2, PixelRefVector& list
 }
 
 
-void PointMap::outputPoints(ostream& stream, char delim)
+void PointMap::outputPoints(std::ostream& stream, char delim)
 {
-   stream << "Ref" << delim << "x" << delim << "y" << endl;
+   stream << "Ref" << delim << "x" << delim << "y" << std::endl;
    stream.precision(12);
 
    int count = 0;
@@ -779,16 +506,16 @@ void PointMap::outputPoints(ostream& stream, char delim)
          if ( getPoint(curs).filled() ) {
 
             Point2f p = depixelate(curs);
-            stream << curs << delim << p.x << delim << p.y << endl;
+            stream << curs << delim << p.x << delim << p.y << std::endl;
             count++;
          }
       }
    }
 }
 
-void PointMap::outputMergeLines(ostream& stream, char delim)
+void PointMap::outputMergeLines(std::ostream& stream, char delim)
 {
-   stream << "x1" << delim << "y1" << delim << "x2" << delim << "y2" << endl;
+   stream << "x1" << delim << "y1" << delim << "x2" << delim << "y2" << std::endl;
 
    stream.precision(12);
    for (size_t i = 0; i < m_merge_lines.size(); i++) {
@@ -796,13 +523,13 @@ void PointMap::outputMergeLines(ostream& stream, char delim)
       Line li(depixelate(m_merge_lines[i].a),depixelate(m_merge_lines[i].b));
 
       stream << li.start().x << delim << li.start().y << delim
-             << li.end().x << delim << li.end().y << endl;
+             << li.end().x << delim << li.end().y << std::endl;
    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////
 
-void PointMap::outputSummary(ostream& myout, char delimiter)
+void PointMap::outputSummary(std::ostream& myout, char delimiter)
 {
    myout << "Ref" << delimiter << "x" << delimiter << "y";
 
@@ -820,28 +547,28 @@ void PointMap::outputSummary(ostream& myout, char delimiter)
    }
 }
 
-void PointMap::outputMif( ostream& miffile, ostream& midfile )
+void PointMap::outputMif( std::ostream& miffile, std::ostream& midfile )
 {
    MapInfoData mapinfodata;
    mapinfodata.exportFile(miffile, midfile, *this);
 }
 
-void PointMap::outputNet(ostream& netfile)
+void PointMap::outputNet(std::ostream& netfile)
 {
    // this is a bid of a faff, as we first have to get the point locations, 
    // then the connections from a lookup table... ickity ick ick...
    std::map<PixelRef,PixelRefVector> graph;
    for (int i = 0; i < m_cols; i++) {
       for (int j = 0; j < m_rows; j++) {
-         if (m_points[i][j].filled() && m_points[i][j].m_node) {
+         if (m_points[size_t(i*m_rows + j)].filled() && m_points[size_t(i*m_rows + j)].m_node) {
             PixelRef pix(i,j);
             PixelRefVector connections;
-            m_points[i][j].m_node->contents(connections);
+            m_points[size_t(i*m_rows + j)].m_node->contents(connections);
             graph.insert(std::make_pair(pix,connections));
          }
       }
    }
-   netfile << "*Vertices " << graph.size() << endl;
+   netfile << "*Vertices " << graph.size() << std::endl;
    double maxdim = __max(m_region.width(),m_region.height());
    Point2f offset = Point2f((maxdim - m_region.width())/(2.0*maxdim),(maxdim - m_region.height())/(2.0*maxdim));
    size_t j = 0;
@@ -850,42 +577,42 @@ void PointMap::outputNet(ostream& netfile)
       Point2f p = depixelate(graphKey);
       p.x = offset.x + (p.x - m_region.bottom_left.x) / maxdim;
       p.y = 1.0 - (offset.y + (p.y - m_region.bottom_left.y) / maxdim);
-      netfile << (j+1) << " \"" << graphKey << "\" " << p.x << " " << p.y << endl;
+      netfile << (j+1) << " \"" << graphKey << "\" " << p.x << " " << p.y << std::endl;
       j++;
    }
-   netfile << "*Edges" << endl;
+   netfile << "*Edges" << std::endl;
    size_t k = 0;
    for (auto& iter: graph) {
       PixelRefVector& list = iter.second;
       for (size_t m = 0; m < list.size(); m++) {
          size_t n = depthmapX::findIndexFromKey(graph, list[m]);
          if (n != paftl::npos && k < n) {
-            netfile << (k+1) << " " << (n+1) << " 1" << endl;
+            netfile << (k+1) << " " << (n+1) << " 1" << std::endl;
          }
       }
    }
 }
 
-void PointMap::outputConnections(ostream& myout)
+void PointMap::outputConnections(std::ostream& myout)
 {
-   myout << "#graph v1.0" << endl;
+   myout << "#graph v1.0" << std::endl;
    for (int i = 0; i < m_cols; i++) {
       for (int j = 0; j < m_rows; j++) {
-         if (m_points[i][j].filled() && m_points[i][j].m_node) {
+         if (m_points[size_t(i*m_rows + j)].filled() && m_points[size_t(i*m_rows + j)].m_node) {
             PixelRef pix(i,j);
             Point2f p = depixelate(pix);
             myout << "node {\n" 
                   << "  ref    " << pix << "\n" 
                   << "  origin " << p.x << " " << p.y << " " << 0.0 << "\n"
-                  << "  connections [" << endl;
-            myout << *(m_points[i][j].m_node);
-            myout << "  ]\n}" << endl;
+                  << "  connections [" << std::endl;
+            myout << *(m_points[size_t(i*m_rows + j)].m_node);
+            myout << "  ]\n}" << std::endl;
          }
       }
    }
 }
 
-void PointMap::outputConnectionsAsCSV(ostream& myout, std::string delim)
+void PointMap::outputConnectionsAsCSV(std::ostream& myout, std::string delim)
 {
     myout << "RefFrom" << delim << "RefTo";
     std::unordered_set<PixelRef, hashPixelRef> seenPix;
@@ -893,14 +620,14 @@ void PointMap::outputConnectionsAsCSV(ostream& myout, std::string delim)
     {
         for (int j = 0; j < m_rows; j++)
         {
-            if (m_points[i][j].filled() && m_points[i][j].m_node)
+            if (m_points[size_t(i*m_rows + j)].filled() && m_points[size_t(i*m_rows + j)].m_node)
             {
                 PixelRef pix(i,j);
                 seenPix.insert(pix);
                 for (int b = 0; b < 32; b++)
                 {
                     PixelRefVector hood;
-                    m_points[i][j].m_node->bin(b).contents(hood);
+                    m_points[size_t(i*m_rows + j)].m_node->bin(b).contents(hood);
                     for(size_t p = 0; p < hood.size(); p++)
                     {
                         if(!(std::find(seenPix.begin(), seenPix.end(), hood[p]) != seenPix.end()))
@@ -914,7 +641,7 @@ void PointMap::outputConnectionsAsCSV(ostream& myout, std::string delim)
     }
 }
 
-void PointMap::outputLinksAsCSV(ostream& myout, std::string delim)
+void PointMap::outputLinksAsCSV(std::ostream& myout, std::string delim)
 {
     myout << "RefFrom" << delim << "RefTo";
     std::unordered_set<PixelRef, hashPixelRef> seenPix;
@@ -922,9 +649,9 @@ void PointMap::outputLinksAsCSV(ostream& myout, std::string delim)
     {
         for (int j = 0; j < m_rows; j++)
         {
-            if (m_points[i][j].filled() && m_points[i][j].m_node)
+            if (m_points[size_t(i*m_rows + j)].filled() && m_points[size_t(i*m_rows + j)].m_node)
             {
-                PixelRef mergePixelRef = m_points[i][j].getMergePixel();
+                PixelRef mergePixelRef = m_points[size_t(i*m_rows + j)].getMergePixel();
                 if(mergePixelRef != NoPixel) {
                     PixelRef pix(i,j);
                     if(seenPix.insert(pix).second)
@@ -938,15 +665,15 @@ void PointMap::outputLinksAsCSV(ostream& myout, std::string delim)
     }
 }
 
-void PointMap::outputBinSummaries(ostream& myout)
+void PointMap::outputBinSummaries(std::ostream& myout)
 {
-   myout << "cols " << m_cols << " rows " << m_rows << endl;
+   myout << "cols " << m_cols << " rows " << m_rows << std::endl;
 
    myout << "x\ty";
    for (int i = 0; i < 32; i++) {
       myout << "\tbin" << i;
    }
-   myout << endl;
+   myout << std::endl;
 
    int count = 0;
    for (int i = 0; i < m_cols; i++) {
@@ -967,7 +694,7 @@ void PointMap::outputBinSummaries(ostream& myout)
             }
          }
 
-         myout << endl;
+         myout << std::endl;
       }
    }
 }
@@ -1195,8 +922,8 @@ bool PointMap::setCurSel(QtRegion &r, bool add )
 
    for (int i = s_bl.x; i <= s_tr.x; i++) {
       for (int j = s_bl.y; j <= s_tr.y; j++) {
-         if ((m_points[i][j].m_state & mask) && (~m_points[i][j].m_state & Point::SELECTED)) {
-            m_points[i][j].m_state |= Point::SELECTED;
+         if ((m_points[size_t(i*m_rows + j)].m_state & mask) && (~m_points[size_t(i*m_rows + j)].m_state & Point::SELECTED)) {
+            m_points[size_t(i*m_rows + j)].m_state |= Point::SELECTED;
             m_selection_set.insert( PixelRef(i,j) );
             if (add) {
                m_selection &= ~SINGLE_SELECTION;
@@ -1205,7 +932,7 @@ bool PointMap::setCurSel(QtRegion &r, bool add )
             else {
                m_selection |= SINGLE_SELECTION;
             }
-            if (m_points[i][j].m_node) {
+            if (m_points[size_t(i*m_rows + j)].m_node) {
                m_attributes.selectRowByKey(PixelRef(i,j));
             }
          }
@@ -1231,7 +958,7 @@ bool PointMap::setCurSel(const std::vector<int>& selset, bool add)
       if (includes(pix)) {
          int row = m_attributes.getRowid(pix);
          if (row != -1) {
-            m_points[pix.x][pix.y].m_state |= Point::SELECTED;
+            m_points[size_t(pix.x*m_rows + pix.y)].m_state |= Point::SELECTED;
             if (m_attributes.selectRowByKey(pix)) {
                m_selection_set.insert(pix);
             }
@@ -1240,106 +967,6 @@ bool PointMap::setCurSel(const std::vector<int>& selset, bool add)
    }
    return true;
 }
-
-// dangerous: used only for making a false selection set
-bool PointMap::overrideSelPixel(PixelRef pix)
-{
-   m_selection = OVERRIDE_SELECTION;
-   if (!(m_points[pix.x][pix.y].m_state & Point::SELECTED)) {
-      m_points[pix.x][pix.y].m_state |= Point::SELECTED;
-      m_selection_set.insert(pix);
-   }
-   return true;
-}
-
-/*
-bool PointMap::togglePin()
-{
-   // Just a keep it simple stupid version of this... won't happen that often
-   if (m_pinned_selection) {
-      for (int i = 0; i < m_cols; i++) {
-         for (int j = 0; j < m_rows; j++) {
-            if ( m_points[i][j].m_state & Point::PINNED ) {
-               m_points[i][j].m_state &= ~Point::PINNED;
-            }
-         }
-      }
-      m_pinned_set.clear();
-      m_pinned_selection = false;
-   }
-   else if (m_selection != NO_SELECTION) {
-      for (int i = 0; i < m_cols; i++) {
-         for (int j = 0; j < m_rows; j++) {
-            if ( m_points[i][j].m_state & Point::SELECTED ) {
-               m_points[i][j].m_state &= ~Point::SELECTED;
-               m_points[i][j].m_state |= Point::PINNED;
-            }
-         }
-      }
-      m_pinned_set = m_selection_set;
-      m_selection_set.clear();
-      m_selection = NO_SELECTION;
-      m_pinned_selection = true;
-   }
-   else {
-      return false;
-   }
-   return true;
-}
-*/
-
-/*
-// DEPRECATED: REPLACED BY SHAPEMAP FUNCTION 21.08.05
-
-bool PointMap::convertSelToDataObject( MetaGraph& meta_graph )
-{
-   // Just a keep it simple stupid version of this too...
-   // will certainly happen more often, but why not? --- no brainer computing from now on
-
-   if (m_selection != NO_SELECTION) {
-
-      int layer_ref = meta_graph.MetaGraph::getCurrentLayerRef();
-      int object_ref;
-      try {
-         object_ref = meta_graph.MetaGraph::getCurrentLayer().addObject();
-      }
-      catch (DataException e) {
-         if (e.errorCode() == DataException::LAYER_HAS_COLUMNS) {
-            return false;
-         }
-         else {
-            throw e;
-         }
-      }
-
-      double pointcount = 0.0;
-      Point2f centroid;
-
-      for (int i = 0; i < m_cols; i++) {
-         for (int j = 0; j < m_rows; j++) {
-            if ( m_points[i][j].m_state & Point::SELECTED ) {
-               m_points[i][j].m_state &= ~Point::SELECTED;
-               m_points[i][j].m_layer_objects.add(layer_ref, object_ref);
-               centroid += depixelate( PixelRef(i,j) );
-               pointcount += 1.0;
-            }
-         }
-      }
-      m_selection_set.clear();
-      m_selection = NO_SELECTION;
-
-      centroid.scale( 1.0 / pointcount );
-      meta_graph.MetaGraph::getCurrentLayer()[object_ref].setCentroid( centroid );
-
-      return true;
-   }
-   else {
-      
-      return true; // <- even though didn't make layer, there wasn't an error, just no points selected
-   }
-   return false;
-}
-*/
 
 // Helper function: is there a blocked point next to you?
 // ...rather scruffily goes round the eight adjacent points...
@@ -1403,7 +1030,7 @@ bool PointMap::blockedAdjacent( const PixelRef p ) const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PointMap::read(istream& stream, int version )
+bool PointMap::read(std::istream& stream, int version )
 {
    m_name = dXstring::readString(stream);
 
@@ -1411,20 +1038,14 @@ bool PointMap::read(istream& stream, int version )
    // NOTE: You MUST set m_spacepix manually!
    m_displayed_attribute = -1;
 
-   if (m_points) {
-      for (int i = 0; i < m_cols; i++) {
-         delete [] m_points[i];
-      }
-      delete [] m_points;
-      m_points = NULL;
-   }
+   m_points.clear();
 
    stream.read( (char *) &m_spacing, sizeof(m_spacing) );
 
    stream.read( (char *) &m_rows, sizeof(m_rows) );
    stream.read( (char *) &m_cols, sizeof(m_cols) );
 
-   stream.read( (char *) &m_point_count, sizeof(m_point_count) );
+   stream.read( (char *) &m_filled_point_count, sizeof(m_filled_point_count) );
 
    stream.read( (char *) &m_bottom_left, sizeof(m_bottom_left) );
 
@@ -1442,20 +1063,18 @@ bool PointMap::read(istream& stream, int version )
    stream.read((char *)&displayed_attribute,sizeof(displayed_attribute));
    m_attributes.read( stream, version );
 
-   m_points = new Point *[m_cols];
+   m_points.clear();
+   m_points.resize(m_cols*m_rows);
    
    for (int j = 0; j < m_cols; j++) {
-      m_points[j] = new Point [m_rows];
-      // ...and read...
-
       for (int k = 0; k < m_rows; k++) {
-         m_points[j][k].read(stream,version,attr_count);
+         m_points[size_t(j*m_rows + k)].read(stream,version,attr_count);
 
          // check if occdistance of any pixel's bin is set, meaning that
          // the isovist analysis was done
          if(!m_hasIsovistAnalysis) {
              for(int b = 0; b < 32; b++) {
-                if(m_points[j][k].m_node && m_points[j][k].m_node->occdistance(b) > 0) {
+                if(m_points[size_t(j*m_rows + k)].m_node && m_points[size_t(j*m_rows + k)].m_node->occdistance(b) > 0) {
                     m_hasIsovistAnalysis = true;
                     break;
                 }
@@ -1468,15 +1087,15 @@ bool PointMap::read(istream& stream, int version )
          // Old style point node reffing and also unselects selected nodes which would otherwise be difficult
 
          // would soon be better simply to turn off the select flag....
-         m_points[j][k].m_state &= ( Point::EMPTY | Point::FILLED | Point::MERGED | Point::BLOCKED | Point::CONTEXTFILLED | Point::EDGE);
+         m_points[size_t(j*m_rows + k)].m_state &= ( Point::EMPTY | Point::FILLED | Point::MERGED | Point::BLOCKED | Point::CONTEXTFILLED | Point::EDGE);
 
          // Set the node pixel if it exists:
-         if (m_points[j][k].m_node) {
-            m_points[j][k].m_node->setPixel(PixelRef(j,k));
+         if (m_points[size_t(j*m_rows + k)].m_node) {
+            m_points[size_t(j*m_rows + k)].m_node->setPixel(PixelRef(j,k));
          }
          // Add merge line if merged:
-         if (!m_points[j][k].m_merge.empty()) {
-             depthmapX::addIfNotExists(m_merge_lines, PixelRefPair(PixelRef(j,k),m_points[j][k].m_merge));
+         if (!m_points[size_t(j*m_rows + k)].m_merge.empty()) {
+             depthmapX::addIfNotExists(m_merge_lines, PixelRefPair(PixelRef(j,k),m_points[size_t(j*m_rows + k)].m_merge));
          }
       }
    }
@@ -1498,7 +1117,7 @@ bool PointMap::read(istream& stream, int version )
    return true;
 }
 
-bool PointMap::write( ofstream& stream, int version )
+bool PointMap::write( std::ofstream& stream, int version )
 {
    dXstring::writeString(stream, m_name);
 
@@ -1507,17 +1126,15 @@ bool PointMap::write( ofstream& stream, int version )
    stream.write( (char *) &m_rows, sizeof(m_rows) );
    stream.write( (char *) &m_cols, sizeof(m_cols) );
 
-   stream.write( (char *) &m_point_count, sizeof(m_point_count) );
+   stream.write( (char *) &m_filled_point_count, sizeof(m_filled_point_count) );
 
    stream.write( (char *) &m_bottom_left, sizeof(m_bottom_left) );
 
    stream.write( (char *) &m_displayed_attribute, sizeof(m_displayed_attribute) );
    m_attributes.write( stream, version );
    
-   for (int j = 0; j < m_cols; j++) {
-      for (int k = 0; k < m_rows; k++) {
-         m_points[j][k].write( stream, version );
-      }
+   for (auto& point: m_points) {
+       point.write( stream, version );
    }
 
    stream.write((char *) &m_processed, sizeof(m_processed));
@@ -1531,45 +1148,6 @@ bool PointMap::write( ofstream& stream, int version )
 // Now what this class is actually for: making a visibility graph!
 
 // Visibility graph construction constants
-
-pvecint g_primes;
-prefvec<Grad> g_gradients;
-
-int PointMap::remaining(int i, int j, int x, int y, int q) 
-{
-   int x1,y1,ret = 0;
-   if (x > 0) {
-      if (q % 2 == 0) {
-         x1 = i / x;
-      }
-      else {
-         x1 = (m_cols - 1 - i) / x; 
-      }
-   }
-   else {
-      ret = 1;
-   }
-   if (y > 0) {
-      if ((q / 2) % 2 == 0) {
-         y1 = j / y;
-      }
-      else {
-         y1 = (m_rows - 1 - j) / y;
-      }
-   }
-   else {
-      ret = -1;
-   }
-   if (ret == 1) {
-      return y1;
-   }
-   if (ret == -1) {
-      return x1;
-   }
-   return __min(x1, y1);
-}
-
-// Helper for for making graph
 
 int PointMap::tagState(bool settag, bool sparkgraph)
 {
@@ -1602,289 +1180,6 @@ int PointMap::tagState(bool settag, bool sparkgraph)
    return count;
 }
 
-//////////////////////////////////////////////////////////////////////////////////
-
-// calculate 32 distances by explicit angle...
-
-bool PointMap::binMap( Communicator *comm )
-{
-   // Note, graph must be fixed (i.e., having blocking pixels filled in)
-   if (!m_spacepix) {
-      return false;
-   }
-
-   // start the timer when you know the true count including fixed points
-
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
-   time_t atime = 0;
-#endif   
-   if (comm) {
-      qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, m_rows * m_cols );
-   }
-
-   int i = 0;
-
-   float far_bin_dists[32];
-   Point2f bin_vectors[32];
-   Point2f diagonal = m_spacepix->m_region.top_right - m_spacepix->m_region.bottom_left;
-   Point2f east = diagonal.length() * Point2f(1.0,0.0);
-   for (i = 0; i < 32; i++) {
-      bin_vectors[i] = east;
-      east.rotate(0.0625 * M_PI);
-   }
-
-   int count = 0;
-
-   for (i = 0; i < m_cols; i++) {
-
-      for (int j = 0; j < m_rows; j++) {
-
-         PixelRef curs = PixelRef( i, j );
-
-         if ( getPoint( curs ).getState() & Point::FILLED ) {
-
-            if (!getPoint(curs).m_node) {
-               getPoint( curs ).m_node = std::unique_ptr<Node>(new Node());
-               m_attributes.insertRow( curs );
-            }
-
-            Point2f point = depixelate(curs);
-
-            for (int k = 0; k < 32; k++) {
-               Line l(point, point + bin_vectors[k]);
-               l.crop(m_spacepix->m_region);
-               m_spacepix->cutLine(l);//,1);
-               far_bin_dists[k] = (float) l.length();
-            }
-
-            Point& pt = getPoint( curs );
-            pt.getNode().setbindistances( far_bin_dists );
-
-            count++;    // <- increment count
-
-            if (comm) {
-               if (qtimer( atime, 500 )) {
-                  if (comm->IsCancelled()) {
-                     tagState( false, true );         // <- the state field has been used for tagging visited nodes... set back to a state variable
-                     //
-                     throw Communicator::CancelledException();
-                  }
-                  comm->CommPostMessage( Communicator::CURRENT_RECORD, count );
-               }         
-            }
-         }
-      }
-   }
-
-   return true;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////
-
-// The fast way to generate graphs!
-
-// #include "sparksieve.h"
-
-// DEPRECATED!!!!!!
-/*
-bool PointMap::sparkGraph( Communicator *comm )
-{
-   // Note, graph must be fixed (i.e., having blocking pixels filled in)
-   if (!m_spacepix) {
-      return false;
-   }
-
-   // pre-label --- allows faster node access later on
-   int count = tagState( true, true );
-
-   // start the timer when you know the true count including fixed points
-   int atime = 0;
-   if (comm) {
-      qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, count );
-   }
-
-   // attributes table set up
-   // n.b. these must be entered in alphabetical order to preserve col indexing:
-   int connectivity_col = m_attributes.insertLockedColumn("Connectivity");
-   int maxradial_col = m_attributes.insertColumn("Isovist Maximum Radial");
-   //int maxradial_node_col = m_attributes.insertColumn("Maximum Radial (Node ID)");
-   int moment_col = m_attributes.insertColumn("Isovist Moment of Inertia");
-   //
-   pvecint bins[ GraphVertex::bin_count ];
-   pvector<PixelRef> bins_b[32];
-   static float far_bin_dists[32];
-   for (int ii = 0; ii < 32; ii++) {
-      far_bin_dists[ii] = 0.0f;
-   }
-
-   count = 0;
-
-   for (int i = 0; i < m_cols; i++) {
-
-      for (int j = 0; j < m_rows; j++) {
-
-         PixelRef curs = PixelRef( i, j );
-
-         if ( getPoint( curs ).getState() & Point::FILLED ) {
-
-            if (getPoint(curs).m_node) {
-               delete getPoint(curs).m_node;
-            }
-            getPoint( curs ).m_node = new Node;
-
-            m_attributes.insertRow( curs );
-
-            int neighbourhood_size = 0;
-            int max_depth = 0;
-            int far_node = -1;
-            double far_dist = 0.0;
-            double total_dist_sqr = 0.0;
-
-            // note: blocked points (for now) do not see out
-            for (int q = 0; q < 8; q++) {
-
-               int standardbin;
-               switch (q) { 
-                  case 1: standardbin =  0; break;
-                  case 3: standardbin = 32; break;
-                  case 0: case 2: standardbin = 16; break;
-                  case 4: case 5: standardbin = 24; break;
-                  case 6: case 7: standardbin =  8; break;
-               }
-
-               sparkSieve sieve( sparkSieve::rotateMask(getPoint(curs).getBlock(), q) );
-
-               int depth = 0;
-
-               for (depth = 1; sieve.hasGaps(); depth++) {
-
-                  pvecint trialsetin, trialsetout;
-
-                  for (int ind = 0; ind < depth + 1; ind++) {
-
-                     // x and y are calculated using Grad's whichbin q quadrants
-
-                     int x = (q >= 4 ? ind : depth);
-                     int y = (q >= 4 ? depth : ind);
-
-                     PixelRef here = PixelRef( 
-                        i + (q % 2 ? x : -x), j + (q <= 1 || q >= 6 ? y : -y) );
-
-                     if (here.x < 0 || here.y < 0 || here.x >= m_cols || here.y >= m_rows) {
-                        // Outside point grid
-                        trialsetin.push_back( -1 );
-                        trialsetout.push_back( -1 );
-                     }
-                     else if (getPoint(here).getBlock()) {
-                        // Blocked
-                        trialsetin.push_back( sparkSieve::rotateMask(getPoint(here).getBlock(),q) );
-                        trialsetout.push_back( -1 );
-                     }
-                     else {
-                        // Empty or (space) filled
-                        trialsetin.push_back( 0 );
-                        trialsetout.push_back( -1 );
-                     }
-                  }
-
-                  sieve.Sieve( trialsetin, trialsetout );
-
-                  for (int tri = ((q % 4 == 0 || (q + 1) % 4 == 0) ? 1 : 0);  // avoid duplicating axes
-                       tri < ((q / 4) ? depth : depth + 1);                 // avoid duplicating diagonals
-                       tri++) {
-                     if (trialsetout[tri] > -1) {
-
-                        int quoi = trialsetout[tri];
-
-                        int x = (q >= 4 ? tri : depth);
-                        int y = (q >= 4 ? depth : tri);
-
-                        PixelRef here = PixelRef( 
-                           i + (q % 2 ? x : -x), j + (q <= 1 || q >= 6 ? y : -y) );
-
-                        // oh god, yet another whichbin calculation...
-                        int bin = ((q % 4 == 0 || (q + 1) % 4 == 0) ? 
-                           (standardbin - trialsetout[tri]) :
-                           (standardbin + trialsetout[tri]));
-
-                        //if (!getPoint(here).empty()) {
-
-                           if (getPoint(here).getState() & Point::FILLED) {
-                              // the blocked cells shouldn't contribute to point stats
-                              // note m_spacing is used to scale far_dist appropriately
-                              double this_dist = dist(here,curs) * m_spacing;
-                              if (this_dist > far_dist) {
-                                 far_node = here;
-                                 far_dist = this_dist;
-                              }
-                              total_dist_sqr += this_dist * this_dist;
-                              neighbourhood_size++;
-
-                              bins_b[bin].push_back( here );
-
-                           }
-
-                        //}
-                     }
-                  }
-               }
-            }
-            Point2f point = depixelate(curs);
-
-            // Remember to clear these bins in the make function!
-            Point& pt = getPoint( curs );
-            pt.m_node->make(curs, bins_b, far_bin_dists, 0x00FF);
-            int row = m_attributes.insertRow( curs );
-            m_attributes.setValue( row, connectivity_col, float(neighbourhood_size) );
-            m_attributes.setValue( row, maxradial_col, float(far_dist) );
-            //m_attributes.setValue( row, maxradial_node_col, far_node );
-            m_attributes.setValue( row, moment_col, float(total_dist_sqr * m_spacing * m_spacing) );
-
-            count++;    // <- increment count
-
-            if (comm) {
-               if (qtimer( atime, 500 )) {
-                  if (comm->IsCancelled()) {
-                     tagState( false, true );         // <- the state field has been used for tagging visited nodes... set back to a state variable
-                     // (well, actually, no it hasn't!)
-                     // Should clear all nodes and attributes here:
-                     // Clear nodes
-                     for (int ii = 0; ii < m_cols; ii++) {
-                        for (int jj = 0; jj < m_rows; jj++) {
-                           if (m_points[ii][jj].m_node) {
-                              delete m_points[ii][jj].m_node;
-                              m_points[ii][jj].m_node = NULL;
-                           }
-                        }
-                     }
-                     // Clear attributes
-                     m_attributes.clear();
-                     m_displayed_attribute = -2;
-                     //
-                     throw Communicator::CancelledException();
-                  }
-                  comm->CommPostMessage( Communicator::CURRENT_RECORD, count );
-               }         
-            }
-         }
-      }
-   }
-
-   tagState( false, true );  // <- the state field has been used for tagging visited nodes... set back to a state variable
-
-   // override and reset:
-   m_displayed_attribute = -2;
-   setDisplayedAttribute(connectivity_col);
-
-   return true;
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "sparksieve2.h"
@@ -1920,8 +1215,8 @@ bool PointMap::sparkGraph2( Communicator *comm, bool boundarygraph, double maxdi
          for (int j = 0; j < m_rows; j++) {
             PixelRef curs = PixelRef( i, j );
             if ( getPoint( curs ).filled() && !getPoint( curs ).edge()) {
-               m_points[i][j].m_state &= ~Point::FILLED;
-               m_point_count--;
+               m_points[size_t(i*m_rows + j)].m_state &= ~Point::FILLED;
+               m_filled_point_count--;
             }
          }
       }
@@ -1938,12 +1233,7 @@ bool PointMap::sparkGraph2( Communicator *comm, bool boundarygraph, double maxdi
 
    // start the timer when you know the true count including fixed points
    
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
    time_t atime = 0;
-#endif   
    if (comm) {
       qtimer( atime, 0 );
       comm->CommPostMessage( Communicator::NUM_RECORDS, count );
@@ -2005,32 +1295,6 @@ bool PointMap::sparkGraph2( Communicator *comm, bool boundarygraph, double maxdi
    // override and reset:
    m_displayed_attribute = -2;
    setDisplayedAttribute(connectivity_col);
-
-   return true;
-}
-
-// essentially does the same as sparkGraph2, but designed to go through only
-// points tagged for revision, and without a communicator
-
-bool PointMap::dynamicSparkGraph2()
-{
-   for (int i = 0; i < m_cols; i++) {
-
-      for (int j = 0; j < m_rows; j++) {
-
-         PixelRef curs = PixelRef( i, j );
-   
-         if ( getPoint( curs ).getState() & Point::FILLED ) {
-
-            sparkPixel2(curs,1); // make flag of 1 suggests make this node, don't set reciprocral process flags on those you can see
-
-         }
-      }
-   }
-
-   // and add grid connections
-   // (this is easier than trying to work it out per pixel as we calculate visibility)
-   addGridConnections();
 
    return true;
 }
@@ -2101,12 +1365,12 @@ bool PointMap::sparkPixel2(PixelRef curs, int make, double maxdist)
          viewport0.top_right.y = centre0.y;
          break;
       }
-      std::map<int,Line> lines0;
-      for (const std::pair<int,Line>& line: getPoint(curs).m_lines)
+      std::vector<Line> lines0;
+      for (const Line& line: getPoint(curs).m_lines)
       {
-         Line l = line.second;
+         Line l = line;
          if (l.crop(viewport0)) {
-            lines0.insert(std::make_pair(line.first,l));
+            lines0.push_back(l);
          }
       }
       sieve.block(lines0, q);
@@ -2277,15 +1541,10 @@ bool PointMap::analyseIsovist(Communicator *comm, MetaGraph& mgraph, bool simple
 
    comm->CommPostMessage( Communicator::CURRENT_STEP, 2 );
 
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
    time_t atime = 0;
-#endif   
    if (comm) {
       qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, m_point_count );
+      comm->CommPostMessage( Communicator::NUM_RECORDS, m_filled_point_count );
    }
    int count = 0;
 
@@ -2340,21 +1599,12 @@ bool PointMap::analyseIsovist(Communicator *comm, MetaGraph& mgraph, bool simple
 
 bool PointMap::analyseVisual(Communicator *comm, Options& options, bool simple_version)
 {
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
    time_t atime = 0;
-#endif   
    if (comm) {
       qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, m_point_count );
+      comm->CommPostMessage( Communicator::NUM_RECORDS, m_filled_point_count );
    }
 
-   // dX simple version test // TV
-//#define _COMPILE_dX_SIMPLE_VERSION
-
-#ifndef _COMPILE_dX_SIMPLE_VERSION
    int cluster_col, control_col, controllability_col;
    if(!simple_version) {
        if (options.local) {
@@ -2363,7 +1613,6 @@ bool PointMap::analyseVisual(Communicator *comm, Options& options, bool simple_v
            controllability_col = m_attributes.insertColumn("Visual Controllability");
        }
    }
-#endif
 
    int entropy_col, rel_entropy_col, integ_dv_col, integ_pv_col, integ_tk_col, depth_col, count_col;
    if (options.global) {
@@ -2418,12 +1667,12 @@ bool PointMap::analyseVisual(Communicator *comm, Options& options, bool simple_v
 
             if (options.global) {
 
-               for (int ii = 0; ii < m_cols; ii++) {
-                  for (int jj = 0; jj < m_rows; jj++) {
-                     m_points[ii][jj].m_misc = 0;
-                     m_points[ii][jj].m_extent = PixelRef(ii,jj);
-                  }
-               }
+                for (int ii = 0; ii < m_cols; ii++) {
+                   for (int jj = 0; jj < m_rows; jj++) {
+                      m_points[size_t(ii*m_rows + jj)].m_misc = 0;
+                      m_points[size_t(ii*m_rows + jj)].m_extent = PixelRef(ii,jj);
+                   }
+                }
 
                int total_depth = 0;
                int total_nodes = 0;
@@ -2666,15 +1915,10 @@ bool PointMap::analyseVisualPointDepth(Communicator *comm)
 
 bool PointMap::analyseMetric(Communicator *comm, Options& options)
 {
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
    time_t atime = 0;
-#endif   
    if (comm) {
       qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, m_point_count );
+      comm->CommPostMessage( Communicator::NUM_RECORDS, m_filled_point_count );
    }
 
    std::string radius_text;
@@ -2714,12 +1958,10 @@ bool PointMap::analyseMetric(Communicator *comm, Options& options)
                continue;
             }
 
-            for (int ii = 0; ii < m_cols; ii++) {
-               for (int jj = 0; jj < m_rows; jj++) {
-                  m_points[ii][jj].m_misc = 0;
-                  m_points[ii][jj].m_dist = -1.0f;
-                  m_points[ii][jj].m_cumangle = 0.0f;
-               }
+            for (auto& point: m_points) {
+                point.m_misc = 0;
+                point.m_dist = -1.0f;
+                point.m_cumangle = 0.0f;
             }
 
             float euclid_depth = 0.0f;
@@ -2861,15 +2103,10 @@ bool PointMap::analyseMetricPointDepth(Communicator *comm)
 
 bool PointMap::analyseAngular(Communicator *comm, Options& options)
 {
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
    time_t atime = 0;
-#endif   
    if (comm) {
       qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, m_point_count );
+      comm->CommPostMessage( Communicator::NUM_RECORDS, m_filled_point_count );
    }
 
    std::string radius_text;
@@ -2907,12 +2144,10 @@ bool PointMap::analyseAngular(Communicator *comm, Options& options)
                continue;
             }
 
-            for (int ii = 0; ii < m_cols; ii++) {
-               for (int jj = 0; jj < m_rows; jj++) {
-                  m_points[ii][jj].m_misc = 0;
-                  m_points[ii][jj].m_dist = 0.0f;
-                  m_points[ii][jj].m_cumangle = -1.0f;
-               }
+            for (auto& point: m_points) {
+                point.m_misc = 0;
+                point.m_dist = 0.0f;
+                point.m_cumangle = -1.0f;
             }
 
             float total_angle = 0.0f;
@@ -3031,56 +2266,11 @@ bool PointMap::analyseAngularPointDepth(Communicator *comm)
 
 bool PointMap::analyseThruVision(Communicator *comm)
 {
-   // Quick mod - TV
-#if defined(_WIN32)   
-   __time64_t atime = 0;
-#else
    time_t atime = 0;
-#endif   
    if (comm) {
       qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, m_point_count );
+      comm->CommPostMessage( Communicator::NUM_RECORDS, m_filled_point_count );
    }
-
-   /*
-   // original version
-   int i;
-   for (i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
-         PixelRef curs = PixelRef( i, j );
-         getPoint( curs ).m_misc = 0;
-      }
-   }
-
-   for (i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
-         PixelRef curs = PixelRef( i, j );
-         Point& p = getPoint(curs);
-         if ( getPoint( curs ).filled() ) {
-            p.m_node->first();
-            while (!p.m_node->is_tail()) {
-               PixelRef x = p.m_node->cursor();
-               Line l(depixelate(curs),depixelate(x));
-               PixelRefVector pixels = pixelateLine(l,1);
-               for (int k = 1; k < pixels.size() - 1; k++) {
-                  getPoint(pixels[k]).m_misc += 1;
-               }
-               p.m_node->next();
-            }
-         }
-      }
-   }
-
-   int col = m_attributes.insertColumn("Through vision");
-
-   for (i = 0; i < m_attributes.getRowCount(); i++) {
-      PixelRef curs = m_attributes.getRowKey(i);
-      m_attributes.setValue(i,col,getPoint(curs).m_misc);
-      getPoint(curs).m_misc = 0;
-   }
-
-   setDisplayedAttribute(col);
-   */
 
    // current version (not sure of differences!)
    int i;
@@ -3138,63 +2328,7 @@ bool PointMap::analyseThruVision(Communicator *comm)
 
    setDisplayedAttribute(-2);
    setDisplayedAttribute(col);
-/*
-   for (i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
-         PixelRef curs = PixelRef( i, j );
-         Point& p = getPoint(curs);
-         int thisrow = m_attributes.getRowIndex(curs);
-         if ( getPoint( curs ).filled() ) {
-            p.m_node->first();
-            while (!p.m_node->is_tail()) {
-               PixelRef x = p.m_node->cursor();
-               Line l(depixelate(curs),depixelate(x));
-               PixelRefVector pixels = pixelateLine(l,1);
-               for (int k = 1; k < pixels.size() - 1; k++) {
-                  getPoint(pixels[k]).m_misc += m_attributes.getValue(thisrow,col) * 0.001;
-               }
-               p.m_node->next();
-            }
-         }
-      }
-   }
 
-   int col2 = m_attributes.insertColumn("Through vision 2 step");
-
-   for (i = 0; i < m_attributes.getRowCount(); i++) {
-      PixelRef curs = m_attributes.getRowKey(i);
-      m_attributes.setValue(i,col2,getPoint(curs).m_misc);
-      getPoint(curs).m_misc = 0;
-   }
-
-   for (i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
-         PixelRef curs = PixelRef( i, j );
-         Point& p = getPoint(curs);
-         int thisrow = m_attributes.getRowIndex(curs);
-         if ( getPoint( curs ).filled() ) {
-            p.m_node->first();
-            while (!p.m_node->is_tail()) {
-               PixelRef x = p.m_node->cursor();
-               Line l(depixelate(curs),depixelate(x));
-               PixelRefVector pixels = pixelateLine(l,1);
-               for (int k = 1; k < pixels.size() - 1; k++) {
-                  getPoint(pixels[k]).m_misc += m_attributes.getValue(thisrow,col2) * 0.001;
-               }
-               p.m_node->next();
-            }
-         }
-      }
-   }
-
-   int col3 = m_attributes.insertColumn("Through vision 3 step");
-
-   for (i = 0; i < m_attributes.getRowCount(); i++) {
-      PixelRef curs = m_attributes.getRowKey(i);
-      m_attributes.setValue(i,col3,getPoint(curs).m_misc);
-      getPoint(curs).m_misc = 0;
-   }
-*/
    return true;
 }
 
@@ -3306,390 +2440,6 @@ bool PointMap::isPixelMerged(const PixelRef& a)
     return !getPoint(a).m_merge.empty();
 }
 
-//////////////////////////////////////////////////////////////////////////////////
-
-/*
-bool PointMap::analyseGraph(Communicator *comm, Graph *graph)
-{
-   int atime = 0;
-   if (comm) {
-      qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, m_point_count );
-   }
-
-   int count = 0;
-
-   SparkTree analyser_tree;
-
-   for (int ii = 0; ii < m_cols; ii++) {
-      for (int jj = 0; jj < m_rows; jj++) {
-         PixelRef curs = PixelRef( ii, jj );
-         if ( !getPoint( curs ).emptyorblocked() ) {
-            analyser_tree.set(curs);
-         }
-      }
-   }
-   analyser_tree.invert();
-
-   for (int i = 0; i < m_cols; i++) {
-
-      for (int j = 0; j < m_rows; j++) {
-
-         PixelRef curs = PixelRef( i, j );
-
-         if ( !getPoint( curs ).emptyorblocked() ) {
-
-            SparkTree global = analyser_tree;
-
-            int total_depth = 0;
-            int total_nodes = 0;
-
-            prefvec<PixelRefVector> search_tree;
-
-            search_tree.push_back(PixelRefVector());
-
-//            global.extractUnseen(search_tree[0], *getPoint( curs ).m_spark_tree);
-
-            int level = 0;
-            while (search_tree[level].size()) {
-               search_tree.push_back(PixelRefVector());
-               for (int n = search_tree[level].size() - 1; n != paftl::npos; n--) {
-                  Point& p = getPoint(search_tree[level][n]);
-                  if (!p.emptyorblocked()) {
-                     total_depth += level + 1;
-                     total_nodes += 1;
-//                     global.extractUnseen(search_tree[level+1],*p.m_spark_tree);
-                  }
-               }
-               level++;
-            }
-            graph->m_nodes.getAttributes(getPoint(curs).m_noderef).intval(AttrHeader::DEPTH) = total_depth;
-            graph->m_nodes.getAttributes(getPoint(curs).m_noderef).intval(AttrHeader::GRAPH_SIZE) = total_nodes;
-
-            count++;    // <- increment count
-         }
-
-         if (comm) {
-            if (qtimer( atime, 500 )) {
-               if (comm->IsCancelled()) {
-                  throw Communicator::CancelledException();
-               }
-               comm->CommPostMessage( Communicator::CURRENT_RECORD, count );
-            }         
-         }
-      }
-   }
-
-   graph->m_nodes.setWhichAttributes( GraphVertexList::GLOBAL );
-
-   return true;
-}
-*/
-/*
-bool PointMap::analysePointDepth(Communicator *comm, Graph *graph)
-{
-   SparkTree analyser_tree;
-
-   for (int ii = 0; ii < m_cols; ii++) {
-      for (int jj = 0; jj < m_rows; jj++) {
-         PixelRef curs = PixelRef( ii, jj );
-         if ( !getPoint( curs ).emptyorblocked() ) {
-            analyser_tree.set(curs);
-         }
-      }
-   }
-   analyser_tree.invert();
-
-   PixelRefVector selset;
-
-   for (int i = 0; i < m_cols; i++) {
-
-      for (int j = 0; j < m_rows; j++) {
-
-         for (int k = 0; k < m_selection_set.size(); k++) {
-
-            PixelRef curs(i,j);
-
-            if (m_selection_set[k] == getPoint(curs).getRef()) {
-
-               selset.push_back(curs);
-               graph->m_nodes.getAttributes(getPoint(curs).getRef()).intval(AttrHeader::POINT_DEPTH) = 0;
-
-            }
-         }
-      }
-   }
-
-   prefvec<PixelRefVector> search_tree;
-   search_tree.push_back(selset);
-   
-   int level = 0;
-   while (search_tree[level].size()) {
-      search_tree.push_back(PixelRefVector());
-      for (int n = search_tree[level].size() - 1; n != paftl::npos; n--) {
-         Point& p = getPoint(search_tree[level][n]);
-         if (!p.emptyorblocked()) {
-            graph->m_nodes.getAttributes(p.getRef()).intval(AttrHeader::POINT_DEPTH) = level;
-//            analyser_tree.extractUnseen(search_tree[level+1],*p.m_spark_tree);
-         }
-      }
-      level++;
-   }
-
-   return true;
-}
-*/
-/////////////////////////////////////////////////////////////////////////////////
-
-// Optimization level:
-// 0 --- fast --- 'empty' assumption and 'sensible' assumption
-// 1 --- med  --- 'sensible' assumption
-// 2 --- slow --- no assumptions
-
-// I'm just going to junk this one completely!
-/*
-bool PointMap::makeGraph( Graph& graph, int optimization_level, Communicator *comm)
-{
-   makeConstants();
-
-   if (!m_spacepix) {
-      return false;
-   }
-   int atime = 0;
-   if (comm) {
-      qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, 8 * m_point_count );
-   }
-
-   // pre-label --- allows faster node access later on
-   int count = tagState( true, false );
-
-   // tell the graph how many nodes you're going to write... makes things easy later on...
-   if (!graph.m_nodes.openwrite(count)) {
-      tagState( false, false );
-      return false;
-   }
-
-   // method 1b: getting a little less forceful still
-
-   // for angular analysis:
-   // each is put in a 'bin' which can be retrieved later.
-   // the bins are first filled by the algorithm into separate pvectors
-   // next, when storing, the points are put into a list, and the references stored
-   // as a list afterwards --- this allows easy translation between straight depthmap
-   // and depthmap angular / agent
-   pmap<double,int> bins[ GraphVertex::bin_count ];
-
-   count = 0;
-
-   for (int i = 0; i < m_cols; i++) {
-
-      for (int j = 0; j < m_rows; j++) {
-
-         PixelRef curs = PixelRef( i, j );
-
-         int far_node = -1;
-         double far_dist = -1.0;
-         double total_dist = 0.0;
-
-         if ( !getPoint( curs ).emptyorblocked() ) {
-
-            int n = count / 8;
-            graph.m_nodes.add( n, GraphVertex() );
-
-            // q quadrants:
-            //
-            //      \ 6 | 7 /
-            //      0 \ | / 1
-            //      - -   - -
-            //      2 / | \ 3
-            //      / 4 | 5 \
-            //
-            
-            for (int q = 0; q < 8; q++) {
-
-               for (int r = 0; r < g_gradients.size(); r++) {
-
-                  if (r == 0 && (q == 2 || q == 3 || q == 5 || q == 7)) {  // avoid duplicating 0,1 gradients
-                     r++;
-                  }
-                  if (r == 1 && q / 4 == 1) {                              // avoid duplicating 1,1 gradients
-                     r++;
-                  }
-
-                  int x = g_gradients[r].x(q);
-                  int y = g_gradients[r].y(q);
-
-                  int top = remaining(i,j,abs(x),abs(y),q);
-
-                  bool broken = false;
-                  for (int here = 1; here <= top && !broken; here++)  {
-
-                     PixelRef last( u(i,x,here-1), v(j,y,here-1) );
-                     PixelRef next( u(i,x,here), v(j,y,here) );
-
-                     if ( getPoint( next ).emptyorblocked() ) {
-                        if ( g_gradients[r].length < 5.0f || optimization_level != 0) {
-                           // test anyway, just in case there's no pixel due to a coarse flood fill
-                           Line line( depixelate(last), depixelate(next) );
-                           if (m_spacepix->intersect(line)) {
-                              broken = true; // It really has been broken! Stop.
-                           }
-                        }
-                        else {
-                           broken = true;
-                        }
-                     }
-                     else {
-                        if (here == 1 && optimization_level != 2 && g_gradients[r].length > 25.0f) {
-                           // make a resolution approximation: (code fully tested as of version 0.7b)
-                           // (unfortunately, we can only do this once! 
-                           //  --- otherwise pixel n - 1 is not guaranteed to have been tested)
-                           PixelRef alpha, beta;
-                           if (q / 4 == 0) {
-                              if (q % 2 == 0)
-                                 alpha = next.right();
-                              else 
-                                 alpha = next.left();
-                              if (q / 2 == 0)
-                                 beta = alpha.up();
-                              else 
-                                 beta = alpha.down();
-                           }
-                           else {
-                              if (q / 2 == 2)
-                                 alpha = next.up();
-                              else 
-                                 alpha = next.down();
-                              if (q % 2 == 0)
-                                 beta = alpha.right();
-                              else 
-                                 beta = alpha.left();
-                           }
-                           if (getPoint(alpha).m_misc != n && getPoint(beta).m_misc != n) {
-                              broken = true;
-                           }
-                        }
-                        if (!broken) {
-                           // Standard testing
-                           Line line( depixelate(last), depixelate(next) );
-                           if (!m_spacepix->intersect(line)) {
-                              getPoint(next).m_misc = n; // <- mark that this was included in this isovist
-                              // note m_spacing is used to scale far_dist appropriately
-                              double this_dist = g_gradients[r].length * double(here) * m_spacing;
-                              if (this_dist > far_dist) {
-                                 far_node = getPoint(here).getRef();
-                                 far_dist = this_dist;
-                              }
-                              total_dist += this_dist;
-                              // put the point in the appropriate bin ordered by distance
-                              bins[ g_gradients[r].whichbin(q) ].add( this_dist, pointRef(next) );
-                              // test to see if this node is the far node
-                              // old depthmap:
-                              // graph.m_nodes[n].push_back( pointRef(next) );
-                           }
-                           else {
-                              broken = true;
-                           }
-                        }
-                     }
-                  }
-               }
-               count++;    // <- increment count (note count = nodes * q
-
-               if (comm) {
-                  if (qtimer( atime, 500 )) {
-                     if (comm->IsCancelled()) {
-                        tagState( false, false );        // <- the state field has been used for tagging visited nodes... set back to a state variable
-                        graph.m_nodes.clearAttributes(); // <- any attributes that have been filled in are dropped
-                        graph.m_nodes.remove();    // <- drop the file before throwing exception
-                        throw Communicator::CancelledException();
-                     }
-                     comm->CommPostMessage( Communicator::CURRENT_RECORD, count );
-                  }         
-               }
-            }
-            Point2f point = depixelate(curs);
-            graph.m_nodes[n].make( bins );
-            // note m_spacing is used to scale far_dist appropriately
-            graph.m_nodes.commit(point, far_node, float(far_dist), float(total_dist));
-         }
-      }
-   }
-
-   tagState( false, false );  // <- the state field has been used for tagging visited nodes... set back to a state variable
-
-   graph.m_nodes.close();
-
-   graph.m_nodes.setWhichAttributes( GraphVertexList::BASIC );
-
-   return true;
-}
-*/
-void makePrimes()
-{
-   for (int i = 1; i < 200; i++) {
-      bool pr = true;
-      for (size_t j = 1; j < g_primes.size(); j++) {  // Note : ignore 1
-         if (i % g_primes[j] == 0) {
-            pr = false;
-            break;
-         }
-         else if (g_primes[j] * g_primes[j] > i) {
-            pr = true;
-            break;
-         }
-      }
-      if (pr) {
-         g_primes.push_back(i);
-      }
-   }
-}
-
-void makeGradients()
-{
-   // Slow... but can't be bothered to work this out better!
-
-   g_gradients.push_back( Grad(1,0) );
-   g_gradients.push_back( Grad(1,1) );
-
-   for (int i = 1; i < 200; i++) {
-      for (int j = 1; j < i; j++) {
-         if (g_primes.searchindex(i) != paftl::npos) {
-            g_gradients.push_back( Grad(i, j) );
-         }
-         else if (j == 1) {
-            g_gradients.push_back( Grad(i, j) );
-         }
-         else if (i % j != 0) {
-            bool pr = true;
-            for (size_t k = 1; k < g_primes.size(); k++) {  // Note: ignore 1
-               if (i % g_primes[k] == 0 && j % g_primes[k] == 0) {
-                  pr = false;
-                  break;
-               }
-               else if (g_primes[k] > j) {
-                  pr = true;
-                  break;
-               }
-            }
-            if (pr) {
-               g_gradients.push_back( Grad(i, j) );
-            }
-         }
-      }
-   }
-}
-
-void PointMap::makeConstants()
-{
-   if (g_primes.size() == 0) {
-      makePrimes();
-   }
-   if (g_gradients.size() == 0) {
-      makeGradients();
-   }
-}
 
 // -2 for point not in visibility graph, -1 for point has no data
 double PointMap::getLocationValue(const Point2f& point)

@@ -28,7 +28,7 @@
 
 struct IsoSeg
 {
-   bool tagdelete;
+   mutable bool tagdelete;
    double startangle;
    double endangle;
    Point2f startpoint;
@@ -64,7 +64,7 @@ class Isovist
 protected:
    Point2f m_centre;
    std::set<IsoSeg> m_blocks;
-   pqvector<IsoSeg> m_gaps;
+   std::set<IsoSeg> m_gaps;
    std::vector<Point2f> m_poly;
    prefvec<PointDist> m_occlusion_points;
    double m_perimeter;

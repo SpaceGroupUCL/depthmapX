@@ -30,19 +30,19 @@ TEST_CASE("Test getVisibleLines", "")
     Point2f hiddenLineEnd(3,5);
 
     // push a SpacePixelFile in the MetaGraph
-    mgraph->SuperSpacePixel::push_back(SpacePixelFile("Test SpacePixelFile"));
+    mgraph->m_spacePixels.emplace_back("Test SpacePixelFile");
 
     // push a ShapeMap in the SpacePixelFile
-    mgraph->SuperSpacePixel::tail().push_back(ShapeMap("Visible ShapeMap"));
+    mgraph->m_spacePixels.back().m_spacePixels.emplace_back("Visible ShapeMap");
 
     // add a line to the first ShapeMap
-    mgraph->SuperSpacePixel::tail().tail().makeLineShape(Line(visibleLineStart, visibleLineEnd));
+    mgraph->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(visibleLineStart, visibleLineEnd));
 
     // push a ShapeMap in the SpacePixelFile
-    mgraph->SuperSpacePixel::tail().push_back(ShapeMap("Hidden ShapeMap"));
+    mgraph->m_spacePixels.back().m_spacePixels.emplace_back("Hidden ShapeMap");
 
     // add a line to the second ShapeMap
-    mgraph->SuperSpacePixel::tail().tail().makeLineShape(Line(hiddenLineStart, hiddenLineEnd));
+    mgraph->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(hiddenLineStart, hiddenLineEnd));
 
     SECTION( "Get visible lines when none is hidden" )
     {
@@ -64,7 +64,7 @@ TEST_CASE("Test getVisibleLines", "")
     SECTION( "Get visible lines when some are hidden" )
     {
         // now hide the second SpacePixelFile
-        mgraph->SuperSpacePixel::tail().tail().setShow(false);
+        mgraph->m_spacePixels.back().m_spacePixels.back().setShow(false);
 
         const std::vector<SimpleLine>& visibleLines = mgraph->getVisibleDrawingLines();
 
@@ -104,6 +104,6 @@ TEST_CASE("Test pointMaps", "")
         mgraph->removeDisplayedMap();
         REQUIRE(mgraph->getPointMaps().size() == 1);
         REQUIRE(mgraph->getPointMaps()[0].getName() == "Stan");
-        REQUIRE(mgraph->getDisplayedPointMapRef() == -1);
+        REQUIRE(mgraph->getDisplayedPointMapRef() == 0);
     }
 }

@@ -154,7 +154,6 @@ private slots:
     void OnToolsMPD();
     void OnToolsPointConvShapeMap();
     void OnToolsOptions();
-    void OnShowResearchtoolbar();
     void OnViewCentreView();
     void OnViewShowGrid();
     void OnViewSummary();
@@ -240,7 +239,6 @@ private:
 
     bool m_defaultMapWindowIsLegacy;
 
-    void switchLayoutDirection();
     QWidget * setupAttributesListWidget();
     MapView *createMapView();
     MapView *activeMapView();
@@ -266,13 +264,6 @@ private:
     void SetAttributeChecks();
     void SetDrawingTreeChecks();
     void SetGraphTreeChecks();
-    int SetDisplayedAttribute(QTreeWidgetItem* hItem, ItemTreeEntry entry);
-    // popup stuff
-    ItemTreeEntry m_popup_entry;
-    int m_popup_attribute;
-    void GetItemMap(MetaGraph *graph, PointMap* &pointmap, ShapeMap* &shapemap);
-    // misc
-    void SwitchFocusBack();
 
 ////////////////////////////////////////////////////////////
 
@@ -297,7 +288,6 @@ private:
     QMenu *agentToolsSubMenu;
     QMenu *axialSubMenu;
     QMenu *segmentSubMenu;
-    pvector<QMenu*> plugInSubMenu;
     QMenu *segmentStepDepthSubMenu;
     QMenu *viewMenu;
     QMenu *windowMenu;
@@ -306,7 +296,6 @@ private:
     QToolBar *fileToolBar;
     QToolBar *editToolBar;
     QToolBar *plotToolBar;
-    QToolBar *ResearchToolBar;
     QToolBar *thirdViewToolBar;
     QToolButton *fillColorToolButton;
     QToolButton *zoomToolButton;
@@ -343,7 +332,6 @@ private:
     QAction *exportScreenAct;
     QAction *clearAct;
     QAction *selectByQueryAct;
-    QAction *zoomToSelectionAct;
     QAction *selectionToLayerAct;
 
     //Map Menu Actions
@@ -450,17 +438,6 @@ private:
     QAction *thirdZoomAct;
     QAction *playLoopAct;
     QAction *thirdFilledAct;
-//depthmapX Test
-    QAction *FillLineAct;
-    QAction *ShowBinsAct;
-    QAction *EvolutionAct;
-    QAction *Test1Act;
-    QAction *Test2Act;
-    QAction *Test3Act;
-    QAction *Test4Act;
-    QAction *ExportPolyAct;
-    QAction *Bindistance1Act;
-    QAction *Bindistance2Act;
 
     int m_selected_mapbar_item = -1;
 
@@ -478,9 +455,6 @@ private:
        ID_MAPBAR_ITEM_MOVE = 1,
        ID_MAPBAR_ITEM_ZOOM_IN = 2,
        ID_MAPBAR_ITEM_ZOOM_OUT = 3,
-       ID_MAPBAR_ITEM_FINDLOC = 4,
-       ID_MAPBAR_ITEM_CENTREVIEW = 5,
-       ID_MAPBAR_ITEM_GRID = 6,
        ID_MAPBAR_ITEM_FILL = 7,
        ID_MAPBAR_ITEM_SEMIFILL = 8,
        ID_MAPBAR_ITEM_PENCIL = 9,

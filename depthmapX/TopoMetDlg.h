@@ -14,6 +14,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ui_TopoMetDlg.h"
+#include "salalib/topomet.h"
 
 class CTopoMetDlg : public QDialog, public Ui::CTopoMetDlg
 {
@@ -26,6 +27,10 @@ public:
 	bool m_selected_only;
 	void UpdateData(bool value);
 	void showEvent(QShowEvent * event);
+
+    bool isAnalysisTopological() {
+        return m_topological == TOPOMET_METHOD_TOPOLOGICAL;
+    }
 
 	private slots:
 		void OnOK();

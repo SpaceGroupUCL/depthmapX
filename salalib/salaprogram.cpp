@@ -131,7 +131,7 @@ SalaProgram::~SalaProgram()
 // use istrstream to make an istream from a string:
 // istrstream file(char *);
 
-bool SalaProgram::parse(istream& program)
+bool SalaProgram::parse(std::istream& program)
 {
    m_var_stack.clear();
    m_error_stack.clear();
@@ -401,7 +401,7 @@ SalaCommand::SalaCommand(SalaProgram *program, SalaCommand *parent, int indent, 
    m_line = 0;
 }
 
-int SalaCommand::parse(istream& program, int line) 
+int SalaCommand::parse(std::istream& program, int line)
 {
    m_func_stack.clear();
    m_eval_stack.clear();

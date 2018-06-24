@@ -257,6 +257,63 @@ namespace dm_runmethods
 
     }
 
+    void runSegmentAnalysis(const CommandLineParser &clp, const SegmentParser &sp, IPerformanceSink &perfWriter)
+    {
+        auto mGraph = loadGraph(clp.getFileName().c_str(), perfWriter);
+
+        auto state = mGraph->getState();
+
+        std::cout << "Running segment analysis... " << std::flush;
+        Options options;
+        options.radius_list = genshim::toPVector(sp.getRadii());
+        options.choice = sp.includeChoice();
+        options.tulip_bins = sp.getTulipBins();
+        switch(sp.getRadiusType()) {
+            case SegmentParser::RadiusType::SEGMENT_STEPS: {
+                options.radius_type = Options::RADIUS_STEPS;
+                break;
+            }
+            case SegmentParser::RadiusType::METRIC: {
+                options.radius_type = Options::RADIUS_METRIC;
+                break;
+            }
+            case SegmentParser::RadiusType::ANGULAR: {
+                options.radius_type = Options::RADIUS_ANGULAR;
+                break;
+            }
+            case SegmentParser::RadiusType::NONE:
+                break;
+        }
+        switch(sp.getAnalysisType()) {
+            case SegmentParser::AnalysisType::ANGULAR_TULIP: {
+                DO_TIMED("Segment tulip analysis", mGraph->analyseSegmentsTulip(0, options))
+                break;
+            }
+            case SegmentParser::AnalysisType::ANGULAR_FULL: {
+                DO_TIMED("Segment angular analysis", mGraph->analyseSegmentsAngular(0, options))
+                break;
+            }
+            case SegmentParser::AnalysisType::TOPOLOGICAL: {
+                options.output_type = TOPOMET_METHOD_TOPOLOGICAL;
+                DO_TIMED("Segment topological", mGraph->analyseTopoMet(0, options))
+                break;
+            }
+            case SegmentParser::AnalysisType::METRIC: {
+                options.output_type = TOPOMET_METHOD_METRIC;
+                DO_TIMED("Segment metric", mGraph->analyseTopoMet(0, options))
+                break;
+            }
+            case SegmentParser::AnalysisType::NONE:
+                throw depthmapX::RuntimeException("No segment analysis type given");
+        }
+        std::cout << "ok\n" << std::flush;
+
+        std::cout << "Writing out result..." << std::flush;
+        DO_TIMED("Writing graph", mGraph->write(clp.getOuputFile().c_str(),METAGRAPH_VERSION, false))
+        std::cout << " ok" << std::endl;
+
+    }
+
     void runAgentAnalysis(const CommandLineParser &cmdP, const AgentParser &agentP, IPerformanceSink &perfWriter) {
 
         std::unique_ptr<Communicator> comm(new ICommunicator());

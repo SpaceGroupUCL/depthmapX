@@ -19,7 +19,8 @@ SOURCES += main.cpp \
     isovistparser.cpp \
     exportparser.cpp \
     importparser.cpp \
-    stepdepthparser.cpp
+    stepdepthparser.cpp \
+    segmentparser.cpp
 
 HEADERS += \
     commandlineparser.h \
@@ -41,7 +42,8 @@ HEADERS += \
     isovistparser.h \
     exportparser.h \
     importparser.h \
-    stepdepthparser.h
+    stepdepthparser.h \
+    segmentparser.h
 
 win32:Release:LIBS += -L../genlib/release -L../mgraph440/release -L../salalib/release
 win32:Debug:LIBS += -L../genlib/debug -L../mgraph440/debug -L../salalib/debug

@@ -58,22 +58,23 @@ def checkPerformance(baseFile, testFile, relativeThreshold, absoluteThreshold):
             if testTime > baseTime + allowance:
                 return "Performance regression: {0} took {1}s instead of {2}s".format(baseLine["action"], testLine["average"], baseLine["average"])
 
-def aggregatePerformanceStats(dir, numRuns, filenameTemplate ):
+def aggregatePerformanceStats(dir, numRuns, numCmds, filenameTemplate ):
     data = OrderedDict()
     totalValues = []
     for i in range(numRuns):
-        with open(os.path.join(dir, filenameTemplate.format(i)), "r") as f:
-            reader = csv.DictReader(f)
-            total = 0
-            for line in reader:
-                if not line["action"] in data:
-                    data[line["action"]] = []
-                data[line["action"]].append(float(line["duration"]))
-                total = total + float(line["duration"])
-            totalValues.append(total)
+        for j in range(numCmds):
+            with open(os.path.join(dir, filenameTemplate.format(i, j)), "r") as f:
+                reader = csv.DictReader(f)
+                total = 0
+                for line in reader:
+                    if not line["action"] in data:
+                        data[line["action"]] = []
+                    data[line["action"]].append(float(line["duration"]))
+                    total = total + float(line["duration"])
+                totalValues.append(total)
     data["total"] = totalValues
 
-    outputFile =os.path.join(dir, filenameTemplate.format("all"))
+    outputFile =os.path.join(dir, filenameTemplate.format("", "all"))
     with open(outputFile, "w+") as f:
         writer = csv.DictWriter(f, ["action", "min", "max", "average"])
         writer.writeheader()
@@ -87,20 +88,21 @@ class PerformanceRunner(depthmaprunner.DepthmapRegressionRunner):
         depthmaprunner.DepthmapRegressionRunner.__init__(self,runFunc,baseBinary,testBinary,workingDir)
         self.perfConfig = perfConfig
 
-    def runTestCase(self, name, cmd):
+    def runTestCase(self, name, cmds):
         runhelpers.prepareDirectory(self.makeBaseDir(name))
         runhelpers.prepareDirectory(self.makeTestDir(name))
 
-        nameTemplate = "timings_{0}.csv"
+        nameTemplate = "timings_{0}_{1}.csv"
         for i in range(self.perfConfig.runsPerInstance):
             print ("Running test case {0}, run {1} of {2}".format(name, i, self.perfConfig.runsPerInstance))
-            cmd.timingFile = nameTemplate.format(i)
-            result, message = self.runTestCaseImpl(name, cmd)
+            for j in range(len(cmds)):
+                cmds[j].timingFile = nameTemplate.format(i,j)
+            result, message = self.runTestCaseImpl(name, cmds)
             if not result:
                 return (False, "Run {0} failed with message: {1}".format(i, message))
 
-        testFile = aggregatePerformanceStats(self.makeTestDir(name),self.perfConfig.runsPerInstance, nameTemplate)
-        baseFile = aggregatePerformanceStats(self.makeBaseDir(name),self.perfConfig.runsPerInstance, nameTemplate)
+        testFile = aggregatePerformanceStats(self.makeTestDir(name),self.perfConfig.runsPerInstance, len(cmds), nameTemplate)
+        baseFile = aggregatePerformanceStats(self.makeBaseDir(name),self.perfConfig.runsPerInstance, len(cmds), nameTemplate)
         message = checkPerformance(testFile, baseFile, self.perfConfig.relativeThresholdInPercent, self.perfConfig.absoluteThresholdInSeconds)
         if message:
             return (False, message)

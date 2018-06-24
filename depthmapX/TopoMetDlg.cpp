@@ -20,7 +20,7 @@ CTopoMetDlg::CTopoMetDlg(QWidget *parent)
 : QDialog(parent)
 {
 	setupUi(this);
-	m_topological = 0;
+    m_topological = TOPOMET_METHOD_TOPOLOGICAL;
 	m_selected_only = false;
 	m_radius = tr("n");
 
@@ -64,9 +64,9 @@ void CTopoMetDlg::UpdateData(bool value)
 	if (value)
 	{
 		if (c_topological->isChecked())
-			m_topological = 0;
+            m_topological = TOPOMET_METHOD_TOPOLOGICAL;
 		else if (radioButton->isChecked())
-			m_topological = 1;
+            m_topological = TOPOMET_METHOD_METRIC;
 		else
 			m_topological = -1;
 		m_radius = c_radius->text();
@@ -79,10 +79,10 @@ void CTopoMetDlg::UpdateData(bool value)
 	{
 		switch(m_topological)
 		{
-		case 0:
+        case TOPOMET_METHOD_TOPOLOGICAL:
 			c_topological->setChecked(true);
 			break;
-		case 1:
+        case TOPOMET_METHOD_METRIC:
 			radioButton->setChecked(true);
 			break;
 		default:

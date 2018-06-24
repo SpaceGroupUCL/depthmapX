@@ -136,7 +136,7 @@ public:
 public:
    AgentEngine();
    void run(Communicator *comm, PointMap *pointmap);
-   void outputTrails(ostream& trailsFile);
+   void outputTrails(std::ostream& trailsFile);
 };
 
 struct AgentProgram

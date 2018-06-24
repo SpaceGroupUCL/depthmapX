@@ -44,9 +44,9 @@ public:
     virtual void run(const CommandLineParser &clp, IPerformanceSink &perfWriter) const;
 
     //link options
-    const vector<Line> & getMergeLines() const { return _mergeLines; }
+    const std::vector<Line> & getMergeLines() const { return _mergeLines; }
 private:
-    vector<Line> _mergeLines;
+    std::vector<Line> _mergeLines;
 };
 
 #endif // LINKPARSER_H

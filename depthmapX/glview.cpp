@@ -180,10 +180,10 @@ void GLView::paintGL()
 
 
     float pos [] = {
-        float(min(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x())),
-        float(min(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y())),
-        float(max(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x())),
-        float(max(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y()))
+        float(std::min(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x())),
+        float(std::min(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y())),
+        float(std::max(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x())),
+        float(std::max(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y()))
     };
     m_selectionRect.paintGL(m_mProj, m_mView, m_mModel, QMatrix2x2(pos));
 
@@ -235,10 +235,10 @@ void GLView::mouseReleaseEvent(QMouseEvent *event)
         }
         else
         {
-            r.bottom_left.x = min(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x());
-            r.bottom_left.y = min(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y());
-            r.top_right.x = max(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x());
-            r.top_right.y = max(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y());
+            r.bottom_left.x = std::min(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x());
+            r.bottom_left.y = std::min(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y());
+            r.top_right.x = std::max(m_mouseDragRect.bottomRight().x(),m_mouseDragRect.topLeft().x());
+            r.top_right.y = std::max(m_mouseDragRect.bottomRight().y(),m_mouseDragRect.topLeft().y());
         }
         bool selected = false;
         switch(m_mouseMode)
@@ -763,7 +763,9 @@ void GLView::OnEditCopy()
     tmp->show();
     tmp->postLoadFile();
     tmp->OnViewZoomToRegion(QtRegion(topLeftWorld, bottomRightWorld));
+    tmp->repaint();
     tmp->OnEditCopy();
+    tmp->close();
 }
 
 void GLView::OnEditSave()

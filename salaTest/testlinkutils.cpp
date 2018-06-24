@@ -198,15 +198,15 @@ TEST_CASE("Test linking - half filled grid", "")
     Point2f lineStart(0,0);
     Point2f lineEnd(2,4);
 
-    Point2f bottomLeft(min(lineStart.x,lineEnd.x),min(lineStart.y,lineEnd.y));
-    Point2f topRight(max(lineStart.x,lineEnd.x),max(lineStart.y,lineEnd.y));
+    Point2f bottomLeft(std::min(lineStart.x,lineEnd.x),std::min(lineStart.y,lineEnd.y));
+    Point2f topRight(std::max(lineStart.x,lineEnd.x),std::max(lineStart.y,lineEnd.y));
 
     std::unique_ptr<SuperSpacePixel> spacePixel(new SuperSpacePixel("Test SuperSpacePixel"));
-    spacePixel->push_back(SpacePixelFile("Test SpacePixelGroup"));
-    spacePixel->tail().push_back(ShapeMap("Test ShapeMap"));
-    spacePixel->tail().tail().makeLineShape(Line(lineStart, lineEnd));
-    spacePixel->tail().m_region = spacePixel->tail().tail().getRegion();
-    spacePixel->m_region = spacePixel->tail().m_region;
+    spacePixel->m_spacePixels.emplace_back("Test SpacePixelGroup");
+    spacePixel->m_spacePixels.back().m_spacePixels.emplace_back("Test ShapeMap");
+    spacePixel->m_spacePixels.back().m_spacePixels.back().makeLineShape(Line(lineStart, lineEnd));
+    spacePixel->m_spacePixels.back().m_region = spacePixel->m_spacePixels.back().m_spacePixels.back().getRegion();
+    spacePixel->m_region = spacePixel->m_spacePixels.back().m_region;
 
     PointMap pointMap("Test PointMap");
     pointMap.setSpacePixel(spacePixel.get());

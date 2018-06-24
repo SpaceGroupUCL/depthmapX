@@ -22,7 +22,7 @@
 #include <salalib/axialmap.h>
 #include "MapInfoData.h"
 
-int MapInfoData::import(istream& miffile, istream& midfile, ShapeMap& map)
+int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& map)
 {
    int retvar = MINFO_OK;
 
@@ -210,7 +210,7 @@ int MapInfoData::import(istream& miffile, istream& midfile, ShapeMap& map)
    return retvar;
 }
 /*
-bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const ShapeGraph& map)
+bool MapInfoData::exportFile(std::ostream& miffile, std::ostream& midfile, const ShapeGraph& map)
 {
    // if bounds has not been filled in, fill it in
    if (m_bounds.empty()) {
@@ -234,14 +234,14 @@ bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const ShapeGrap
       miffile << "Line " << map.m_lines[i].line.start().x << " " 
                          << map.m_lines[i].line.start().y << " " 
                          << map.m_lines[i].line.end().x << " " 
-                         << map.m_lines[i].line.end().y << endl;
-      miffile << "    Pen (1,2,0)" << endl; 
+                         << map.m_lines[i].line.end().y << std::endl;
+      miffile << "    Pen (1,2,0)" << std::endl;
    }
 
    return true;
 }
 */
-bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const PointMap& points)
+bool MapInfoData::exportFile(std::ostream& miffile, std::ostream& midfile, const PointMap& points)
 {
    // if bounds has not been filled in, fill it in
    if (m_bounds.empty()) {
@@ -264,19 +264,19 @@ bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const PointMap&
    for (int i = 0; i < points.m_attributes.getRowCount(); i++) {
       PixelRef pix = points.m_attributes.getRowKey(i);
       Point2f p = points.depixelate(pix);
-      miffile << "Point " << p.x << " " << p.y << endl;
-      miffile << "    Symbol (32,0,10)" << endl;
+      miffile << "Point " << p.x << " " << p.y << std::endl;
+      miffile << "    Symbol (32,0,10)" << std::endl;
    }
 
    return true;
 }
 
-bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const ShapeMap& map)
+bool MapInfoData::exportFile(std::ostream& miffile, std::ostream& midfile, const ShapeMap& map)
 {
    // if bounds has not been filled in, fill it in
    if (m_bounds.empty()) {
       char bounds[256];
-      sprintf(bounds,"Bounds (%10f, %10f) (%10f, %10f)", map.getRegion().bottom_left.x, 
+      sprintf(bounds,"Bounds (%10f, %10f) (%10f, %10f)", map.getRegion().bottom_left.x,
                                                          map.getRegion().bottom_left.y,
                                                          map.getRegion().top_right.x,
                                                          map.getRegion().top_right.y);
@@ -298,34 +298,34 @@ bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const ShapeMap&
       if (map.getAttributeTable().isVisible(i)) {
          const SalaShape& poly = shape.second;
          if (poly.isPoint()) {
-            miffile << "POINT " << poly.getPoint().x << " " << poly.getPoint().y << endl;
-            miffile << "    SYMBOL (32,0,10)" << endl;
+            miffile << "POINT " << poly.getPoint().x << " " << poly.getPoint().y << std::endl;
+            miffile << "    SYMBOL (32,0,10)" << std::endl;
          }
          else if (poly.isLine()) {
             miffile << "LINE " << poly.getLine().start().x << " " 
                                << poly.getLine().start().y << " " 
                                << poly.getLine().end().x << " " 
-                               << poly.getLine().end().y << endl;
-            miffile << "    PEN (1,2,0)" << endl; 
+                               << poly.getLine().end().y << std::endl;
+            miffile << "    PEN (1,2,0)" << std::endl;
          }
          else if (poly.isPolyLine()) {
-            miffile << "PLINE" << endl;
-            miffile << "  " << poly.m_points.size() << endl;
+            miffile << "PLINE" << std::endl;
+            miffile << "  " << poly.m_points.size() << std::endl;
             for (auto& point: poly.m_points) {
-               miffile << point.x << " " << point.y << endl;
+               miffile << point.x << " " << point.y << std::endl;
             }
-            miffile << "    PEN (1,2,0)" << endl; 
+            miffile << "    PEN (1,2,0)" << std::endl;
          }
          else if (poly.isPolygon()) {
-            miffile << "REGION  1" << endl;
-            miffile << "  " << poly.m_points.size() + 1 << endl;
+            miffile << "REGION  1" << std::endl;
+            miffile << "  " << poly.m_points.size() + 1 << std::endl;
             for (auto& point: poly.m_points) {
-               miffile << point.x << " " << point.y << endl;
+               miffile << point.x << " " << point.y << std::endl;
             }
-            miffile << poly.m_points[0].x << " " << poly.m_points[0].y << endl;
-            miffile << "    PEN (1,2,0)" << endl; 
-            miffile << "    BRUSH (2,16777215,16777215)" << endl; 
-            miffile << "    CENTER " << poly.getCentroid().x << " " << poly.getCentroid().y << endl;
+            miffile << poly.m_points[0].x << " " << poly.m_points[0].y << std::endl;
+            miffile << "    PEN (1,2,0)" << std::endl;
+            miffile << "    BRUSH (2,16777215,16777215)" << std::endl;
+            miffile << "    CENTER " << poly.getCentroid().x << " " << poly.getCentroid().y << std::endl;
          }
       }
    }
@@ -333,7 +333,7 @@ bool MapInfoData::exportFile(ostream& miffile, ostream& midfile, const ShapeMap&
    return true;
 }
 
-bool MapInfoData::exportPolygons(ostream& miffile, ostream& midfile, const prefvec<pqvector<Point2f>>& polygons, const QtRegion& region)
+bool MapInfoData::exportPolygons(std::ostream& miffile, std::ostream& midfile, const prefvec<pqvector<Point2f>>& polygons, const QtRegion& region)
 {
    // if bounds has not been filled in, fill it in
    if (m_bounds.empty()) {
@@ -360,17 +360,17 @@ bool MapInfoData::exportPolygons(ostream& miffile, ostream& midfile, const prefv
    miffile.precision(16);
    for (size_t j = 0; j < polygons.size(); j++) {
       Point2f centre;
-      miffile << "QtRegion  1" << endl;
-      miffile << "  " << polygons[j].size() + 1 << endl; 
+      miffile << "QtRegion  1" << std::endl;
+      miffile << "  " << polygons[j].size() + 1 << std::endl;
       for (size_t k = 0; k < polygons[j].size(); k++) {
          centre += polygons[j][k];
-         miffile << polygons[j][k].x << " " << polygons[j][k].y << endl;
+         miffile << polygons[j][k].x << " " << polygons[j][k].y << std::endl;
       }
-      miffile << polygons[j][0].x << " " << polygons[j][0].y << endl;
-      miffile << "    Pen (1,2,0)" << endl; 
-      miffile << "    Brush (2,16777215,16777215)" << endl; 
+      miffile << polygons[j][0].x << " " << polygons[j][0].y << std::endl;
+      miffile << "    Pen (1,2,0)" << std::endl;
+      miffile << "    Brush (2,16777215,16777215)" << std::endl;
       centre /= polygons[j].size();
-      miffile << "    Center " << centre.x << " " << centre.y << endl;
+      miffile << "    Center " << centre.x << " " << centre.y << std::endl;
    }
 
    return true;
@@ -389,7 +389,7 @@ MapInfoData::MapInfoData()
    // note: m_bounds is filled in later
 }
 
-bool MapInfoData::readheader(istream& miffile)
+bool MapInfoData::readheader(std::istream& miffile)
 {
    std::string line;
 
@@ -437,7 +437,7 @@ bool MapInfoData::readheader(istream& miffile)
    return true;
 }
 
-bool MapInfoData::readcolumnheaders(istream& miffile, istream& midfile, std::vector<std::string>& columnheads)
+bool MapInfoData::readcolumnheaders(std::istream& miffile, std::istream& midfile, std::vector<std::string>& columnheads)
 {
    std::string line;
 
@@ -466,30 +466,30 @@ bool MapInfoData::readcolumnheaders(istream& miffile, istream& midfile, std::vec
    return true;
 }
 
-void MapInfoData::writeheader(ostream& miffile)
+void MapInfoData::writeheader(std::ostream& miffile)
 {
-   miffile << m_version << endl;
-   miffile << m_charset << endl;
-   miffile << "Delimiter \"" << m_delimiter << "\"" << endl;
-   miffile << m_index << endl;
+   miffile << m_version << std::endl;
+   miffile << m_charset << std::endl;
+   miffile << "Delimiter \"" << m_delimiter << "\"" << std::endl;
+   miffile << m_index << std::endl;
    miffile << m_coordsys;
-   miffile << m_bounds << endl;
+   miffile << m_bounds << std::endl;
 }
 
 // note: stopped using m_table and m_columnheads as of VERSION_MAPINFO_SHAPES
 // simply hack up the table now for own purposes
 
-void MapInfoData::writetable(ostream& miffile, ostream& midfile, const AttributeTable& attributes)
+void MapInfoData::writetable(std::ostream& miffile, std::ostream& midfile, const AttributeTable& attributes)
 {
-   miffile << "Columns " << attributes.getColumnCount() + 1 << endl;
+   miffile << "Columns " << attributes.getColumnCount() + 1 << std::endl;
    /*
-   miffile << "Columns " << m_columnheads.size() + 1 + attributes.getColumnCount() << endl;
+   miffile << "Columns " << m_columnheads.size() + 1 + attributes.getColumnCount() << std::endl;
 
    for (int i = 0; i < m_columnheads.size(); i++) {
-      miffile << m_columnheads[i] << endl;
+      miffile << m_columnheads[i] << std::endl;
    }
    */
-   miffile << "  Depthmap_Ref Integer" << endl;
+   miffile << "  Depthmap_Ref Integer" << std::endl;
 
    for (int j = 0; j < attributes.getColumnCount(); j++) {
       std::string colname = attributes.getColumnName(j);
@@ -506,10 +506,10 @@ void MapInfoData::writetable(ostream& miffile, ostream& midfile, const Attribute
             lastalpha = false;
          }
       }
-      miffile << " Float" << endl;
+      miffile << " Float" << std::endl;
    }
 
-   miffile << "Data" << endl << endl;
+   miffile << "Data" << std::endl << std::endl;
 
    for (int k = 0; k < attributes.getRowCount(); k++) {
       /*
@@ -527,7 +527,7 @@ void MapInfoData::writetable(ostream& miffile, ostream& midfile, const Attribute
 
 ////////////////////////////////////////////////////////////////////////////////
 
-istream& MapInfoData::read(istream& stream, int version)
+std::istream& MapInfoData::read(std::istream& stream, int version)
 {
    m_version = dXstring::readString(stream);
    m_charset = dXstring::readString(stream);
@@ -539,7 +539,7 @@ istream& MapInfoData::read(istream& stream, int version)
    return stream;
 }
 
-ostream& MapInfoData::write(ostream& stream)
+std::ostream& MapInfoData::write(std::ostream& stream)
 {
    dXstring::writeString(stream, m_version);
    dXstring::writeString(stream, m_charset);

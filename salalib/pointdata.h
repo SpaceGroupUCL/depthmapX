@@ -84,10 +84,10 @@ private:
    bool m_hasIsovistAnalysis = false;
 protected:
    std::string m_name;
-   Point **m_points;    // will contain the graph reference when created
+   std::vector<Point> m_points;    // will contain the graph reference when created
    //int m_rows;
    //int m_cols;
-   int m_point_count;
+   int m_filled_point_count;
    double m_spacing;
    Point2f m_offset;
    Point2f m_bottom_left;
@@ -102,19 +102,10 @@ protected:
    AttributeTable m_attributes;
 public:
    PointMap(const std::string& name = std::string("VGA Map"));
-   PointMap(const PointMap& pointdata);
-   PointMap& operator = (const PointMap& pointdata);
-   void construct( const PointMap& pointdata );
-   virtual ~PointMap();
    const std::string& getName() const
    { return m_name; }
-   //
-   // Quick mod - TV
-#if defined(_WIN32)
-   void communicate( __time64_t& atime, Communicator *comm, int record );
-#else
+
    void communicate( time_t& atime, Communicator *comm, int record );
-#endif
    // constrain is constrain to existing rows / cols
    PixelRef pixelate( const Point2f& p, bool constrain = true, int scalefactor = 1 ) const;
    Point2f depixelate( const PixelRef& p, double scalefactor = 1.0 ) const;   // Inlined below 
@@ -134,16 +125,10 @@ public:
    //
    bool isProcessed() const
    { return m_processed; }
-   bool isBoundaryGraph() const
-   { return m_boundarygraph; }
-   //
-   bool fillLines();
    void fillLine(const Line& li);
    bool blockLines();
-   void blockLine(int key, const Line& li);
+   void blockLine(const Line& li);
    void unblockLines(bool clearblockedflag = true);
-   void addLineDynamic(LineKey ref,const Line& line);
-   void removeLineDynamic(LineKey ref,const Line& line);
    bool fillPoint(const Point2f& p, bool add = true); // use add = false for remove point
    //bool blockPoint(const Point2f& p, bool add = true); // no longer used
    //
@@ -152,17 +137,10 @@ public:
    bool undoPoints();
    bool canUndo() const
       { return !m_processed && m_undocounter != 0; }
-   //
-   bool importPoints(istream& stream);
-   void outputPoints( ostream& stream, char delim );
-   void outputMergeLines(ostream& stream, char delim);
-   //
-   void makeConstants();
+   void outputPoints(std::ostream& stream, char delim );
+   void outputMergeLines(std::ostream& stream, char delim);
    int  tagState(bool settag, bool sparkgraph = false);
-   bool binMap( Communicator *comm );
-   bool sparkGraph( Communicator *comm );
    bool sparkGraph2( Communicator *comm, bool boundarygraph, double maxdist );
-   bool dynamicSparkGraph2();
    bool sparkPixel2(PixelRef curs, int make, double maxdist = -1.0);
    bool sieve2(sparkSieve2& sieve, std::vector<PixelRef>& addlist, int q, int depth, PixelRef curs);
    // bool makeGraph( Graph& graph, int optimization_level = 0, Communicator *comm = NULL);
@@ -181,29 +159,24 @@ public:
    bool mergePixels(PixelRef a, PixelRef b);
    void mergeFromShapeMap(const ShapeMap& shapemap);
    bool isPixelMerged(const PixelRef &a);
-   //
-   void outputSummary(ostream& myout, char delimiter = '\t');
-   void outputMif( ostream& miffile, ostream& midfile );
-   void outputNet( ostream& netfile );
-   void outputConnections(ostream& myout);
-   void outputBinSummaries(ostream& myout);
-   //
-   // scruffy little helper functions
-   int u(int i, int x, int s) const
-      { return i + (x * s); }
-   int v(int j, int y, int s) const
-      { return j + (y * s); }
-   int remaining(int i, int j, int x, int y, int q);
-   //
-   Point& getPoint(const PixelRef& p) const
-      { return m_points[p.x][p.y]; }
+   
+   void outputSummary(std::ostream& myout, char delimiter = '\t');
+   void outputMif(std::ostream& miffile, std::ostream& midfile );
+   void outputNet(std::ostream& netfile );
+   void outputConnections(std::ostream& myout);
+   void outputBinSummaries(std::ostream& myout);
+
+   const Point& getPoint(const PixelRef& p) const
+      { return m_points[p.x*m_rows + p.y]; }
+   Point& getPoint(const PixelRef& p)
+      { return m_points[p.x*m_rows + p.y]; }
    const int& pointState( const PixelRef& p ) const
-      { return m_points[p.x][p.y].m_state; }
+      { return m_points[p.x*m_rows + p.y].m_state; }
    // to be phased out
    bool blockedAdjacent( const PixelRef p ) const;
    //
-   int getPointCount() const
-      { return m_point_count; }
+   int getFilledPointCount() const
+      { return m_filled_point_count; }
    //
    void requireIsovistAnalysis()
    {
@@ -228,14 +201,9 @@ protected:
 public:
    bool isSelected() const                              // does a selection exist
       { return m_selection != NO_SELECTION; }
-   bool isPinned() const
-      { return m_pinned_selection; }
    bool clearSel(); // clear the current selection
    bool setCurSel( QtRegion& r, bool add = false ); // set current selection
    bool setCurSel(const std::vector<int> &selset, bool add = false );
-   bool overrideSelPixel(PixelRef pix);    // set a pixel to selected: careful!
-   //bool togglePin();
-   //bool convertSelToDataObject( MetaGraph& meta_graph );
    // Note: passed by ref, use with care in multi-threaded app
    std::set<int>& getSelSet()
       { return m_selection_set; }
@@ -243,8 +211,7 @@ public:
       { return m_selection_set; }
    //
    PixelRefVector getLayerPixels(int layer);
-   PixelRefVector getDataObjectPixels(int layer, int object);
-   //
+
    // Attribute functionality
 protected:
    // which attribute is currently displayed:
@@ -254,10 +221,6 @@ public:
       { return m_attributes.insertColumn(name); }
    void removeAttribute(int col)
       { m_attributes.removeColumn(col); }
-   void setAttribute(PixelRef pix, const std::string& name, float val)
-      { m_attributes.setValue(m_attributes.getRowid(pix),name,val); }
-   void incrementAttribute(PixelRef pix, const std::string& name)
-      { m_attributes.incrValue(m_attributes.getRowid(pix),name); }
    // I don't want to do this, but every so often you will need to update this table 
    // use const version by preference
    AttributeTable& getAttributeTable()
@@ -302,10 +265,7 @@ public:
         m_display_params = m_attributes.getDisplayParams(m_displayed_attribute);
      }
      return m_displayed_attribute; }
-   //
-   double getDisplayedAverage()
-      { return m_attributes.getAvgValue( m_displayed_attribute ); }
-   //
+
    double getLocationValue(const Point2f& point);
    //
    // Screen functionality
@@ -328,8 +288,6 @@ public:
    bool findNextPoint() const;
    Point2f getNextPointLocation() const
    { return getPoint(cur).m_location; }
-   Point& getNextPoint() const
-   { return getPoint(cur); }
    bool findNextRow() const;
    Line getNextRow() const;
    bool findNextPointRow() const;
@@ -355,11 +313,11 @@ public:
    // this is an odd helper function, value in range 0 to 1
    PixelRef pickPixel(double value) const;
 public:
-   bool read(istream &stream, int version );
-   bool write( ofstream& stream, int version );
+   bool read(std::istream &stream, int version );
+   bool write(std::ofstream& stream, int version );
    void addGridConnections(); // adds grid connections where graph does not include them
-   void outputConnectionsAsCSV(ostream &myout, std::string delim = ",");
-   void outputLinksAsCSV(ostream &myout, std::string delim = ",");
+   void outputConnectionsAsCSV(std::ostream &myout, std::string delim = ",");
+   void outputLinksAsCSV(std::ostream &myout, std::string delim = ",");
 };
 
 // inlined to make thread safe
@@ -437,115 +395,6 @@ inline bool operator > (const AngularTriple& mp1, const AngularTriple& mp2)
 { return (mp1.angle > mp2.angle) || (mp1.angle == mp2.angle && mp1.pixel > mp2.pixel); }
 inline bool operator != (const AngularTriple& mp1, const AngularTriple& mp2)
 { return (mp1.angle != mp2.angle) || (mp1.pixel != mp2.pixel); }
-
-//
-
-// A scruffy little helper class for the original makeGraph
-
-struct Grad {
-   int a;
-   int b;
-   float length;
-   float ratio;
-   Grad(int u = -1, int v = -1) 
-   { 
-      a = u; b = v; 
-      length = (float) sqrt(double(u * u) + double(v * v)); 
-      ratio = float(v) / float(u);  // v is sometimes 0, thus v/u
-   }
-   int x(int dir) const {
-      int w;
-      if (dir / 4 == 0)
-         w = a;
-      else
-         w = b;
-      if (dir % 2 == 0)
-         w *= -1;
-      return w;
-   }
-   int y(int dir) const {
-      int w;
-      if (dir / 4 == 0)
-         w = b;
-      else
-         w = a;
-      if ((dir / 2) % 2 == 0)
-         w *= -1;
-      return w;
-   }
-            // q quadrants:
-            //
-            //      \ 6 | 7 /
-            //      0 \ | / 1
-            //      - -   - -
-            //      2 / | \ 3
-            //      / 4 | 5 \
-            
-   int whichbin(int dir) const {
-      int w;
-      if (ratio == 0.0f) {                      // =  0 degrees (special case) 
-         switch (dir) {
-         case 0:
-            return 16;
-         case 1:
-            return 0;
-         case 4:
-            return 24;
-         case 6:
-            return 8;
-         }
-      }
-      if (ratio < 0.2679491924311227f) {        // < 15 degrees
-         w = 1;
-      }
-      else if (ratio < 0.5773502691896257f) {   // < 30 degrees
-         w = 2;
-      }
-      else if (ratio < 1.0f) {                  // < 45 degrees
-         w = 3;
-      }
-      else {                                    // = 45 degrees (special case)
-         switch (dir) {
-         case 0:
-            return 20;
-         case 1:
-            return 28;
-         case 2:
-            return 12;
-         case 3:
-            return 4;
-         }
-      }
-      switch (dir) {
-      case 0:
-         w = 16 + w;
-         break;
-      case 1:
-         w = 32 - w;
-         break;
-      case 2:
-         w = 16 - w;
-         break;
-      case 3:
-         w = 0 + w;
-         break;
-      case 4:
-         w = 24 - w;
-         break;
-      case 5:
-         w = 24 + w;
-         break;
-      case 6:
-         w = 8 + w;
-         break;
-      case 7:
-         w = 8 - w;
-         break;
-      }
-      return w;
-   }
-};
-
 
 // true grads are also similar to generated grads...
 // this scruffy helper function converts a true grad to a bin:
@@ -632,24 +481,7 @@ inline int whichbin( const Point2f& grad )
    else {
       bin += 4;
    }
-   /*
-   // True angular bins
-   if (ratio <      0.0984914033571642) {   // 1/64
-      // nop
-   }
-   else if (ratio < 0.3033466836073423) {   // 3/64
-      bin += 1;
-   }
-   else if (ratio < 0.5345111359507916) {   // 5/64
-      bin += 2;
-   }
-   else if (ratio < 0.8206787908286603) {   // 7/64
-      bin += 3;
-   }
-   else {
-      bin += 4;
-   }
-   */
+
    if (bin < 0) {
       bin = -bin;
    }

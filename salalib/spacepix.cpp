@@ -454,7 +454,7 @@ bool SpacePixel::findNextLine(bool& nextlayer) const
 
 const Line& SpacePixel::getNextLine() const
 {
-   m_display_lines[m_current] = 0;  // You've drawn it  
+   m_display_lines[m_current] = 0;  // You've drawn it
    /*
    // Fixing: removed rectangle scaling
    l.denormalScale( m_region );
@@ -698,60 +698,13 @@ bool SpacePixel::intersect_exclude( const Line& l, double tolerance )
    return false;
 }
 
-/*
-// get the first crossing point of lines with lines...
-Point2f SpacePixel::getFirstCrossingPoint(const Line& l, int fromend, pvecint& ignorelist)
-{
-   Point2f point;
-
-   int axis;
-   if (l.width() > l.height()) {
-      axis = XAXIS;
-   }
-   else {
-      axis = YAXIS;
-   }
-
-   pvecdouble cross_list = getCrossingPoints(l, axis, ignorelist);
-
-   if (fromend == Line::START) {
-      if (!cross_list.size()) {
-         point = l.end();
-      }
-      else {
-         if (axis == XAXIS || l.sign() == 1) {
-            point = l.point_on_line(cross_list.head(),axis);
-         }
-         else {
-            point = l.point_on_line(cross_list.tail(),axis);
-         }
-      }
-   }
-   else {
-      if (!cross_list.size()) {
-         point = l.start();
-      }
-      else {
-         if (axis == XAXIS || l.sign() == 1) {
-            point = l.point_on_line(cross_list.tail(),axis);
-         }
-         else {
-            point = l.point_on_line(cross_list.head(),axis);
-         }
-      }
-   }
-
-   return point;
-}
-*/
-
 void SpacePixel::cutLine(Line& l, short dir) 
 {
    m_test++;
 
    double tolerance = l.length() * 1e-9;
 
-   pvecdouble loc;
+   std::set<double> loc;
    PixelRefVector vec = pixelateLine(l);
 
    int axis;
@@ -781,7 +734,7 @@ void SpacePixel::cutLine(Line& l, short dir)
                      break;
                   case 2:
                      {
-                        loc.add( l.intersection_point(linetest.line, axis) );
+                        loc.insert( l.intersection_point(linetest.line, axis) );
                      }
                      break;
                   case 1:
@@ -810,14 +763,14 @@ void SpacePixel::cutLine(Line& l, short dir)
                                  if (sgn(oa) != sgn(ob) || fabs(oa) < tolerance * linetest.line.length() || fabs(ob) < tolerance * linetest.line.length()) {
                                     // crossed
                                     if (fabs(oa) > tolerance * linetest.line.length()) {  // checks not parallel...
-                                       loc.add( l.intersection_point(linetest.line, axis) );
+                                       loc.insert( l.intersection_point(linetest.line, axis) );
                                     }
                                     else if (fabs(ob) > tolerance * linetest.line.length()) {
-                                       loc.add( l.intersection_point(touching_lines[pair], axis) );
+                                       loc.insert( l.intersection_point(touching_lines[pair], axis) );
                                     }
                                     else {
                                        // parallel with both lines ... this shouldn't happen...
-                                       cerr << "couldn't chop at boundary" << endl;
+                                       std::cerr << "couldn't chop at boundary" << std::endl;
                                     }
                                  }
                               }
@@ -845,12 +798,12 @@ void SpacePixel::cutLine(Line& l, short dir)
          // check the first loc actually occurred in this pixel...
          if ( (dir == l.direction() && (axis == XAXIS || l.sign() == 1)) ||
               (dir != l.direction() && (axis == YAXIS && l.sign() == -1)) ) {      
-            if (pix == pixelate(l.point_on_line(loc.head(),axis))) {
+            if (pix == pixelate(l.point_on_line(*loc.begin(),axis))) {
                found = true;
             }
          }
          else {
-            if (pix == pixelate(l.point_on_line(loc.tail(),axis))) {
+            if (pix == pixelate(l.point_on_line(*loc.rbegin(),axis))) {
                found = true;
             }
          }
@@ -862,34 +815,34 @@ void SpacePixel::cutLine(Line& l, short dir)
       double pos;
       if (dir == l.direction()) {
          if (axis == XAXIS) {
-            pos = loc.head();
+            pos = *loc.begin();
             l.by() = l.ay() + l.sign() * l.height() * (pos - l.ax()) / l.width();
             l.bx() = pos;
          }
          else if (l.sign() == 1) {
-            pos = loc.head();
+            pos = *loc.begin();
             l.bx() = l.ax() + l.width() * (pos - l.ay()) / l.height();
             l.by() = pos;
          }
          else {
-            pos = loc.tail();
+            pos = *loc.rbegin();
             l.bx() = l.ax() + l.width() * (l.ay() - pos) / l.height();
             l.by() = pos;
          }
       }
       else {
          if (axis == XAXIS) {
-            pos = loc.tail();
+            pos = *loc.rbegin();
             l.ay() = l.by() - l.sign() * l.height() * (l.bx() - pos) / l.width();
             l.ax() = pos;
          }
          else if (l.sign() == 1) {
-           pos = loc.tail();
+           pos = *loc.rbegin();
            l.ax() = l.bx() - l.width() * (l.by() - pos) / l.height();
            l.ay() = pos;
          }
          else {
-           pos = loc.head();
+           pos = *loc.begin();
            l.ax() = l.bx() - l.width() * (pos - l.by()) / l.height();
            l.ay() = pos;
          }
@@ -901,17 +854,6 @@ pvecdouble SpacePixel::getCrossingPoints(const Line& l, int axis, pvecint& ignor
 {
    pvecdouble cross_list;
    pvecint checked_list = ignorelist;
-
-   /*
-   // Regions no longer normalised
-   l.normalScale( m_region );
-
-   // Now it's me thats doing the squashing business... 
-   // hmm... must correct pixelate function, not the DXF import...
-
-   squash( l.bottom_left );
-   squash( l.top_right );
-   */
 
    PixelRefVector list = pixelateLine( l );
 
@@ -946,7 +888,7 @@ pvecdouble SpacePixel::getCrossingPoints(const Line& l, int axis, pvecint& ignor
    return cross_list;
 }
 
-bool SpacePixel::read( istream& stream, int version )
+bool SpacePixel::read( std::istream& stream, int version )
 {
    // clear anything that was there:
    if (m_pixel_lines)
@@ -1015,7 +957,7 @@ bool SpacePixel::read( istream& stream, int version )
    return true;
 }
 
-bool SpacePixel::write( ofstream& stream )
+bool SpacePixel::write( std::ofstream& stream )
 {
    // write name:
    dXstring::writeString(stream, m_name );

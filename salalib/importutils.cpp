@@ -55,7 +55,7 @@ namespace depthmapX {
         // Ideally datamaps and drawingmaps should be more similar.
 
         if(mapType == DRAWINGMAP) {
-            mgraph.SuperSpacePixel::push_back(SpacePixelFile(name));
+            mgraph.m_spacePixels.emplace_back(name);
         }
 
         bool parsed = false;

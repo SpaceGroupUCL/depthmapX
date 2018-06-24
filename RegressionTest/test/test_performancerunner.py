@@ -83,15 +83,15 @@ class test_PerformanceAggregation(unittest.TestCase):
     def test_aggregation(self):
         with DisposableDirectory("testdir") as d:
             os.makedirs(d.name())
-            nameTemplate = "test{0}.csv"
-            with open(os.path.join(d.name(), nameTemplate.format(0)), "w") as f:
+            nameTemplate = "test{0}{1}.csv"
+            with open(os.path.join(d.name(), nameTemplate.format(0,0)), "w") as f:
                 f.write("action,duration\nt1,3\nt2,2\n")
-            with open(os.path.join(d.name(), nameTemplate.format(1)), "w") as f:
+            with open(os.path.join(d.name(), nameTemplate.format(1,0)), "w") as f:
                 f.write("action,duration\nt1,1.5\nt2,2.5\n")
-            with open(os.path.join(d.name(), nameTemplate.format(2)), "w") as f:
+            with open(os.path.join(d.name(), nameTemplate.format(2,0)), "w") as f:
                 f.write("action,duration\nt1,2\nt2,1.5\n")
 
-            resFile = performancerunner.aggregatePerformanceStats(d.name(), 3, nameTemplate)
+            resFile = performancerunner.aggregatePerformanceStats(d.name(), 3, 1, nameTemplate)
             with open(resFile, "r") as f:
                 reader = csv.DictReader(f)
                 line = next(reader)

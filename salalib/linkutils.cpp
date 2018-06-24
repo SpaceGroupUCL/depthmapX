@@ -19,7 +19,7 @@
 namespace depthmapX {
     std::vector<PixelRefPair> pixelateMergeLines(const std::vector<Line>& mergeLines, PointMap& currentMap)
     {
-        vector<PixelRefPair> mergePixelPairs;
+        std::vector<PixelRefPair> mergePixelPairs;
 
         std::vector<Line>::const_iterator iter = mergeLines.begin(), end =
         mergeLines.end();
@@ -50,7 +50,7 @@ namespace depthmapX {
                 std::stringstream message;
                 message << "Line ends not both on painted analysis space (index: "
                         << (iter - links.begin() + 1)
-                        << ")" << flush;
+                        << ")" << std::flush;
                 throw depthmapX::InvalidLinkException(message.str().c_str());
             }
 
@@ -65,7 +65,7 @@ namespace depthmapX {
                 message << "Link pixel found that is already linked on the map (index: "
                         << (iter - links.begin() + 1)
                         << ")"
-                        << flush;
+                        << std::flush;
                 throw depthmapX::InvalidLinkException(message.str().c_str());
             }
 
@@ -86,7 +86,7 @@ namespace depthmapX {
                     std::stringstream message;
                     message << "Overlapping link found (index: "
                             << (iter - links.begin() + 1)
-                            << ")" << flush;
+                            << ")" << std::flush;
                     throw depthmapX::InvalidLinkException(message.str().c_str());
                 }
             }

@@ -10,24 +10,24 @@ def writeConfig(filename, rundir):
         f.write('   "basebinlocation": "../baselineBinaries",\n')
         f.write('   "testbinlocation": "../..",\n')
         f.write('  "testcases": {\n')
-        f.write('      "test1": {\n')
+        f.write('      "test1": [{\n')
         f.write('           "infile": "infile.graph",\n')
         f.write('           "outfile": "outfile.graph",\n')
         f.write('           "mode": "VGA",\n')
         f.write('           "extraArgs": {\n')
         f.write('                 "-vm": "metric",\n')
-        f.write('                  "-vr": "7"}}}}')
+        f.write('                  "-vr": "7"}}]}}')
     
 
 
 class TestMethods(unittest.TestCase):
     def test_buildCmd(self):
-        data = { "infile": "foo.graph", "outfile": "bar.graph", "mode": "VGA", "extraArgs": { "-vm": "visibility", "-vg": "", "-vr": "5"}}
-        cmd = config.buildCmd( data )
-        self.assertEqual(cmd.infile, "foo.graph")
-        self.assertEqual(cmd.outfile, "bar.graph")
-        self.assertEqual(cmd.mode, "VGA")
-        self.assertEqual(len(cmd.extraArgs),3)
+        data = [{ "infile": "foo.graph", "outfile": "bar.graph", "mode": "VGA", "extraArgs": { "-vm": "visibility", "-vg": "", "-vr": "5"}}]
+        cmds = config.buildCmd( data )
+        self.assertEqual(cmds[0].infile, "foo.graph")
+        self.assertEqual(cmds[0].outfile, "bar.graph")
+        self.assertEqual(cmds[0].mode, "VGA")
+        self.assertEqual(len(cmds[0].extraArgs),3)
 
 
     def test_configClass(self):

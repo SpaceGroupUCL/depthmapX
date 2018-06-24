@@ -58,7 +58,7 @@ void LinkParser::parse(int argc, char *argv[])
                 message << "Invalid link provided ("
                         << argv[i]
                         << "). Should only contain digits dots and commas"
-                        << flush;
+                        << std::flush;
                 throw CommandLineException(message.str().c_str());
             }
             manualLinks.push_back(argv[i]);
@@ -76,10 +76,10 @@ void LinkParser::parse(int argc, char *argv[])
         if (!linksStream)
         {
             std::stringstream message;
-            message << "Failed to load file " << linksFile << ", error " << flush;
+            message << "Failed to load file " << linksFile << ", error " << std::flush;
             throw depthmapX::RuntimeException(message.str().c_str());
         }
-        vector<Line> lines = EntityParsing::parseLines(linksStream, '\t');
+        std::vector<Line> lines = EntityParsing::parseLines(linksStream, '\t');
         _mergeLines.insert(std::end(_mergeLines), std::begin(lines), std::end(lines));
     }
     else if(!manualLinks.empty())
@@ -92,7 +92,7 @@ void LinkParser::parse(int argc, char *argv[])
         {
             linksStream << "\n" << *iter;
         }
-        vector<Line> lines = EntityParsing::parseLines(linksStream, ',');
+        std::vector<Line> lines = EntityParsing::parseLines(linksStream, ',');
         _mergeLines.insert(std::end(_mergeLines), std::begin(lines), std::end(lines));
     }
 }
