@@ -2029,9 +2029,7 @@ void ShapeMap::getShapeCuts(const Line& li_orig, std::vector<ValuePair>& cuts)
                   int x = shaperef.m_polyrefs[k];
                   if (tested.searchindex(IntPair(shaperef.m_shape_ref,x)) == paftl::npos) {
                      SalaShape& poly = m_shapes.find(shaperef.m_shape_ref)->second;
-                     
-                     // Quick mod - TV
-             Line li2(poly.m_points[x], poly.m_points[(x+1) % poly.m_points.size()]);
+                     Line li2(poly.m_points[x], poly.m_points[(x+1) % poly.m_points.size()]);
                      if (intersect_region(li,li2)) {
                         // note: in this case m_region is stored as a line:
                         if (intersect_line(li,li2)) {
