@@ -122,8 +122,8 @@ int BSPTree::pickMidpointLine(const std::vector<TaggedLine> &lines, BSPNode *par
  * from one side of the chosen to the other are split in two and each part goes to the relevant set.
  */
 
-std::pair<std::vector<TaggedLine>, std::vector<TaggedLine> > BSPTree::makeLines(Communicator *communicator,
-                                                                        time_t atime,
+std::pair<std::vector<TaggedLine>, std::vector<TaggedLine> > BSPTree::makeLines(Communicator *,
+                                                                        time_t ,
                                                                         const std::vector<TaggedLine> &lines,
                                                                         BSPNode *base)
 {
@@ -148,7 +148,7 @@ std::pair<std::vector<TaggedLine>, std::vector<TaggedLine> > BSPTree::makeLines(
    v0.normalise();
 
    for (size_t i = 0; i < lines.size(); i++) {
-      if (i == chosen) {
+      if (i == static_cast<unsigned int>(chosen)) {
          continue;
       }
       const Line& testline = lines[i].line;

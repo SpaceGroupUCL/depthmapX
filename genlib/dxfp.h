@@ -189,7 +189,7 @@ public:
    void scale(const DxfVertex& base_vertex, const DxfVertex& scale)
    { m_min.scale(base_vertex, scale); m_max.scale(base_vertex, scale); }
    // rotate tricky...
-   void rotate(const DxfVertex& base_vertex, double angle)
+   void rotate(const DxfVertex&, double)
    { ; }
    void translate(const DxfVertex& translation)
    { m_min.translate(translation); m_max.translate(translation); }

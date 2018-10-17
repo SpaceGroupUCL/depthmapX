@@ -1415,7 +1415,7 @@ public:
    { return m_vector.search(Pair(item)).value(); }
    const T2& search(const T1& item) const
    { return m_vector.search(Pair(item)).value(); }
-   const size_t searchindex(const T1& item) const
+   size_t searchindex(const T1& item) const
    { return m_vector.searchindex(Pair(item)); }
    void remove_at(size_t i)
    { m_vector.remove_at(i); }

@@ -661,7 +661,7 @@ DxfTableRow::DxfTableRow(const std::string& name)
    m_name = name;
 }
 
-bool DxfTableRow::parse( const DxfToken& token, DxfParser *parser )
+bool DxfTableRow::parse( const DxfToken& token, DxfParser * )
 {
    bool parsed = false;
 
@@ -1252,7 +1252,7 @@ DxfVertex DxfCircle::getVertex(int i, int segments) const
    return v;
 }
 
-void DxfCircle::reflect(double x, double y)
+void DxfCircle::reflect(double , double )
 {
    // reflect has no effect on a circle
 }
