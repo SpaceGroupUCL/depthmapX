@@ -16,3 +16,4 @@ win32: QMAKE_CXXFLAGS_WARN_ON -= -W3
 win32: QMAKE_CXXFLAGS_WARN_ON += -W4
 
 linux: QMAKE_CXXFLAGS_WARN_ON += -Wno-overloaded-virtual
+mac: QMAKE_CXXFLAGS_WARN_ON += -Wno-overloaded-virtual
