@@ -59,7 +59,7 @@ const double DXF_PI = 3.1415926535897932384626433832795;
 class DxfToken {
 public:
    int code;
-   int size;
+   size_t size;
    std::string data;
    //
    DxfToken();
@@ -242,7 +242,7 @@ public:
    DxfPolyLine( int tag = -1 );
    void clear();  // for reuse when parsing
    //
-   int numVertices() const;
+   size_t numVertices() const;
    const DxfVertex& getVertex(int i) const;
    int getAttributes() const;
    const DxfRegion& getBoundingBox();
@@ -440,8 +440,8 @@ public:
    DxfSpline( int tag = -1 );
    void clear();  // for reuse when parsing
    //
-   int numVertices() const;
-   const DxfVertex& getVertex(int i) const;
+   size_t numVertices() const;
+   const DxfVertex& getVertex(size_t i) const;
    int getAttributes() const;
    //
    // some basic manipulation
@@ -512,8 +512,8 @@ protected:
    std::vector<DxfCircle>   m_circles;
    std::vector<DxfSpline>   m_splines;
    std::vector<DxfInsert>   m_inserts;
-   int                  m_total_point_count = 0;
-   int                  m_total_line_count = 0;
+   size_t                   m_total_point_count = 0;
+   size_t                   m_total_line_count = 0;
 public:
    DxfLayer( const std::string& name = "" );
    //
@@ -525,17 +525,17 @@ public:
    const DxfCircle& getCircle( int i ) const;
    const DxfSpline& getSpline( int i ) const;
    //
-   int numPoints() const;
-   int numLines() const;
-   int numPolyLines() const;
-   int numArcs() const;
-   int numEllipses() const;
-   int numCircles() const;
-   int numSplines() const;
+   size_t numPoints() const;
+   size_t numLines() const;
+   size_t numPolyLines() const;
+   size_t numArcs() const;
+   size_t numEllipses() const;
+   size_t numCircles() const;
+   size_t numSplines() const;
    //
-   int numTotalPoints() const
+   size_t numTotalPoints() const
       { return m_total_point_count; }
-   int numTotalLines() const
+   size_t numTotalLines() const
       { return m_total_line_count; }
    //
    // this merges an insert (so the insert remains flattened)
@@ -579,7 +579,7 @@ protected:
    std::map<std::string, DxfBlock>     m_blocks;
    std::map<std::string, DxfLineType>  m_line_types;
    //
-   long m_size;
+   size_t m_size;
    Communicator *m_communicator;
 public:
    DxfParser(Communicator *comm = NULL);
@@ -596,8 +596,8 @@ public:
    DxfLayer *getLayer( const std::string& layer_name ); // const; <- removed as will have to add layer when DXF hasn't declared one
    DxfLineType *getLineType( const std::string& line_type_name ); // const;
    //
-   int numLayers() const;
-   int numLineTypes() const;
+   size_t numLayers() const;
+   size_t numLineTypes() const;
    //
    friend std::istream& operator >> (std::istream& stream, DxfParser& dxfp);
 

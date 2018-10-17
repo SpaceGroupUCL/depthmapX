@@ -78,9 +78,8 @@ void BSPTree::make(Communicator *communicator, time_t atime, const std::vector<T
 
 int BSPTree::pickMidpointLine(const std::vector<TaggedLine> &lines, BSPNode *par) {
     int chosen = -1;
-    size_t i;
     Point2f midpoint;
-    for (i = 0; i < lines.size(); i++) {
+    for (size_t i = 0; i < lines.size(); i++) {
        midpoint += lines[i].line.start() + lines[i].line.end();
     }
     midpoint /= 2.0 * lines.size();
@@ -89,17 +88,17 @@ int BSPTree::pickMidpointLine(const std::vector<TaggedLine> &lines, BSPNode *par
        ver = false;
     }
     double chosendist = -1.0;
-    for (i = 0; i < lines.size(); i++) {
+    for (size_t i = 0; i < lines.size(); i++) {
        const Line& line = lines[i].line;
        if (ver) {
           if (line.height() > line.width() && (chosen == -1 || dist(line.midpoint(),midpoint) < chosendist)) {
-             chosen = i;
+             chosen = static_cast<int>(i);
              chosendist = dist(line.midpoint(),midpoint);
           }
        }
        else {
           if (line.width() > line.height() && (chosen == -1 || dist(line.midpoint(),midpoint) < chosendist)) {
-             chosen = i;
+             chosen = static_cast<int>(i);
              chosendist = dist(line.midpoint(),midpoint);
           }
        }
@@ -108,7 +107,7 @@ int BSPTree::pickMidpointLine(const std::vector<TaggedLine> &lines, BSPNode *par
     if (chosen == -1) {
        for (size_t i = 0; i < lines.size(); i++) {
           if (chosen == -1 || dist(lines[i].line.midpoint(),midpoint) < chosendist) {
-             chosen = i;
+             chosen = static_cast<int>(i);
              chosendist = dist(lines[i].line.midpoint(),midpoint);
           }
        }

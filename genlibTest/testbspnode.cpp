@@ -64,7 +64,7 @@ void compareLines(Line l1, Line l2, float EPSILON) {
 
 TEST_CASE("BSPTree::makeLines")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     typedef std::pair<std::vector<TaggedLine>, std::vector<TaggedLine> > TagLineVecPair;
 
     std::vector<TaggedLine> lines;
@@ -151,7 +151,7 @@ TEST_CASE("BSPTree::makeLines")
 
 TEST_CASE("BSPTree::make (all horizontal lines)", "all-left tree")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
 
     std::vector<TaggedLine> lines;
     lines.push_back(TaggedLine(Line(Point2f(1, 2), Point2f(2, 2)), 0));
@@ -186,7 +186,7 @@ TEST_CASE("BSPTree::make (all horizontal lines)", "all-left tree")
 
 TEST_CASE("BSPTree::make (all vertical lines)", "split tree")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
 
     std::vector<TaggedLine> lines;
     lines.push_back(TaggedLine(Line(Point2f(1.5, 1), Point2f(1.5, 3)), 0));

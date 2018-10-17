@@ -55,7 +55,7 @@ namespace dXstring {
 
     void writeString(std::ostream &stream, const std::string &s)
     {
-        unsigned int length = s.length();
+        unsigned int length = static_cast<unsigned int>(s.length());
         stream.write(reinterpret_cast<char *>(&length), sizeof(unsigned int));
         if (length > 0)
         {

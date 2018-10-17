@@ -101,11 +101,11 @@ TEST_CASE("map reading and writing")
 {
     using namespace dXreadwrite;
     std::map<int, float> intFloatMap;
-    intFloatMap.insert(std::make_pair(1,0.1));
-    intFloatMap.insert(std::make_pair(5,5000.0));
-    intFloatMap.insert(std::make_pair(34,-3.4));
-    intFloatMap.insert(std::make_pair(-2,0.2));
-    intFloatMap.insert(std::make_pair(6,0.6));
+    intFloatMap.insert(std::make_pair(1,0.1f));
+    intFloatMap.insert(std::make_pair(5,5000.0f));
+    intFloatMap.insert(std::make_pair(34,-3.4f));
+    intFloatMap.insert(std::make_pair(-2,0.2f));
+    intFloatMap.insert(std::make_pair(6,0.6f));
     SelfCleaningFile intFloatFile("intFloatMap.bin");
     {
         std::ofstream outfile(intFloatFile.Filename());
@@ -142,11 +142,11 @@ template<typename K, typename V> void comparePmapAndStdMap( const pmap<K, V> &pM
 TEST_CASE("Comaptibility between map pmap streaming")
 {
     std::map<int, float> intFloatMap;
-    intFloatMap.insert(std::make_pair(1,0.1));
-    intFloatMap.insert(std::make_pair(5,5000.0));
-    intFloatMap.insert(std::make_pair(34,-3.4));
-    intFloatMap.insert(std::make_pair(-2,0.2));
-    intFloatMap.insert(std::make_pair(6,0.6));
+    intFloatMap.insert(std::make_pair(1,0.1f));
+    intFloatMap.insert(std::make_pair(5,5000.0f));
+    intFloatMap.insert(std::make_pair(34,-3.4f));
+    intFloatMap.insert(std::make_pair(-2,0.2f));
+    intFloatMap.insert(std::make_pair(6,0.6f));
     SelfCleaningFile intFloatFile("intFloatMap.bin");
     {
         std::ofstream outfile(intFloatFile.Filename());

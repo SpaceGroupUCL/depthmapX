@@ -21,7 +21,7 @@
 
 TEST_CASE("DXF Parsing (lines)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f lineStart(-1,-2);
     Point2f lineEnd(3,4);
     std::string layer("0");
@@ -53,7 +53,7 @@ TEST_CASE("DXF Parsing (lines)")
 
 TEST_CASE("DXF Parsing (arcs)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f centre(1,-2);
     float radius = 3;
     float startAngle = 45;
@@ -88,7 +88,7 @@ TEST_CASE("DXF Parsing (arcs)")
 
 TEST_CASE("DXF Parsing (circles)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f centre(1,-2);
     float radius = 3;
     std::string layer("0");
@@ -117,7 +117,7 @@ TEST_CASE("DXF Parsing (circles)")
 
 TEST_CASE("DXF Parsing (points)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f point(1,-2);
     std::string layer("0");
 
@@ -143,7 +143,7 @@ TEST_CASE("DXF Parsing (points)")
 
 TEST_CASE("DXF Parsing (lwpolyline)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f point1(-1,-2);
     Point2f point2(3,4);
     Point2f point3(-5,6);
@@ -200,7 +200,7 @@ TEST_CASE("DXF Parsing (lwpolyline)")
 
 TEST_CASE("DXF Parsing (polyline)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f point1(-1,-2);
     Point2f point2(3,4);
     Point2f point3(-5,6);
@@ -262,7 +262,7 @@ TEST_CASE("DXF Parsing (polyline)")
 
 TEST_CASE("DXF Parsing (spline)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
 
     std::vector<double> weights = {
         0.0, 0.0, 0.0, 0.0,
@@ -352,7 +352,7 @@ TEST_CASE("DXF Parsing (zero-length line)")
 {
     // parser skips zero-length lines
 
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f lineStart(1,2);
     Point2f lineEnd(1,2);
     std::string layer("0");
@@ -382,7 +382,7 @@ TEST_CASE("DXF Parsing (zero-length lwpolyline)")
 {
     // parser does not skip zero-length polylines
 
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f point1(1,2);
     Point2f point2(1,2);
     std::string layer("0");
@@ -421,7 +421,7 @@ TEST_CASE("DXF Parsing (zero-length lwpolyline)")
 
 TEST_CASE("DXF Parsing (block)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f lineStart(-1,-2);
     Point2f lineEnd(3,4);
     std::string block("bl");
@@ -475,7 +475,7 @@ TEST_CASE("DXF Parsing (block)")
 
 TEST_CASE("DXF Parsing (deeper blocks)")
 {
-    const float EPSILON = 0.001;
+    const float EPSILON = 0.001f;
     Point2f lineStart(-1,-2);
     Point2f lineEnd(3,4);
     std::string block("bl");
