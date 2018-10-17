@@ -23,15 +23,7 @@
 #include <map>
 #include <fstream>
 #include <sstream>
-
-inline std::string tolower(const std::string& str)
-{
-   std::string s = str;
-   for (size_t i = 0; i < s.length(); i++) {
-      s[i] = tolower(s[i]);
-   }
-   return s;
-}
+#include <algorithm>
 
 struct xmlelement
 {

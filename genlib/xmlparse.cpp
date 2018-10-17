@@ -37,7 +37,7 @@ bool xmlelement::parse(std::ifstream& stream, bool parsesubelements)
    std::string attribute;
    std::string value;
    while (!complete && stream) {
-      char c = stream.get();
+      char c = static_cast<char>(stream.get());
       if (stream) {
          switch (step) {
          case STEP_START:

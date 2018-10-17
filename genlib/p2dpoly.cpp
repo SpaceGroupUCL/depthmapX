@@ -531,7 +531,6 @@ bool Line::intersect_line(const Line& l, int axis, double& loc) const
             loc = l.bottom_left.x;                       //    the regions overlap first
             return true;
          }
-         return false;
       }
       else {
          // Standard:   (note: if m1 == m2, loc is NaN)
@@ -546,7 +545,6 @@ bool Line::intersect_line(const Line& l, int axis, double& loc) const
          else if (loc >= l.bottom_left.x && loc <= l.top_right.x) {
             return true;
          }
-         return false;
       }
    }
    else {
@@ -557,7 +555,6 @@ bool Line::intersect_line(const Line& l, int axis, double& loc) const
             loc = l.bottom_left.y;                     //  the regions overlap first
             return true;
          }
-         return false;
       }
       else {
          // Standard:   (note: if m1 == m2, loc is NaN)
@@ -572,7 +569,6 @@ bool Line::intersect_line(const Line& l, int axis, double& loc) const
          else if (loc >= l.bottom_left.y && loc <= l.top_right.y) {
             return true;
          }
-         return false;
       }
    }
    return false;

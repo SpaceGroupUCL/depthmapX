@@ -65,15 +65,17 @@ namespace dXstring {
 
     std::string formatString(double value, const std::string &format)
     {
-        std::vector<char> buffer(24 + format.length(), '\0');
-        sprintf( &buffer[0], format.c_str(), value );
+        size_t bufferLength = 24 + format.length();
+        std::vector<char> buffer(bufferLength, '\0');
+        snprintf( &buffer[0], bufferLength, format.c_str(), value );
         return std::string(&buffer[0]);
     }
 
     std::string formatString(int value, const std::string &format)
     {
-        std::vector<char> buffer(24 + format.length(), '\0');
-        sprintf( &buffer[0], format.c_str(), value );
+        size_t bufferLength = 24 + format.length();
+        std::vector<char> buffer(bufferLength, '\0');
+        snprintf( &buffer[0], bufferLength, format.c_str(), value );
         return std::string(&buffer[0]);
     }
 
@@ -118,11 +120,11 @@ namespace dXstring {
                 {
                     if (reset)
                     {
-                        c = toupper(c);
+                        c = static_cast<char>(toupper(c));
                     }
                     else
                     {
-                        c = tolower(c);
+                        c = static_cast<char>(tolower(c));
                     }
                 }
                 reset = false;
