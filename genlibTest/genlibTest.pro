@@ -12,7 +12,6 @@ SOURCES += convertertest.cpp \
     testbspnode.cpp \
     testcontainerutils.cpp \
     testreadwritehelpers.cpp \
-    testpsubvec.cpp \
     testsimplematrix.cpp
 
 HEADERS +=

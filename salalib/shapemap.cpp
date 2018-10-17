@@ -1815,7 +1815,7 @@ int ShapeMap::testPointInPoly(const Point2f& p, const ShapeRef& shape) const
          else if (shape.m_tags & ShapeRef::SHAPE_INTERNAL_EDGE) {
             std::vector<int> testnodes;
             size_t j;
-            for (j = 0; j < size_t(shape.m_polyrefs.size()); j++) { // <- note, polyrefs is a subvec and has maximum number according to sizeof(T)
+            for (j = 0; j < size_t(shape.m_polyrefs.size()); j++) {
                depthmapX::addIfNotExists(testnodes, int(shape.m_polyrefs[j]));
             }
             PixelRef pix2 = pixelate(p);
@@ -2029,8 +2029,8 @@ void ShapeMap::getShapeCuts(const Line& li_orig, std::vector<ValuePair>& cuts)
       if (includes(pix)) { // <- note, for some reason, this pixel may be off edge (line crop problem?)
          std::vector<ShapeRef>& shapeRefs = m_pixel_shapes[size_t(pix.x + pix.y*m_cols)];
          for (ShapeRef& shaperef: shapeRefs) {
-            if (!shaperef.m_polyrefs.isEmpty()) {
-               int len = shaperef.m_polyrefs.size();
+            if (!shaperef.m_polyrefs.empty()) {
+               size_t len = shaperef.m_polyrefs.size();
                for (int k = 0; k < len; k++) {
                   int x = int(shaperef.m_polyrefs[k]);
                   IntPair pair(int(shaperef.m_shape_ref),x);

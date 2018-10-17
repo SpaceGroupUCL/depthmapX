@@ -36,8 +36,8 @@
 // A3 eliminates the double referencing used previously in the
 // vector classes
 
-#ifndef __PAFTL_H__
-#define __PAFTL_H__
+#ifndef __PAFTL_MGRAPH440_H__
+#define __PAFTL_MGRAPH440_H__
 
 #include <stdio.h>
 #include <stdlib.h>

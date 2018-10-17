@@ -29,7 +29,6 @@
 #include "genlib/p2dpoly.h"
 #include "genlib/stringutils.h"
 #include "genlib/readwritehelpers.h"
-#include "genlib/psubvec.h"
 
 #include <vector>
 #include <string>
@@ -46,7 +45,7 @@ struct ShapeRef
    enum {SHAPE_EDGE = 0x0f, SHAPE_INTERNAL_EDGE = 0x10, SHAPE_CENTRE = 0x20, SHAPE_OPEN = 0x40 };
    unsigned char m_tags;
    unsigned int m_shape_ref;
-   psubvec<short> m_polyrefs;
+   std::vector<short> m_polyrefs;
    ShapeRef( unsigned int sref = SHAPE_REF_NULL, unsigned char tags = 0x00 )
       { m_shape_ref = sref; m_tags = tags; }
    friend bool operator == (const ShapeRef& a, const ShapeRef& b);

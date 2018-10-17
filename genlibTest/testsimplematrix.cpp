@@ -70,9 +70,7 @@ TEST_CASE("Row matrix test exceptions"){
 
     compareMatrixContent(matrix, std::vector<int>{1, 2, 3, -23, 0, -1});
 
-    REQUIRE_THROWS_WITH(matrix(-1, 0), Catch::Contains("row out of range"));
     REQUIRE_THROWS_WITH(matrix(5, 0), Catch::Contains("row out of range"));
-    REQUIRE_THROWS_WITH(matrix(0, -1), Catch::Contains("column out of range"));
     REQUIRE_THROWS_WITH(matrix(0, 5), Catch::Contains("column out of range"));
 }
 
@@ -122,9 +120,7 @@ TEST_CASE("Column matrix test exceptions"){
 
     compareMatrixContent(matrix, std::vector<int>{1, -23, 2, 0, 3, -1});
 
-    REQUIRE_THROWS_WITH(matrix(-1, 0), Catch::Contains("row out of range"));
     REQUIRE_THROWS_WITH(matrix(5, 0), Catch::Contains("row out of range"));
-    REQUIRE_THROWS_WITH(matrix(0, -1), Catch::Contains("column out of range"));
     REQUIRE_THROWS_WITH(matrix(0, 5), Catch::Contains("column out of range"));
 }
 
