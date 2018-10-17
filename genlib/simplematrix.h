@@ -17,6 +17,7 @@
 #pragma once
 
 #include <stdexcept>
+#include <algorithm>
 
 namespace depthmapX {
 
@@ -46,6 +47,31 @@ protected:
 public:
     virtual ~BaseMatrix<T>(){
         delete[] m_data;
+    }
+
+    /**
+     * @brief Fill all values of the matrix with a default value
+     * @param value default value
+     */
+    virtual void initialiseValues(T const & value ){
+        std::fill( begin(), end(), value);
+    }
+
+    /**
+     * @brief Resets the matrix to a new size - this deletes all contents.
+     * This method provides a strong exception guarantee - if the new statement throws,
+     * the old state will be preserved.
+     * @param rows new number of rows
+     * @param columns new number of columns
+     */
+    virtual void reset(size_t rows, size_t columns){
+        // allocate new memory first - if this throws, the old matrix is still intact.
+        T* tmp = new T[rows * columns];
+        delete[] m_data;
+        m_data = tmp;
+
+        m_rows = rows;
+        m_columns = columns;
     }
 
     /**

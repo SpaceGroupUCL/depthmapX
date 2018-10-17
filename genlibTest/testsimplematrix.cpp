@@ -127,3 +127,16 @@ TEST_CASE("Column matrix test exceptions"){
     REQUIRE_THROWS_WITH(matrix(0, -1), Catch::Contains("column out of range"));
     REQUIRE_THROWS_WITH(matrix(0, 5), Catch::Contains("column out of range"));
 }
+
+TEST_CASE("Fill and reset"){
+    depthmapX::ColumnMatrix<int> matrix(2,3);
+    matrix.initialiseValues(-42);
+    compareMatrixContent(matrix, std::vector<int>(6, -42));
+
+    matrix.reset(3,4);
+    REQUIRE(matrix.rows() == 3);
+    REQUIRE(matrix.columns() == 4);
+
+    matrix.initialiseValues(12);
+    compareMatrixContent(matrix, std::vector<int>(12, 12));
+}
