@@ -26,6 +26,10 @@ namespace depthmapX {
  *  Base class for 2 dimensional matrices. This can be used as reference/pointer, but you cannot
  *  create this directly - you need to create either a row or a column matrix (the difference
  *  being the memory layout either, contiguous rows, or contiguous columns.
+ *  Which layout to choose depends on the underlying data - if the data layout is given, it should be
+ *  simple to find the matching implementation. To choose a new data layout, think about access patterns.
+ *  If it is more likely to process several values from one row in one got, choose a row matrix. If processing
+ *  is more likely to be by column, choose a column matrix. If access is truly random, it makes no difference.
  */
 template<typename T> class BaseMatrix {
 protected:
