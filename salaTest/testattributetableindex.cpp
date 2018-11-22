@@ -19,21 +19,21 @@
 TEST_CASE("Check index creation")
 {
     using namespace dXreimpl;
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
     table.getOrInsertColumn("col1");
     table.getOrInsertColumn("col2");
 
-    auto& row0 = table.addRow(0);
-    auto& row1 = table.addRow(1);
-    auto& row2 = table.addRow(2);
-    auto& row3 = table.addRow(3);
+    auto& row0 = table.addRow(AttributeKey(0));
+    auto& row1 = table.addRow(AttributeKey(1));
+    auto& row2 = table.addRow(AttributeKey(2));
+    auto& row3 = table.addRow(AttributeKey(3));
 
     row0.setValue(0, 10.0);
     row1.setValue(0, 8.5);
     row2.setValue(0, 11.0);
     row3.setValue(0, 4.5);
 
-    auto index = makeAttributeIndex<AttributeIndexItem<SerialisedPixelRef>>(table, 0);
+    auto index = makeAttributeIndex(table, 0);
     REQUIRE(index.size() == 4);
     REQUIRE(index[0].key.value == 3);
     REQUIRE(index[1].key.value == 1);
@@ -41,6 +41,6 @@ TEST_CASE("Check index creation")
     REQUIRE(index[3].key.value == 2);
 
     index[3].mutable_row->setValue(1, 1.5);
-    REQUIRE(table.getRow(2).getValue(1) == Approx(1.5));
+    REQUIRE(table.getRow(AttributeKey(2)).getValue(1) == Approx(1.5));
 }
 

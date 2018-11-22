@@ -23,7 +23,7 @@ TEST_CASE("push to layer")
     using namespace dXreimpl;
     using namespace fakeit;
     Mock<LayerManager> layMan;
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
     When(Method(layMan,addLayer)).Do([](const std::string &name)->size_t{REQUIRE(name == "testlayer"); return 1;});
     When(Method(layMan,getKey).Using(1)).AlwaysReturn(2);
     When(Method(layMan,isVisible).Using(1)).AlwaysReturn(true);
@@ -32,10 +32,10 @@ TEST_CASE("push to layer")
     table.insertOrResetColumn("col1");
     table.getOrInsertColumn("col2");
 
-    auto& row = table.addRow(SerialisedPixelRef(0));
+    auto& row = table.addRow(AttributeKey(0));
     row.setValue(0, 0.5f);
     row.setSelection(true);
-    auto& row2 = table.addRow(SerialisedPixelRef(1));
+    auto& row2 = table.addRow(AttributeKey(1));
     row2.setValue(0, 1.0f);
 
    pushSelectionToLayer(table, layMan.get(), "testlayer");

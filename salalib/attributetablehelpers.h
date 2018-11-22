@@ -20,8 +20,7 @@
 #include "mgraph_consts.h"
 
 namespace dXreimpl{
-    template<typename RowKeyType>
-    inline void pushSelectionToLayer(AttributeTable<RowKeyType> &table, LayerManager& layerManager, const std::string &layerName)
+    inline void pushSelectionToLayer(AttributeTable &table, LayerManager& layerManager, const std::string &layerName)
     {
         size_t layerIndex = layerManager.addLayer(layerName);
         LayerManager::KeyType layerKey = layerManager.getKey(layerIndex);
@@ -37,7 +36,7 @@ namespace dXreimpl{
         layerManager.setLayerVisible(layerIndex);
     }
 
-    inline PafColor getDisplayColor( const SerialisedPixelRef& key, const AttributeRow& row, const AttributeTableView& tableView, bool checkSelectionStatus = false)
+    inline PafColor getDisplayColor( const AttributeKey& key, const AttributeRow& row, const AttributeTableView& tableView, bool checkSelectionStatus = false)
     {
         if ( checkSelectionStatus && row.isSelected())
         {

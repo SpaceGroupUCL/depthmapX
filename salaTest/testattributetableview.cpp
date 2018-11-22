@@ -18,12 +18,12 @@
 
 TEST_CASE("Test Attribute view"){
     using namespace dXreimpl;
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
 
     table.insertOrResetColumn("foo");
     table.insertOrResetColumn("bar");
-    table.addRow(0).setValue(0,1.0f).setValue(1, 1.1f);
-    table.addRow(7).setValue(0,0.7f).setValue(1,1.7f);
+    table.addRow(AttributeKey(0)).setValue(0,1.0f).setValue(1, 1.1f);
+    table.addRow(AttributeKey(7)).setValue(0,0.7f).setValue(1,1.7f);
 
     AttributeTableView view(table);
     view.setDisplayColIndex(0);
@@ -36,15 +36,15 @@ TEST_CASE("Test Attribute view"){
     REQUIRE(&view.getDisplayParams() == &table.getColumn(0).getDisplayParams());
 
 
-    table.addRow(3);
+    table.addRow(AttributeKey(3));
     view.setDisplayColIndex(-1);
-    REQUIRE(view.getNormalisedValue(3, table.getRow(3)) == Approx(3.0/7));
+    REQUIRE(view.getNormalisedValue(AttributeKey(3), table.getRow(AttributeKey(3))) == Approx(3.0/7));
     REQUIRE(view.getConstTableIndex().size() == 3);
 
     REQUIRE(&table.getDisplayParams() == &view.getDisplayParams());
 
     view.setDisplayColIndex(-2);
-    REQUIRE(view.getNormalisedValue(3, table.getRow(3)) == Approx(3.0/7));
+    REQUIRE(view.getNormalisedValue(AttributeKey(3), table.getRow(AttributeKey(3))) == Approx(3.0/7));
     REQUIRE(view.getConstTableIndex().empty());
 
     REQUIRE(&table.getDisplayParams() == &view.getDisplayParams());
@@ -55,12 +55,12 @@ TEST_CASE("Test Attribute view"){
 TEST_CASE("Test attribute table handle")
 {
     using namespace  dXreimpl;
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
 
     table.insertOrResetColumn("foo");
     table.insertOrResetColumn("bar");
-    table.addRow(0).setValue(0,1.0f).setValue(1, 1.1f);
-    table.addRow(7).setValue(0,0.7f).setValue(1,1.7f);
+    table.addRow(AttributeKey(0)).setValue(0,1.0f).setValue(1, 1.1f);
+    table.addRow(AttributeKey(7)).setValue(0,0.7f).setValue(1,1.7f);
 
     AttributeTableHandle handle(table);
     handle.setDisplayColIndex(0);
@@ -71,7 +71,7 @@ TEST_CASE("Test attribute table handle")
 
     handle.getTableIndex().front().mutable_row->setValue(0, 0.8f);
 
-    REQUIRE(table.getRow(7).getValue(0) == Approx(0.8));
+    REQUIRE(table.getRow(AttributeKey(7)).getValue(0) == Approx(0.8));
 
     handle.setDisplayColIndex(-1);
     REQUIRE(handle.getTableIndex().size() == 2);

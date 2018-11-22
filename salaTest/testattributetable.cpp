@@ -179,7 +179,7 @@ TEST_CASE("test attribute table")
 {
     using namespace dXreimpl;
 
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
 
     table.insertOrResetColumn("col1");
     table.getOrInsertColumn("col2");
@@ -194,18 +194,18 @@ TEST_CASE("test attribute table")
     REQUIRE(table.getColumn(3).getName() == "lcol2");
     REQUIRE(table.getColumn(3).isLocked());
 
-    table.addRow(SerialisedPixelRef(0));
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue("col1") == -1 );
-    table.getRow(SerialisedPixelRef(0)).setValue("col1", 1.2f );
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue("col1") == Approx(1.2f) );
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue(0) == Approx(1.2f) );
+    table.addRow(AttributeKey(0));
+    REQUIRE(table.getRow(AttributeKey(0)).getValue("col1") == -1 );
+    table.getRow(AttributeKey(0)).setValue("col1", 1.2f );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue("col1") == Approx(1.2f) );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue(0) == Approx(1.2f) );
 
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue("lcol2") == -1 );
-    table.getRow(SerialisedPixelRef(0)).setValue(3, 1.4f );
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue("lcol2") == Approx(1.4f) );
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue(3) == Approx(1.4f) );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue("lcol2") == -1 );
+    table.getRow(AttributeKey(0)).setValue(3, 1.4f );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue("lcol2") == Approx(1.4f) );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue(3) == Approx(1.4f) );
 
-    REQUIRE_THROWS_AS(table.getRow(SerialisedPixelRef(0)).getValue(4), std::out_of_range);
+    REQUIRE_THROWS_AS(table.getRow(AttributeKey(0)).getValue(4), std::out_of_range);
 
     table.removeColumn(0);
     table.removeColumn(1);
@@ -215,34 +215,34 @@ TEST_CASE("test attribute table")
     REQUIRE(table.getColumn(1).getName() == "lcol2");
     REQUIRE(table.getColumnIndex("lcol2") == 1);
 
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue("col2") == -1.0 );
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue(0) == -1.0 );
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue("lcol2") == Approx(1.4f) );
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue(1) == Approx(1.4f) );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue("col2") == -1.0 );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue(0) == -1.0 );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue("lcol2") == Approx(1.4f) );
+    REQUIRE(table.getRow(AttributeKey(0)).getValue(1) == Approx(1.4f) );
 
 
-    REQUIRE_THROWS_AS(table.getRow(SerialisedPixelRef(0)).getValue(2), std::out_of_range);
+    REQUIRE_THROWS_AS(table.getRow(AttributeKey(0)).getValue(2), std::out_of_range);
 
-    table.addRow(SerialisedPixelRef(1));
-    REQUIRE_THROWS_AS(table.getRow(SerialisedPixelRef(1)).getValue(2), std::out_of_range);
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue("col2") == -1.0 );
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue(0) == -1.0 );
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue("lcol2") == -1.0 );
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue(1) == -1.0 );
+    table.addRow(AttributeKey(1));
+    REQUIRE_THROWS_AS(table.getRow(AttributeKey(1)).getValue(2), std::out_of_range);
+    REQUIRE(table.getRow(AttributeKey(1)).getValue("col2") == -1.0 );
+    REQUIRE(table.getRow(AttributeKey(1)).getValue(0) == -1.0 );
+    REQUIRE(table.getRow(AttributeKey(1)).getValue("lcol2") == -1.0 );
+    REQUIRE(table.getRow(AttributeKey(1)).getValue(1) == -1.0 );
 
-    table.getRow(SerialisedPixelRef(1)).setValue(0, 2.4f);
-    table.getRow(SerialisedPixelRef(1)).setValue("lcol2", 2.6f);
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue("col2") == Approx(2.4) );
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue(1) == Approx(2.6) );
+    table.getRow(AttributeKey(1)).setValue(0, 2.4f);
+    table.getRow(AttributeKey(1)).setValue("lcol2", 2.6f);
+    REQUIRE(table.getRow(AttributeKey(1)).getValue("col2") == Approx(2.4) );
+    REQUIRE(table.getRow(AttributeKey(1)).getValue(1) == Approx(2.6) );
 
     size_t idx = table.getOrInsertColumn("col2");
     REQUIRE(idx == 0);
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue("col2") == Approx(2.4) );
+    REQUIRE(table.getRow(AttributeKey(1)).getValue("col2") == Approx(2.4) );
     REQUIRE(table.getColumn(0).getStats().max == Approx(2.4));
 
     idx = table.insertOrResetColumn("col2");
     REQUIRE(idx == 0);
-    REQUIRE(table.getRow(SerialisedPixelRef(1)).getValue("col2") == -1.0 );
+    REQUIRE(table.getRow(AttributeKey(1)).getValue("col2") == -1.0 );
     REQUIRE(table.getColumn(0).getStats().max == -1.0);
 
     size_t newColIndex = table.getOrInsertColumn("newCol");
@@ -251,7 +251,7 @@ TEST_CASE("test attribute table")
     REQUIRE(table.getColumnIndex("newCol") == 2);
     REQUIRE(table.getColumn(2).getName() == "newCol");
 
-    REQUIRE(table.getRow(SerialisedPixelRef(0)).getValue(2) == -1.0);
+    REQUIRE(table.getRow(AttributeKey(0)).getValue(2) == -1.0);
 
     table.renameColumn("col2", "col_foo");
     REQUIRE(table.getColumnName(0) == "col_foo");
@@ -260,9 +260,9 @@ TEST_CASE("test attribute table")
 
     REQUIRE_THROWS_AS(table.getColumnIndex("col2"), std::out_of_range);
 
-    table.getRow(0).setSelection(true);
+    table.getRow(AttributeKey(0)).setSelection(true);
 
-    REQUIRE(table.getRow(0).isSelected());
+    REQUIRE(table.getRow(AttributeKey(0)).isSelected());
     auto iter = table.begin();
     REQUIRE(iter->getRow().isSelected());
     ++iter;
@@ -286,49 +286,49 @@ TEST_CASE("test attribute table")
 TEST_CASE("Existing and non-existing rows")
 {
     using namespace dXreimpl;
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
     table.getOrInsertColumn("col1");
     table.getOrInsertColumn("col2");
-    table.addRow(0).setValue(0, 1.0f);
-    table.addRow(1).setValue(0, 0.5f);
-    table.addRow(2).setValue(0, 2.0f);
+    table.addRow(AttributeKey(0)).setValue(0, 1.0f);
+    table.addRow(AttributeKey(1)).setValue(0, 0.5f);
+    table.addRow(AttributeKey(2)).setValue(0, 2.0f);
 
-    const AttributeTable<SerialisedPixelRef>& constRef = table;
+    const AttributeTable& constRef = table;
 
-    table.getRow(0);
-    constRef.getRow(0);
-    REQUIRE_THROWS_AS(table.getRow(5), std::out_of_range);
-    REQUIRE_THROWS_AS(constRef.getRow(5), std::out_of_range);
+    table.getRow(AttributeKey(0));
+    constRef.getRow(AttributeKey(0));
+    REQUIRE_THROWS_AS(table.getRow(AttributeKey(5)), std::out_of_range);
+    REQUIRE_THROWS_AS(constRef.getRow(AttributeKey(5)), std::out_of_range);
 
-    REQUIRE( table.getRowPtr(1) != 0);
-    REQUIRE( constRef.getRowPtr(1) != 0);
+    REQUIRE( table.getRowPtr(AttributeKey(1)) != 0);
+    REQUIRE( constRef.getRowPtr(AttributeKey(1)) != 0);
 
-    REQUIRE( table.getRowPtr(5) == 0);
-    REQUIRE( constRef.getRowPtr(5) == 0);
+    REQUIRE( table.getRowPtr(AttributeKey(5)) == 0);
+    REQUIRE( constRef.getRowPtr(AttributeKey(5)) == 0);
 }
 
 TEST_CASE("normalised values"){
     using namespace dXreimpl;
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
     table.getOrInsertColumn("col1");
     table.getOrInsertColumn("col2");
-    table.addRow(0).setValue(0, 1.0f);
-    table.addRow(1).setValue(0, 0.5f);
-    table.addRow(2).setValue(0, 2.0f);
+    table.addRow(AttributeKey(0)).setValue(0, 1.0f);
+    table.addRow(AttributeKey(1)).setValue(0, 0.5f);
+    table.addRow(AttributeKey(2)).setValue(0, 2.0f);
 
-    REQUIRE(table.getRow(0).getNormalisedValue(1) == Approx(0.5f));
-    REQUIRE(table.getRow(0).getNormalisedValue(0) == Approx(0.33333f));
-    REQUIRE(table.getRow(1).getNormalisedValue(0) == Approx(0.0f));
-    REQUIRE(table.getRow(2).getNormalisedValue(0) == Approx(1.0f));
+    REQUIRE(table.getRow(AttributeKey(0)).getNormalisedValue(1) == Approx(0.5f));
+    REQUIRE(table.getRow(AttributeKey(0)).getNormalisedValue(0) == Approx(0.33333f));
+    REQUIRE(table.getRow(AttributeKey(1)).getNormalisedValue(0) == Approx(0.0f));
+    REQUIRE(table.getRow(AttributeKey(2)).getNormalisedValue(0) == Approx(1.0f));
 
-    table.addRow(3).setValue(1,1.0f);
+    table.addRow(AttributeKey(3)).setValue(1,1.0f);
 
-    REQUIRE(table.getRow(1).getNormalisedValue(1) == Approx(0.5f));
-    REQUIRE(table.getRow(3).getNormalisedValue(1) == Approx(0.5f));
+    REQUIRE(table.getRow(AttributeKey(1)).getNormalisedValue(1) == Approx(0.5f));
+    REQUIRE(table.getRow(AttributeKey(3)).getNormalisedValue(1) == Approx(0.5f));
 
-    table.getRow(0).setValue(1,1.1f);
-    REQUIRE(table.getRow(3).getNormalisedValue(1) == Approx(0.0f));
-    REQUIRE(table.getRow(1).getNormalisedValue(1) == Approx(-1.0f));
+    table.getRow(AttributeKey(0)).setValue(1,1.1f);
+    REQUIRE(table.getRow(AttributeKey(3)).getNormalisedValue(1) == Approx(0.0f));
+    REQUIRE(table.getRow(AttributeKey(1)).getNormalisedValue(1) == Approx(-1.0f));
 
 
 }
@@ -336,17 +336,17 @@ TEST_CASE("normalised values"){
 TEST_CASE("attibute table iterations")
 {
     using namespace dXreimpl;
-    AttributeTable<SerialisedPixelRef> table;
+    AttributeTable table;
 
     table.insertOrResetColumn("col1");
     table.getOrInsertColumn("col2");
 
-    auto& row = table.addRow(SerialisedPixelRef(0));
+    auto& row = table.addRow(AttributeKey(0));
     row.setValue(0, 0.5f);
-    auto& row2 = table.addRow(SerialisedPixelRef(1));
+    auto& row2 = table.addRow(AttributeKey(1));
     row2.setValue(0, 1.0f);
 
-    AttributeTable<SerialisedPixelRef>::iterator iter = table.begin();
+    AttributeTable::iterator iter = table.begin();
     REQUIRE((*iter).getKey().value == 0);
     REQUIRE(iter->getRow().getValue(0) == Approx(0.5));
     iter++;
@@ -361,10 +361,10 @@ TEST_CASE("attibute table iterations")
         item.getRow().setValue(1, 2.0f);
     }
 
-    REQUIRE(table.getRow(0).getValue(1) == Approx(2.0));
-    REQUIRE(table.getRow(1).getValue(1) == Approx(2.0));
+    REQUIRE(table.getRow(AttributeKey(0)).getValue(1) == Approx(2.0));
+    REQUIRE(table.getRow(AttributeKey(1)).getValue(1) == Approx(2.0));
 
-    const AttributeTable<SerialisedPixelRef>& const_table = table;
+    const AttributeTable& const_table = table;
 
     auto citer = const_table.begin();
     REQUIRE((*citer).getKey().value == 0);
@@ -378,9 +378,9 @@ TEST_CASE("attibute table iterations")
     REQUIRE(citer == cend);
     REQUIRE(citer == table.end());
 
-    AttributeTable<SerialisedPixelRef>::iterator foo(iter);
-    AttributeTable<SerialisedPixelRef>::const_iterator cfoo(iter);
-    AttributeTable<SerialisedPixelRef>::const_iterator ccfoo(citer);
+    AttributeTable::iterator foo(iter);
+    AttributeTable::const_iterator cfoo(iter);
+    AttributeTable::const_iterator ccfoo(citer);
 
     REQUIRE(iter == foo);
     REQUIRE(cfoo == iter);
@@ -395,8 +395,8 @@ TEST_CASE("attibute table iterations")
     ++foo;
     foo->getRow().setValue(1, 3.2f);
 
-    REQUIRE(table.getRow(0).getValue(1) == Approx(2.2));
-    REQUIRE(table.getRow(1).getValue(1) == Approx(3.2));
+    REQUIRE(table.getRow(AttributeKey(0)).getValue(1) == Approx(2.2));
+    REQUIRE(table.getRow(AttributeKey(1)).getValue(1) == Approx(3.2));
 }
 
 #include "salalib/attributes.h"
@@ -408,7 +408,7 @@ TEST_CASE("Attribute Table - serialisation")
     layerManager.addLayer("extra layer");
     REQUIRE(layerManager.getLayerIndex("extra layer") == 1);
 
-    dXreimpl::AttributeTable<dXreimpl::SerialisedPixelRef> newTable;
+    dXreimpl::AttributeTable newTable;
     size_t colIndex1 = newTable.getOrInsertColumn("foo", "foo formula");
     size_t colIndex2 = newTable.getOrInsertColumn("bar");
 
@@ -426,8 +426,8 @@ TEST_CASE("Attribute Table - serialisation")
     newTable.getColumn(colIndex2).setDisplayParams(barDp);
     newTable.setDisplayParams(overAllDp);
 
-    auto& row = newTable.addRow(0);
-    auto& row2 = newTable.addRow(10);
+    auto& row = newTable.addRow(dXreimpl::AttributeKey(0));
+    auto& row2 = newTable.addRow(dXreimpl::AttributeKey(10));
 
     row.setValue(0,1.0f);
     row.setValue(1,2.0f);
@@ -450,18 +450,18 @@ TEST_CASE("Attribute Table - serialisation")
         newTable.write(outfile, layerManager);
     }
 
-    dXreimpl::AttributeTable<dXreimpl::SerialisedPixelRef> copyTable;
+    dXreimpl::AttributeTable copyTable;
     LayerManagerImpl copyLayerManager;
     {
         std::ifstream infile(newTableFile.Filename());
         copyTable.read(infile, copyLayerManager, METAGRAPH_VERSION);
     }
 
-    auto& copyRow = copyTable.getRow(0);
+    auto& copyRow = copyTable.getRow(dXreimpl::AttributeKey(0));
     REQUIRE(copyRow.getValue(0) == Approx(1.0f));
     REQUIRE(copyRow.getValue(1) == Approx(2.0f));
 
-    auto& copyRow2 = copyTable.getRow(10);
+    auto& copyRow2 = copyTable.getRow(dXreimpl::AttributeKey(10));
     REQUIRE(copyRow2.getValue(0) == Approx(11.0f));
     REQUIRE(copyRow2.getValue(1) == Approx(12.0f));
 
@@ -518,18 +518,18 @@ TEST_CASE("Attribute Table - serialisation")
     }
 
 
-    dXreimpl::AttributeTable<dXreimpl::SerialisedPixelRef> roundTripTable;
+    dXreimpl::AttributeTable roundTripTable;
     LayerManagerImpl roundTripManager;
     {
         std::ifstream infile(legacyTableFile.Filename());
         roundTripTable.read(infile, roundTripManager, METAGRAPH_VERSION);
     }
 
-    auto& roundtripRow = roundTripTable.getRow(0);
+    auto& roundtripRow = roundTripTable.getRow(dXreimpl::AttributeKey(0));
     REQUIRE(roundtripRow.getValue(0) == Approx(1.0f));
     REQUIRE(roundtripRow.getValue(1) == Approx(2.0f));
 
-    auto& roundtripRow2 = roundTripTable.getRow(10);
+    auto& roundtripRow2 = roundTripTable.getRow(dXreimpl::AttributeKey(10));
     REQUIRE(roundtripRow2.getValue(0) == Approx(11.0f));
     REQUIRE(roundtripRow2.getValue(1) == Approx(12.0f));
 

@@ -193,18 +193,18 @@ namespace dXreimpl
     };
 
     ///
-    /// \brief Small struct to make a serialised pixel ref distinguishable from an int
+    /// \brief Small struct to make an attribute key distinguishable from an int
     /// PixelRefs are serialised into an int (2 bytes x, 2 bytes y) for historic reason. This seems dangerous
-    /// and confusing as these are by no means inices, but look the same to the compiler and the reader.
+    /// and confusing as these are by no means indices, but look the same to the compiler and the reader.
     /// This struct should disambiguate this...
     ///
-    struct SerialisedPixelRef
+    struct AttributeKey
     {
-        SerialisedPixelRef(int val) : value(val)
+        explicit AttributeKey(int val) : value(val)
         {}
         int value;
 
-        bool operator < (const SerialisedPixelRef& other ) const
+        bool operator < (const AttributeKey& other ) const
         {
             return value < other.value;
         }
@@ -222,9 +222,8 @@ namespace dXreimpl
 
     ///
     /// AttributeTable
-    /// Templated on the RowKeyType so we can switch that out easily, I am not to happy with the current one...
     ///
-    template<typename RowKeyType> class AttributeTable : public AttributeColumnManager
+    class AttributeTable : public AttributeColumnManager
     {
         // AttributeTable "interface" - the actual table handling
     public:
@@ -237,35 +236,35 @@ namespace dXreimpl
         /// \param key of the row
         /// \return reference to row, throws if key not found
         ///
-        AttributeRow& getRow(const RowKeyType& key );
+        AttributeRow& getRow(const AttributeKey& key );
 
         ///
         /// \brief Get a row const reference
         /// \param key of the row
         /// \return const reference to row, throws if key not found
         ///
-        const AttributeRow& getRow(const RowKeyType& key) const;
+        const AttributeRow& getRow(const AttributeKey& key) const;
 
         ///
         /// \brief Get a row pointer
         /// \param key of the row
         /// \return pointer to row, null if key not found
         ///
-        AttributeRow* getRowPtr(const RowKeyType& key);
+        AttributeRow* getRowPtr(const AttributeKey& key);
 
         ///
         /// \brief Get a row const pointer
         /// \param key of the row
         /// \return const pointer to row, null if key not found
         ///
-        const AttributeRow* getRowPtr(const RowKeyType& key)const;
-        AttributeRow &addRow(const RowKeyType& key);
+        const AttributeRow* getRowPtr(const AttributeKey& key)const;
+        AttributeRow &addRow(const AttributeKey& key);
         AttributeColumn& getColumn(size_t index);
         size_t insertOrResetColumn(const std::string& columnName, const std::string &formula = std::string());
         size_t insertOrResetLockedColumn(const std::string& columnName, const std::string &formula = std::string());
         size_t getOrInsertColumn(const std::string& columnName, const std::string &formula = std::string());
         size_t getOrInsertLockedColumn(const std::string& columnName, const std::string &formula = std::string());
-        void removeRow(const RowKeyType& key);
+        void removeRow(const AttributeKey& key);
         void removeColumn(size_t colIndex);
         void renameColumn(const std::string& oldName, const std::string& newName);
         size_t getNumRows() const { return m_rows.size(); }
@@ -284,7 +283,7 @@ namespace dXreimpl
         virtual size_t getNumColumns() const;
 
     private:
-        typedef std::map<RowKeyType, std::unique_ptr<AttributeRowImpl>> StorageType;
+        typedef std::map<AttributeKey, std::unique_ptr<AttributeRowImpl>> StorageType;
         StorageType m_rows;
         std::map<std::string, size_t> m_columnMapping;
         std::vector<AttributeColumnImpl> m_columns;
@@ -308,7 +307,7 @@ namespace dXreimpl
         class iterator_item
         {
         public:
-            virtual const RowKeyType& getKey() const = 0;
+            virtual const AttributeKey& getKey() const = 0;
             virtual const AttributeRow& getRow() const = 0;
             virtual AttributeRow& getRow() = 0;
             virtual ~iterator_item(){}
@@ -331,7 +330,7 @@ namespace dXreimpl
             }
 
 
-            const RowKeyType& getKey() const
+            const AttributeKey& getKey() const
             {
                 return m_iter->first;
             }
@@ -437,278 +436,5 @@ namespace dXreimpl
         }
     };
 
-// Below here is the implementation of AttributeTable methods - needs to be header only as it is templated.
-
-    template<class RowKeyType>
-    AttributeRow &AttributeTable<RowKeyType>::getRow(const RowKeyType &key)
-    {
-        auto* row = getRowPtr(key);
-        if (row == 0)
-        {
-            throw std::out_of_range("Invalid row key");
-        }
-        return *row;
-    }
-
-    template<class RowKeyType>
-    const AttributeRow& AttributeTable<RowKeyType>::getRow(const RowKeyType &key) const
-    {
-        auto* row = getRowPtr(key);
-        if (row == 0)
-        {
-            throw std::out_of_range("Invalid row key");
-        }
-        return *row;
-    }
-
-    template<typename RowKeyType>
-    AttributeRow *AttributeTable<RowKeyType>::getRowPtr(const RowKeyType &key)
-    {
-        auto iter = m_rows.find(key);
-        if (iter == m_rows.end())
-        {
-            return 0;
-        }
-        return iter->second.get();
-    }
-
-    template<typename RowKeyType>
-    const AttributeRow *AttributeTable<RowKeyType>::getRowPtr(const RowKeyType &key) const
-    {
-        auto iter = m_rows.find(key);
-        if (iter == m_rows.end())
-        {
-            return 0;
-        }
-        return iter->second.get();
-    }
-
-    template<class RowKeyType>
-    AttributeRow &AttributeTable<RowKeyType>::addRow(const RowKeyType &key)
-    {
-        auto iter = m_rows.find(key);
-        if (iter != m_rows.end())
-        {
-            throw new std::invalid_argument("Duplicate key");
-        }
-        auto res = m_rows.insert(std::make_pair(key, std::unique_ptr<AttributeRowImpl>(new AttributeRowImpl(*this))));
-        return *res.first->second;
-    }
-
-    template<typename RowKeyType>
-    AttributeColumn &AttributeTable<RowKeyType>::getColumn(size_t index)
-    {
-        checkColumnIndex(index);
-        return m_columns[index];
-    }
-
-    template<class RowKeyType>
-    size_t AttributeTable<RowKeyType>::insertOrResetColumn(const std::string &columnName, const std::string &formula)
-    {
-        auto iter = m_columnMapping.find(columnName);
-        if (iter == m_columnMapping.end())
-        {
-            return addColumnInternal(columnName, formula);
-        }
-
-        // it exists - we need to reset it
-        m_columns[iter->second].m_stats = AttributeColumnStats();
-        m_columns[iter->second].setLock(false);
-        for (auto& row : m_rows)
-        {
-            row.second->setValue(iter->second, -1.0f);
-        }
-        return iter->second;
-    }
-
-    template<class RowKeyType>
-    size_t AttributeTable<RowKeyType>::insertOrResetLockedColumn(const std::string &columnName, const std::string &formula)
-    {
-        size_t index = insertOrResetColumn(columnName, formula);
-        m_columns[index].setLock(true);
-        return index;
-    }
-
-    template<class RowKeyType>
-    size_t AttributeTable<RowKeyType>::getOrInsertColumn(const std::string &columnName, const std::string &formula)
-    {
-        auto iter = m_columnMapping.find(columnName);
-        if ( iter != m_columnMapping.end())
-        {
-            return iter->second;
-        }
-        return addColumnInternal(columnName, formula);
-    }
-
-    template<class RowKeyType>
-    size_t AttributeTable<RowKeyType>::getOrInsertLockedColumn(const std::string &columnName, const std::string &formula)
-    {
-        size_t index = getOrInsertColumn(columnName, formula);
-        m_columns[index].setLock(true);
-        return index;
-    }
-
-    template<class RowKeyType>
-    void AttributeTable<RowKeyType>::removeColumn(size_t colIndex)
-    {
-        checkColumnIndex(colIndex);
-        const std::string& name = m_columns[colIndex].getName();
-        auto iter = m_columnMapping.find(name);
-        m_columnMapping.erase(iter);
-        for (auto& elem : m_columnMapping)
-        {
-            if (elem.second > colIndex)
-            {
-                elem.second--;
-            }
-        }
-        m_columns.erase(m_columns.begin()+colIndex);
-        for (auto& row : m_rows)
-        {
-            row.second->removeColumn(colIndex);
-        }
-    }
-
-    template<class RowKeyType>
-    void AttributeTable<RowKeyType>::renameColumn(const std::string &oldName, const std::string &newName)
-    {
-        auto iter = m_columnMapping.find(oldName);
-        if (iter == m_columnMapping.end())
-        {
-            throw std::out_of_range("Invalid column name");
-        }
-
-        size_t colIndex = iter->second;
-        m_columns[colIndex].setName(newName);
-        m_columnMapping.erase(iter);
-        m_columnMapping[newName] = colIndex;
-
-    }
-
-    template<typename RowKeyType>
-    void AttributeTable<RowKeyType>::deselectAllRows()
-    {
-        for (auto& row : m_rows)
-        {
-            row.second->setSelection(false);
-        }
-    }
-
-    template<typename RowKeyType>
-    void AttributeTable<RowKeyType>::setDisplayParamsForAllAttributes(const DisplayParams &params)
-    {
-        for (auto& col: m_columns)
-        {
-            col.setDisplayParams(params);
-        }
-
-    }
-
-    template<typename RowKeyType>
-    void AttributeTable<RowKeyType>::read(std::istream &stream, LayerManager &layerManager, int version)
-    {
-        layerManager.read(stream);
-        int colcount;
-        stream.read((char *)&colcount, sizeof(colcount));
-        std::map<size_t, AttributeColumnImpl> tmp;
-        for (int j = 0; j < colcount; j++) {
-            AttributeColumnImpl col("");
-            tmp[col.read(stream, METAGRAPH_VERSION)] = col;
-        }
-        for (auto & c : tmp)
-        {
-            m_columnMapping[c.second.getName()] = m_columns.size();
-            m_columns.push_back(c.second);
-        }
-
-        int rowcount, rowkey;
-        stream.read((char *)&rowcount, sizeof(rowcount));
-        for (int i = 0; i < rowcount; i++) {
-           stream.read((char *)&rowkey, sizeof(rowkey));
-           auto row = std::unique_ptr<AttributeRowImpl>(new AttributeRowImpl(*this));
-           row->read(stream, METAGRAPH_VERSION);
-           m_rows.insert(std::make_pair(rowkey,std::move(row)));
-        }
-
-       // ref column display params
-       stream.read((char *)&m_displayParams,sizeof(DisplayParams));
-    }
-
-    template<typename RowKeyType>
-    void AttributeTable<RowKeyType>::write(std::ostream &stream, const LayerManager &layerManager)
-    {
-        layerManager.write(stream);
-        int colCount = (int)m_columns.size();
-        stream.write((char *)&colCount, sizeof(int));
-        for (size_t i = 0; i < m_columns.size(); ++i)
-        {
-            m_columns[i].write(stream, (int)i);
-        }
-
-        int rowcount = (int)m_rows.size();
-        stream.write((char *)&rowcount, sizeof(int));
-        for ( auto &kvp : m_rows)
-        {
-            kvp.first.write(stream);
-            kvp.second->write(stream);
-        }
-        stream.write((const char *)&m_displayParams, sizeof(DisplayParams));
-    }
-
-    template<class RowKeyType>
-    size_t AttributeTable<RowKeyType>::getColumnIndex(const std::string &name) const
-    {
-        auto iter = m_columnMapping.find(name);
-        if (iter == m_columnMapping.end())
-        {
-            std::stringstream message;
-            message << "Unknown column name " << name;
-            throw std::out_of_range(message.str());
-        }
-        return iter->second;
-
-    }
-
-    template<class RowKeyType>
-    const AttributeColumn &AttributeTable<RowKeyType>::getColumn(size_t index) const
-    {
-        checkColumnIndex(index);
-        return m_columns[index];
-    }
-
-    template<class RowKeyType>
-    const std::string &AttributeTable<RowKeyType>::getColumnName(size_t index) const
-    {
-        checkColumnIndex(index);
-        return m_columns[index].getName();
-    }
-
-    template<class RowKeyType>
-    size_t AttributeTable<RowKeyType>::getNumColumns() const
-    {
-        return m_columns.size();
-    }
-
-    template<class RowKeyType>
-    void AttributeTable<RowKeyType>::checkColumnIndex(size_t index) const
-    {
-        if (index >= m_columns.size())
-        {
-            throw std::out_of_range("ColumnIndex out of range");
-        }
-    }
-
-    template<class RowKeyType>
-    size_t AttributeTable<RowKeyType>::addColumnInternal(const std::string &name, const std::string &formula)
-    {
-        size_t colIndex = m_columns.size();
-        m_columns.push_back(AttributeColumnImpl(name, formula));
-        m_columnMapping[name] = colIndex;
-        for (auto& elem : m_rows)
-        {
-            elem.second->addColumn();
-        }
-        return colIndex;
-    }
 }
 

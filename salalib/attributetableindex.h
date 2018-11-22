@@ -19,11 +19,10 @@
 
 namespace dXreimpl
 {
-    template<typename RowKeyType>
     class ConstAttributeIndexItem
     {
     public:
-        ConstAttributeIndexItem(const RowKeyType &k, double v, const AttributeRow &r) : key(k), value(v), row(&r)
+        ConstAttributeIndexItem(const AttributeKey &k, double v, const AttributeRow &r) : key(k), value(v), row(&r)
         {}
 
         ConstAttributeIndexItem(const ConstAttributeIndexItem& other) : key(other.key), value(other.value), row(other.row)
@@ -40,18 +39,17 @@ namespace dXreimpl
             return *this;
         }
 
-        RowKeyType key;
+        AttributeKey key;
         double value;
         const AttributeRow *  row;
     };
 
-    template<typename RowKeyType>
-    class AttributeIndexItem : public ConstAttributeIndexItem<RowKeyType>
+    class AttributeIndexItem : public ConstAttributeIndexItem
     {
     public:
-        AttributeIndexItem( const RowKeyType &k, double v, AttributeRow &r) : ConstAttributeIndexItem<RowKeyType>(k,v,r), mutable_row(&r)
+        AttributeIndexItem( const AttributeKey &k, double v, AttributeRow &r) : ConstAttributeIndexItem(k,v,r), mutable_row(&r)
         {}
-        AttributeIndexItem( const AttributeIndexItem &other) : ConstAttributeIndexItem<RowKeyType>(other), mutable_row(other.mutable_row)
+        AttributeIndexItem( const AttributeIndexItem &other) : ConstAttributeIndexItem(other), mutable_row(other.mutable_row)
         {}
         AttributeIndexItem &operator = (const AttributeIndexItem &other)
         {
@@ -59,7 +57,7 @@ namespace dXreimpl
             {
                 return *this;
             }
-            ConstAttributeIndexItem<RowKeyType>::operator =(other);
+            ConstAttributeIndexItem::operator =(other);
             mutable_row = other.mutable_row;
             return *this;
         }
@@ -67,53 +65,11 @@ namespace dXreimpl
         AttributeRow *mutable_row;
     };
 
-    template<typename T1>
-    bool operator < (const ConstAttributeIndexItem<T1> &lhs, const ConstAttributeIndexItem<T1> &rhs)
+    inline bool operator < (const ConstAttributeIndexItem &lhs, const ConstAttributeIndexItem &rhs)
     {
         return lhs.value < rhs.value;
     }
 
-    template<typename ItemType, typename TableType>
-    std::vector<ItemType> makeAttributeIndex(TableType &table, int colIndex)
-    {
-        std::vector<ItemType> index;
-        size_t numRows = table.getNumRows();
-        if (numRows == 0)
-        {
-            return index;
-        }
-        index.reserve(numRows);
-        // perturb the values to be sorted by so same values will be in order of appearence in the map
-        size_t idx = 0;
-        if ( colIndex == -1 )
-        {
-            double perturbationFactor = 1e-9 / numRows;
-            for (auto& item: table)
-            {
-                double value = (double)item.getKey().value;
-                value += idx * perturbationFactor;
-
-                index.push_back(ItemType(item.getKey(), value, item.getRow()));
-                ++idx;
-            }
-        }
-        else if (colIndex >= 0 )
-        {
-            double perturbationFactor = table.getColumn(colIndex).getStats().max * 1e-9 / numRows;
-            for (auto & item : table)
-            {
-                double value = item.getRow().getValue(colIndex);
-                value += idx * perturbationFactor;
-
-                index.push_back(ItemType(item.getKey(), value, item.getRow()));
-                ++idx;
-            }
-        }
-        else
-        {
-            throw std::out_of_range("Column index out of range");
-        }
-        std::sort(index.begin(), index.end());
-        return index;
-    }
+    std::vector<ConstAttributeIndexItem> makeAttributeIndex(const AttributeTable &table, int colIndex);
+    std::vector<AttributeIndexItem> makeAttributeIndex(AttributeTable &table, int colIndex);
 }

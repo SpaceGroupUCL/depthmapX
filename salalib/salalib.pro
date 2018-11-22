@@ -47,7 +47,8 @@ SOURCES += \
     axialpolygons.cpp \
     tidylines.cpp \
     mapconverter.cpp \
-    importutils.cpp
+    importutils.cpp \
+    attributetableindex.cpp
 
 HEADERS += \
     attributes.h \

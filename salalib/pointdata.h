@@ -22,6 +22,7 @@
 #include "genlib/exceptions.h"
 #include "salalib/point.h"
 #include "salalib/options.h"
+#include "salalib/attributetable.h"
 #include <vector>
 #include <set>
 #include <deque>

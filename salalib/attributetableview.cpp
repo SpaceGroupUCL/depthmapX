@@ -15,7 +15,7 @@
 
 #include "attributetableview.h"
 
-AttributeTableView::AttributeTableView(const dXreimpl::AttributeTable<dXreimpl::SerialisedPixelRef> &table) : m_table(table), m_displayColumn(-1)
+AttributeTableView::AttributeTableView(const dXreimpl::AttributeTable &table) : m_table(table), m_displayColumn(-1)
 {}
 
 void AttributeTableView::setDisplayColIndex(int columnIndex){
@@ -26,11 +26,11 @@ void AttributeTableView::setDisplayColIndex(int columnIndex){
         return;
     }
     // recalculate the index even if it's the same column in case stuff has changed
-    m_index = dXreimpl::makeAttributeIndex<dXreimpl::ConstAttributeIndexItem<dXreimpl::SerialisedPixelRef>>(m_table, columnIndex);
+    m_index = dXreimpl::makeAttributeIndex(m_table, columnIndex);
     m_displayColumn = columnIndex;
 }
 
-float AttributeTableView::getNormalisedValue(const dXreimpl::SerialisedPixelRef &key, const dXreimpl::AttributeRow &row) const
+float AttributeTableView::getNormalisedValue(const dXreimpl::AttributeKey &key, const dXreimpl::AttributeRow &row) const
 {
     if ( m_displayColumn < 0)
     {
@@ -58,7 +58,7 @@ void AttributeTableHandle::setDisplayColIndex(int columnIndex){
     else
     {
         // recalculate the index even if it's the same column in case stuff has changed
-        m_mutableIndex = dXreimpl::makeAttributeIndex<dXreimpl::AttributeIndexItem<dXreimpl::SerialisedPixelRef>>(m_mutableTable, columnIndex);
+        m_mutableIndex = dXreimpl::makeAttributeIndex(m_mutableTable, columnIndex);
     }
     AttributeTableView::setDisplayColIndex(columnIndex);
 }
