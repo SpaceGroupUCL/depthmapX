@@ -401,7 +401,7 @@ namespace  dXreimpl {
             stream.read((char *)&rowkey, sizeof(rowkey));
             auto row = std::unique_ptr<AttributeRowImpl>(new AttributeRowImpl(*this));
             row->read(stream, METAGRAPH_VERSION);
-            m_rows.insert(std::make_pair(rowkey,std::move(row)));
+            m_rows.insert(std::make_pair(AttributeKey(rowkey),std::move(row)));
         }
 
         // ref column display params

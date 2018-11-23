@@ -403,8 +403,9 @@ namespace dXreimpl
         public:
             iterator(const typename StorageType::iterator& iter) : const_iterator_impl<typename StorageType::iterator>(iter)
             {}
-            template<typename other_type> iterator(const const_iterator_impl<other_type>& other) : const_iterator_impl<typename StorageType::iterator>::m_item(other.m_item)
-            {}
+            template<typename other_type> iterator(const const_iterator_impl<other_type>& other) : const_iterator_impl<StorageType::iterator>(other.item){
+               // m_item = other.m_item;
+            }
             template<typename other_type> iterator& operator =(const const_iterator_impl<other_type> &other)
             {
                 const_iterator_impl<typename StorageType::iterator>::m_item = other.m_item;
