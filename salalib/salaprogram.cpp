@@ -885,12 +885,14 @@ int SalaCommand::decode(std::string string)   // string copied as makelower appl
             SalaCommand *parent = m_parent;
             auto n = parent->m_var_names.end();
             int x = -1;
-            while (parent != NULL && n == parent->m_var_names.end()) {
+            while (parent != NULL) {
                n = parent->m_var_names.find(string);
                if (n != parent->m_var_names.end()) {
                   x = n->second;
+                  parent = NULL;
+               } else {
+                  parent = parent->m_parent;
                }
-               parent = parent->m_parent;
             }
             if (x != -1) {
                m_eval_stack.push_back( SalaObj( SalaObj::S_VAR, x) );
