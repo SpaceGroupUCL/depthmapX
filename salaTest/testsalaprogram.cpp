@@ -125,7 +125,7 @@ TEST_CASE("Trivial errors") {
 TEST_CASE("Variables from outer scope are accessible in inner scope") {
     std::stringstream script;
     SalaObj expected;
-    SECTION("No access to globabl scope from within a for loop") {
+    SECTION("Access to global scope from within a for loop") {
         script << "x = 5\n"
                << "for i in range(0,1):\n"
                << "    x = 100\n"
