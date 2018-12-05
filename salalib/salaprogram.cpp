@@ -261,10 +261,7 @@ SalaObj SalaProgram::evaluate()
 
    // clear marks if they've been used:
    if (m_marked) {
-      AttributeTable *table = m_thisobj.getTable();
-      for (int i = 0; i < table->getRowCount(); i++) {
-          m_thisobj.marks[i] = SalaObj();
-      }
+      marks.clear();
       m_marked = false;
    }
 
@@ -1566,13 +1563,13 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                   {
                      param.ensureNone();
                      AttributeTable *table = obj.getTable();
-                     data = obj.marks[(obj.type == SalaObj::S_POINTMAPOBJ) ? table->getRowid(obj.data.graph.node) : obj.data.graph.node];
+                     data = m_program->marks[(obj.type == SalaObj::S_POINTMAPOBJ) ? table->getRowid(obj.data.graph.node) : obj.data.graph.node];
                   }
                   break;
                case SalaObj::S_FSETMARK:
                   {
                      AttributeTable *table = obj.getTable();
-                     obj.marks[(obj.type == SalaObj::S_POINTMAPOBJ) ? table->getRowid(obj.data.graph.node) : obj.data.graph.node] = param;
+                     m_program->marks[(obj.type == SalaObj::S_POINTMAPOBJ) ? table->getRowid(obj.data.graph.node) : obj.data.graph.node] = param;
                      m_program->m_marked = true;   // <- this tells the program to tidy up marks between executions
                      data = SalaObj(); // returns none
                   }
