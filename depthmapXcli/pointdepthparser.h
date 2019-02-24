@@ -35,7 +35,7 @@ public:
         return "Mode options for pointmap POINTDEPTH are:\n" \
                "  -pdp <origin point> point where to calculate depth from. Can be repeated\n" \
                "  -pdf <origin point file> a file with a point per line to calculate depth from\n" \
-               "  -pdt <type> Point depth type. One of metric, angular or visual";
+               "  -pdt <type> Point depth type. One of metric, angular or visual\n";
     }
 
     enum class PointDepthType {
