@@ -19,32 +19,44 @@
 #include "genlib/p2dpoly.h"
 #include <vector>
 
-class StepDepthParser : public IModeParser
+class PointDepthParser : public IModeParser
 {
 public:
-    StepDepthParser()
+    PointDepthParser() : m_pointDepthType(PointDepthType::NONE)
     {}
 
     virtual std::string getModeName() const
     {
-        return "STEPDEPTH";
+        return "POINTDEPTH";
     }
 
     virtual std::string getHelp() const
     {
-        return "Mode options for pointmap STEPDEPTH are:\n" \
-               "  -sdp <step depth point> point where to calculate step depth from. Can be repeated\n" \
-               "  -sdf <step depth point file> a file with a point per line to calculate step depth from\n";
+        return "Mode options for pointmap POINTDEPTH are:\n" \
+               "  -pdp <origin point> point where to calculate depth from. Can be repeated\n" \
+               "  -pdf <origin point file> a file with a point per line to calculate depth from\n" \
+               "  -pdt <type> Point depth type. One of metric, angular or visual";
     }
+
+    enum class PointDepthType {
+        NONE,
+        ANGULAR,
+        METRIC,
+        VISUAL
+    };
 
     virtual void parse(int argc, char** argv);
 
     virtual void run(const CommandLineParser &clp, IPerformanceSink &perfWriter) const;
 
-    std::vector<Point2f> getStepDepthPoints() const { return m_stepDepthPoints; }
+    std::vector<Point2f> getOriginPoints() const { return m_originPoints; }
+
+    PointDepthType getPointDepthType() const { return m_pointDepthType; }
 
 private:
-    std::vector<Point2f> m_stepDepthPoints;
+    std::vector<Point2f> m_originPoints;
+
+    PointDepthType m_pointDepthType;
 };
 
 

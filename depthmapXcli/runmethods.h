@@ -27,6 +27,7 @@
 #include "agentparser.h"
 #include "exportparser.h"
 #include "linkparser.h"
+#include "pointdepthparser.h"
 #include "salalib/isovistdef.h"
 #include <vector>
 
@@ -43,6 +44,7 @@ namespace dm_runmethods{
     void runAgentAnalysis(const CommandLineParser &cmdP, const AgentParser &agentP, IPerformanceSink &perfWriter );
     void runIsovists(const CommandLineParser &cmdP, const std::vector<IsovistDefinition> &isovists, IPerformanceSink &perfWriter );
     void exportData(const CommandLineParser &cmdP, const ExportParser &exportP, IPerformanceSink &perfWriter );
-    void runStepDepth(const CommandLineParser &clp, const std::vector<Point2f> &stepDepthPoints, IPerformanceSink &perfWriter);
+    void runPointDepth(const CommandLineParser &clp, const PointDepthParser::PointDepthType &shortestPathType,
+                       const std::vector<Point2f> &stepDepthPoints, IPerformanceSink &perfWriter);
     void runMapConversion(const CommandLineParser& clp, const MapConvertParser &mcp, IPerformanceSink &perfWriter);
 }

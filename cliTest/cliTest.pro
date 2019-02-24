@@ -35,12 +35,12 @@ SOURCES += main.cpp \
     ../depthmapXcli/exportparser.cpp \
     ../depthmapXcli/importparser.cpp \
     testimportparser.cpp \
-    ../depthmapXcli/stepdepthparser.cpp \
-    teststepdepthparser.cpp \
+    ../depthmapXcli/pointdepthparser.cpp \
     ../depthmapXcli/segmentparser.cpp \
     testsegmentparser.cpp \
     ../depthmapXcli/mapconvertparser.cpp \
-    testmapconvertparser.cpp
+    testmapconvertparser.cpp \
+    testpointdepthparser.cpp
 
 
 HEADERS += \

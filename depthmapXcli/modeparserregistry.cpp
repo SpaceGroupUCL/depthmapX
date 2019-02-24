@@ -23,7 +23,7 @@
 #include "agentparser.h"
 #include "isovistparser.h"
 #include "exportparser.h"
-#include "stepdepthparser.h"
+#include "pointdepthparser.h"
 #include "mapconvertparser.h"
 
 
@@ -39,7 +39,7 @@ void ModeParserRegistry::populateParsers()
     REGISTER_PARSER(IsovistParser);
     REGISTER_PARSER(ExportParser);
     REGISTER_PARSER(ImportParser);
-    REGISTER_PARSER(StepDepthParser);
+    REGISTER_PARSER(PointDepthParser);
     REGISTER_PARSER(MapConvertParser);
     // *********
 }

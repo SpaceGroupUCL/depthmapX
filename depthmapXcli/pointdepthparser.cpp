@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "stepdepthparser.h"
+#include "pointdepthparser.h"
 #include "exceptions.h"
 #include "parsingutils.h"
 #include "salalib/entityparsing.h"
@@ -23,24 +23,24 @@
 
 using namespace depthmapX;
 
-void StepDepthParser::parse(int argc, char ** argv)
+void PointDepthParser::parse(int argc, char ** argv)
 {
 
     std::vector<std::string> points;
     std::string pointFile;
     for ( int i = 1; i < argc; ++i )
     {
-        if ( std::strcmp ("-sdp", argv[i]) == 0)
+        if ( std::strcmp ("-pdp", argv[i]) == 0)
         {
             if (!pointFile.empty())
             {
-                throw CommandLineException("-sdp cannot be used together with -sdf");
+                throw CommandLineException("-pdp cannot be used together with -pdf");
             }
-            ENFORCE_ARGUMENT("-sdp", i)
+            ENFORCE_ARGUMENT("-pdp", i)
             if (!has_only_digits_dots_commas(argv[i]))
             {
                 std::stringstream message;
-                message << "Invalid step depth point provided ("
+                message << "Invalid origin point provided ("
                         << argv[i]
                         << "). Should only contain digits dots and commas"
                         << std::flush;
@@ -48,20 +48,40 @@ void StepDepthParser::parse(int argc, char ** argv)
             }
             points.push_back(argv[i]);
         }
-        else if ( std::strcmp("-sdf", argv[i]) == 0 )
+        else if ( std::strcmp("-pdf", argv[i]) == 0 )
         {
             if (!points.empty())
             {
-                throw CommandLineException("-sdf cannot be used together with -sdp");
+                throw CommandLineException("-pdf cannot be used together with -pdp");
             }
-            ENFORCE_ARGUMENT("-sdf", i)
+            ENFORCE_ARGUMENT("-pdf", i)
             pointFile = argv[i];
+        }
+        else if ( std::strcmp ("-pdt", argv[i]) == 0)
+        {
+            ENFORCE_ARGUMENT("-pdt", i)
+            if ( std::strcmp(argv[i], "angular") == 0 )
+            {
+                m_pointDepthType = PointDepthType::ANGULAR;
+            }
+            else if ( std::strcmp(argv[i], "metric") == 0 )
+            {
+                m_pointDepthType = PointDepthType::METRIC;
+            }
+            else if ( std::strcmp(argv[i], "visual") == 0 )
+            {
+                m_pointDepthType = PointDepthType::VISUAL;
+            }
+            else
+            {
+                throw CommandLineException(std::string("Invalid point depth type: ") + argv[i]);
+            }
         }
     }
 
     if (pointFile.empty() && points.empty())
     {
-        throw CommandLineException("Either -sdp or -sdf must be given");
+        throw CommandLineException("Either -pdp or -pdf must be given");
     }
 
     if(!pointFile.empty())
@@ -74,7 +94,7 @@ void StepDepthParser::parse(int argc, char ** argv)
             throw depthmapX::RuntimeException(message.str().c_str());
         }
         std::vector<Point2f> parsed = EntityParsing::parsePoints(pointsStream, '\t');
-        m_stepDepthPoints.insert(std::end(m_stepDepthPoints), std::begin(parsed), std::end(parsed));
+        m_originPoints.insert(std::end(m_originPoints), std::begin(parsed), std::end(parsed));
     }
     else if(!points.empty())
     {
@@ -87,12 +107,17 @@ void StepDepthParser::parse(int argc, char ** argv)
             pointsStream << "\n" << *iter;
         }
         std::vector<Point2f> parsed = EntityParsing::parsePoints(pointsStream, ',');
-        m_stepDepthPoints.insert(std::end(m_stepDepthPoints), std::begin(parsed), std::end(parsed));
+        m_originPoints.insert(std::end(m_originPoints), std::begin(parsed), std::end(parsed));
 
+    }
+
+    if (m_pointDepthType == PointDepthType::NONE)
+    {
+        throw CommandLineException("Point depth type (-pdt) must be provided");
     }
 }
 
-void StepDepthParser::run(const CommandLineParser &clp, IPerformanceSink &perfWriter) const
+void PointDepthParser::run(const CommandLineParser &clp, IPerformanceSink &perfWriter) const
 {
-    dm_runmethods::runStepDepth(clp, m_stepDepthPoints, perfWriter);
+    dm_runmethods::runPointDepth(clp, m_pointDepthType, m_originPoints, perfWriter);
 }

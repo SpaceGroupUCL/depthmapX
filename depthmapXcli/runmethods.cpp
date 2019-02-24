@@ -659,16 +659,17 @@ namespace dm_runmethods
         }
     }
 
-    void runStepDepth(
+    void runPointDepth(
             const CommandLineParser &clp,
-            const std::vector<Point2f> &stepDepthPoints,
+            const PointDepthParser::PointDepthType &pointDepthType,
+            const std::vector<Point2f> &originPoints,
             IPerformanceSink &perfWriter)
     {
         auto mGraph = loadGraph(clp.getFileName().c_str(),perfWriter);
 
         std::cout << "ok\nSelecting cells... " << std::flush;
 
-        for( auto & point : stepDepthPoints ) {
+        for( auto & point : originPoints ) {
             auto graphRegion = mGraph->getRegion();
             if (!graphRegion.contains(point))
             {
@@ -678,15 +679,28 @@ namespace dm_runmethods
             mGraph->setCurSel(r, true);
         }
 
-        std::cout << "ok\nCalculating step-depth... " << std::flush;
+        std::cout << "ok\nCalculating point-depth... " << std::flush;
 
         Options options;
         options.global = 0;
-        options.point_depth_selection = 1;
+
+        switch (pointDepthType) {
+            case PointDepthParser::PointDepthType::ANGULAR:
+                options.point_depth_selection = 3;
+                break;
+            case PointDepthParser::PointDepthType::METRIC:
+                options.point_depth_selection = 2;
+                break;
+            case PointDepthParser::PointDepthType::VISUAL:
+                options.point_depth_selection = 1;
+                break;
+            default: { throw depthmapX::SetupCheckException("Error, unsupported point depth type"); }
+        }
 
         std::unique_ptr<Communicator> comm(new ICommunicator());
 
-        DO_TIMED("Calculating step-depth", mGraph->analyseGraph( comm.get(), options, false))
+        DO_TIMED("Calculating point-depth", mGraph->analyseGraph( comm.get(), options, false))
+
 
         std::cout << " ok\nWriting out result..." << std::flush;
         DO_TIMED("Writing graph", mGraph->write(clp.getOuputFile().c_str(),METAGRAPH_VERSION, false))
