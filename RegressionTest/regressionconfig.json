@@ -289,6 +289,33 @@
                 "-em": "pointmap-data-csv"
             }
         }],
+        "vga_visual_step_depth": [{
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "POINTDEPTH",
+            "extraArgs":{
+                "-pdp": "3,5",
+                "-pdt": "visual"
+            }
+        }],
+        "vga_metric_depth": [{
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "POINTDEPTH",
+            "extraArgs":{
+                "-pdp": "3,5",
+                "-pdt": "metric"
+            }
+        }],
+        "vga_angular_depth": [{
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "POINTDEPTH",
+            "extraArgs":{
+                "-pdp": "3,5",
+                "-pdt": "angular"
+            }
+        }],
         "isovist_args": [{
             "infile": "../../../testdata/gallery_empty.graph",
             "outfile": "out.graph",
