@@ -67,6 +67,6 @@ public:
    void writeheader(std::ostream& miffile);
    void writetable(std::ostream& miffile, std::ostream& midfile, const AttributeTable& attributes, const LayerManagerImpl layers);
    //
-   std::istream& read(std::istream& stream, int version);
+   std::istream& read(std::istream& stream);
    std::ostream& write(std::ostream& stream);
 };

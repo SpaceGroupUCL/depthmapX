@@ -548,7 +548,7 @@ void MapInfoData::writetable(std::ostream& miffile, std::ostream& midfile, const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::istream& MapInfoData::read(std::istream& stream, int version)
+std::istream& MapInfoData::read(std::istream& stream)
 {
    m_version = dXstring::readString(stream);
    m_charset = dXstring::readString(stream);

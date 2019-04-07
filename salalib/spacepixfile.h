@@ -52,6 +52,6 @@ public:
       { for (size_t i = 0; i < m_spacePixels.size(); i++) if (m_spacePixels[i].isShown()) return true; return false; }
    //
 public:
-   bool read(std::istream &stream, int version, bool drawinglayer = true );
-   bool write( std::ofstream& stream, int version );
+   bool read(std::istream &stream);
+   bool write(std::ofstream& stream);
 };

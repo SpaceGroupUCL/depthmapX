@@ -25,7 +25,7 @@ bool SpacePixelFile::findNextShape(bool& nextlayer) const
    return true;
 }
 
-bool SpacePixelFile::read( std::istream& stream, int version, bool drawinglayer )
+bool SpacePixelFile::read( std::istream& stream )
 {
    m_name = dXstring::readString(stream);
    stream.read( (char *) &m_region, sizeof(m_region) );
@@ -33,7 +33,7 @@ bool SpacePixelFile::read( std::istream& stream, int version, bool drawinglayer 
    stream.read( (char *) &count, sizeof(count) );
    for (int i = 0; i < count; i++) {
        m_spacePixels.emplace_back();
-       m_spacePixels.back().read(stream,version,true);
+       m_spacePixels.back().read(stream);
    }
 
    if (m_name.empty()) {
@@ -42,7 +42,7 @@ bool SpacePixelFile::read( std::istream& stream, int version, bool drawinglayer 
    return true;
 }
 
-bool SpacePixelFile::write( std::ofstream& stream, int version )
+bool SpacePixelFile::write( std::ofstream& stream )
 {
    dXstring::writeString(stream, m_name);
    stream.write( (char *) &m_region, sizeof(m_region) );
@@ -51,7 +51,7 @@ bool SpacePixelFile::write( std::ofstream& stream, int version )
    int count = m_spacePixels.size();
    stream.write( (char *) &count, sizeof(count) );
    for (auto& spacePixel: m_spacePixels) {
-      spacePixel.write(stream,version);
+      spacePixel.write(stream);
    }
    return true;
 }

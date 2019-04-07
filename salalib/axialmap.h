@@ -73,9 +73,9 @@ public:
    void makeSegmentConnections(std::vector<Connector> &connectionset);
    void pushAxialValues(ShapeGraph& axialmap);
    //
-   virtual bool read( std::istream& stream, int version );
-   bool readold( std::istream& stream, int version );
-   virtual bool write( std::ofstream& stream, int version );
+   virtual bool read(std::istream& stream);
+   bool readold(std::istream& stream);
+   virtual bool write(std::ofstream& stream);
    void writeAxialConnectionsAsDotGraph(std::ostream &stream);
    void writeAxialConnectionsAsPairsCSV(std::ostream &stream);
    void writeSegmentConnectionsAsPairsCSV(std::ostream &stream);

@@ -164,7 +164,7 @@ class SalaShape {
     //
     std::vector<SalaEdgeU> getClippingSet(QtRegion &clipframe) const;
     //
-    bool read(std::istream &stream, int version);
+    bool read(std::istream &stream);
     bool write(std::ofstream &stream);
 
     std::vector<Line> getAsLines() const {
@@ -563,8 +563,8 @@ class ShapeMap : public PixelBase {
     //
   public:
     // file
-    bool read(std::istream &stream, int version, bool drawinglayer = false);
-    bool write(std::ofstream &stream, int version);
+    bool read(std::istream &stream);
+    bool write(std::ofstream &stream);
     //
     bool output(std::ofstream &stream, char delimiter = '\t');
     //

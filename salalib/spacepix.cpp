@@ -704,7 +704,7 @@ void SpacePixel::cutLine(Line &l, short dir) {
     }
 }
 
-bool SpacePixel::read(std::istream &stream, int version) {
+bool SpacePixel::read(std::istream &stream) {
     // clear anything that was there:
     m_display_lines.clear();
     m_lines.clear();

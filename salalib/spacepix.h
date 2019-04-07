@@ -165,7 +165,7 @@ class SpacePixel : public PixelBase {
     int getLineCount() const { return (int)m_lines.size(); }
 
   public:
-    virtual bool read(std::istream &stream, int version);
+    virtual bool read(std::istream &stream);
     virtual bool write(std::ofstream &stream);
     friend bool operator==(const SpacePixel &a, const SpacePixel &b);
 };

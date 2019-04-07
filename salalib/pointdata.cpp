@@ -1076,7 +1076,7 @@ bool PointMap::blockedAdjacent( const PixelRef p ) const
 
 ////////////////////////////////////////////////////////////////////////////////
 
-bool PointMap::read(std::istream& stream, int version )
+bool PointMap::read(std::istream& stream )
 {
    m_name = dXstring::readString(stream);
 
@@ -1108,13 +1108,13 @@ bool PointMap::read(std::istream& stream, int version )
 
    // our data read
    stream.read((char *)&displayed_attribute,sizeof(displayed_attribute));
-   m_attributes->read( stream, m_layers, version );
+   m_attributes->read( stream, m_layers );
 
    m_points = depthmapX::ColumnMatrix<Point>(m_rows, m_cols);
    
    for (size_t j = 0; j < m_cols; j++) {
       for (size_t k = 0; k < m_rows; k++) {
-         m_points(k, j).read(stream,version,attr_count);
+         m_points(k, j).read(stream);
 
          // check if occdistance of any pixel's bin is set, meaning that
          // the isovist analysis was done
@@ -1164,7 +1164,7 @@ bool PointMap::read(std::istream& stream, int version )
    return true;
 }
 
-bool PointMap::write( std::ostream& stream, int version )
+bool PointMap::write( std::ostream& stream )
 {
    dXstring::writeString(stream, m_name);
 
@@ -1187,7 +1187,7 @@ bool PointMap::write( std::ostream& stream, int version )
    m_attributes->write( stream, m_layers );
    
    for (auto& point: m_points) {
-       point.write( stream, version );
+       point.write( stream );
    }
 
    stream.write((char *) &m_processed, sizeof(m_processed));

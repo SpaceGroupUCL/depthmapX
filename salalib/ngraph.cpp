@@ -194,11 +194,11 @@ void Node::contents(PixelRefVector& hood) const
 
 //////////////////////////////////////////////////////////////////////////////////
 
-std::istream& Node::read(std::istream& stream, int version)
+std::istream& Node::read(std::istream& stream)
 {
    int i;
    for (i = 0; i < 32; i++) {
-      m_bins[i].read(stream, version);
+      m_bins[i].read(stream);
    }
 
    for (i = 0; i < 32; i++) {
@@ -208,11 +208,11 @@ std::istream& Node::read(std::istream& stream, int version)
    return stream;
 }
 
-std::ostream& Node::write(std::ostream& stream, int version)
+std::ostream& Node::write(std::ostream& stream)
 {
    int i;
    for (i = 0; i < 32; i++) {
-      m_bins[i].write(stream,version);
+      m_bins[i].write(stream);
    }
 
    for (i = 0; i < 32; i++) {
@@ -428,7 +428,7 @@ PixelRef Bin::cursor() const
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-std::istream& Bin::read(std::istream& stream, int version)
+std::istream& Bin::read(std::istream& stream)
 {
    stream.read( (char *) &m_dir, sizeof(m_dir) );
    stream.read( (char *) &m_node_count, sizeof(m_node_count) );
@@ -439,15 +439,15 @@ std::istream& Bin::read(std::istream& stream, int version)
    if (m_node_count) {
       if (m_dir & PixelRef::DIAGONAL) {
          m_pixel_vecs = std::vector<PixelVec>(1);
-         m_pixel_vecs[0].read(stream, version, m_dir);
+         m_pixel_vecs[0].read(stream, m_dir);
       }
       else {
          unsigned short length;
          stream.read( (char *) &length, sizeof(length) );
          m_pixel_vecs = std::vector<PixelVec>(length);
-         m_pixel_vecs[0].read(stream, version, m_dir);
+         m_pixel_vecs[0].read(stream, m_dir);
          for (int i = 1; i < length; i++) {
-            m_pixel_vecs[i].read(stream, version, m_dir,m_pixel_vecs[i-1]);
+            m_pixel_vecs[i].read(stream, m_dir,m_pixel_vecs[i-1]);
          }
       }
    }
@@ -455,7 +455,7 @@ std::istream& Bin::read(std::istream& stream, int version)
    return stream;
 }
 
-std::ostream& Bin::write(std::ostream& stream, int version)
+std::ostream& Bin::write(std::ostream& stream)
 {
    stream.write( (char *) &m_dir, sizeof(m_dir) );
    stream.write( (char *) &m_node_count, sizeof(m_node_count) );
@@ -499,7 +499,7 @@ std::ostream& operator << (std::ostream& stream, const Bin& bin)
 
 ///////////////////////////////////////////////////////////////////////////////////////
 
-std::istream& PixelVec::read(std::istream& stream, int version, const char dir)
+std::istream& PixelVec::read(std::istream& stream, const char dir)
 {
    unsigned short runlength;
    stream.read((char *) &m_start, sizeof(m_start));
@@ -549,7 +549,7 @@ struct ShiftLength {
    unsigned short runlength : 12;
 };
 
-std::istream& PixelVec::read(std::istream& stream, int version, const char dir, const PixelVec& context)
+std::istream& PixelVec::read(std::istream& stream, const char dir, const PixelVec& context)
 {
    short primary;
    ShiftLength shiftlength;

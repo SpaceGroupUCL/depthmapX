@@ -144,7 +144,7 @@ public:
 
     void setName(const std::string &name);
     // returns the physical column for comaptibility with the old attribute table
-    size_t read(std::istream &stream, int version);
+    size_t read(std::istream &stream);
     void write(std::ostream& stream, int physicalCol);
 
 private:
@@ -191,7 +191,7 @@ public:
     void addColumn();
     void removeColumn(size_t index);
 
-    void read(std::istream &stream, int version);
+    void read(std::istream &stream);
     void write(std::ostream &stream);
 
 private:
@@ -285,7 +285,7 @@ public:
     const DisplayParams& getDisplayParams() const { return m_displayParams; }
     void setDisplayParams(const DisplayParams& params){m_displayParams = params;}
     void setDisplayParamsForAllAttributes(const DisplayParams& params);
-    void read(std::istream &stream, LayerManager &layerManager, int version);
+    void read(std::istream &stream, LayerManager &layerManager);
     void write(std::ostream &stream, const LayerManager &layerManager);
     void clear();
     float getSelAvg(size_t columnIndex) {

@@ -88,7 +88,7 @@ void AttributeColumnImpl::setName(const std::string &name)
     m_name = name;
 }
 
-size_t AttributeColumnImpl::read(std::istream &stream, int version)
+size_t AttributeColumnImpl::read(std::istream &stream)
 {
     m_name = dXstring::readString(stream);
     float val;
@@ -187,7 +187,7 @@ void AttributeRowImpl::removeColumn(size_t index)
     m_data.erase(m_data.begin() + index);
 }
 
-void AttributeRowImpl::read(std::istream &stream, int version)
+void AttributeRowImpl::read(std::istream &stream)
 {
     stream.read((char *)&m_layerKey, sizeof(m_layerKey));
     dXreadwrite::readIntoVector(stream, m_data);
@@ -394,7 +394,7 @@ void AttributeTable::setDisplayParamsForAllAttributes(const DisplayParams &param
 
 }
 
-void AttributeTable::read(std::istream &stream, LayerManager &layerManager, int version)
+void AttributeTable::read(std::istream &stream, LayerManager &layerManager)
 {
     layerManager.read(stream);
     int colcount;
@@ -402,7 +402,7 @@ void AttributeTable::read(std::istream &stream, LayerManager &layerManager, int 
     std::map<size_t, AttributeColumnImpl> tmp;
     for (int j = 0; j < colcount; j++) {
         AttributeColumnImpl col("");
-        tmp[col.read(stream, METAGRAPH_VERSION)] = col;
+        tmp[col.read(stream)] = col;
     }
 
     for (auto & c : tmp)
@@ -416,7 +416,7 @@ void AttributeTable::read(std::istream &stream, LayerManager &layerManager, int 
     for (int i = 0; i < rowcount; i++) {
         stream.read((char *)&rowkey, sizeof(rowkey));
         auto row = std::unique_ptr<AttributeRowImpl>(new AttributeRowImpl(*this));
-        row->read(stream, METAGRAPH_VERSION);
+        row->read(stream);
         m_rows.insert(std::make_pair(AttributeKey(rowkey),std::move(row)));
     }
 

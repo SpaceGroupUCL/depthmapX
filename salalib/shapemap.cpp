@@ -46,7 +46,7 @@ static const double TOLERANCE_B = 1e-12;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SalaShape::read(std::istream &stream, int version) {
+bool SalaShape::read(std::istream &stream) {
     // defaults
     m_draworder = -1;
     m_selected = false;
@@ -2273,7 +2273,7 @@ bool ShapeMap::selectionToLayer(const std::string &name) {
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ShapeMap::read(std::istream &stream, int version, bool drawinglayer) {
+bool ShapeMap::read(std::istream &stream) {
     // turn off selection / editable etc
     m_selection = false;
     m_editable = false;
@@ -2325,7 +2325,7 @@ bool ShapeMap::read(std::istream &stream, int version, bool drawinglayer) {
         int key;
         stream.read((char *)&key, sizeof(key));
         auto iter = m_shapes.insert(std::make_pair(key, SalaShape())).first;
-        iter->second.read(stream, version);
+        iter->second.read(stream);
     }
 
     // read object data (currently unused)
@@ -2341,7 +2341,7 @@ bool ShapeMap::read(std::istream &stream, int version, bool drawinglayer) {
         stream.ignore(sizeof(int) * std::streamsize(size));
     }
     // read attribute data
-    m_attributes->read(stream, m_layers, version);
+    m_attributes->read(stream, m_layers);
     stream.read((char *)&m_displayed_attribute, sizeof(m_displayed_attribute));
 
     if (int(m_displayed_attribute) >= 0) {
@@ -2376,7 +2376,7 @@ bool ShapeMap::read(std::istream &stream, int version, bool drawinglayer) {
     char x = stream.get();
     if (x == 'm') {
         m_mapinfodata = MapInfoData();
-        m_mapinfodata.read(stream, version);
+        m_mapinfodata.read(stream);
         m_hasMapInfoData = true;
     }
 
@@ -2386,7 +2386,7 @@ bool ShapeMap::read(std::istream &stream, int version, bool drawinglayer) {
     return true;
 }
 
-bool ShapeMap::write(std::ofstream &stream, int version) {
+bool ShapeMap::write(std::ofstream &stream) {
     // name
     dXstring::writeString(stream, m_name);
 

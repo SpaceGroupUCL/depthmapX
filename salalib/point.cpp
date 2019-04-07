@@ -22,7 +22,7 @@ float Point::getBinDistance(int i)
    return m_node->bindistance(i);
 }
 
-std::istream& Point::read(std::istream& stream, int version, int attr_count)
+std::istream& Point::read(std::istream& stream)
 {
    stream.read( (char *) &m_state, sizeof(m_state) );
    // block is the same size as m_noderef used to be for ease of replacement:
@@ -40,7 +40,7 @@ std::istream& Point::read(std::istream& stream, int version, int attr_count)
    stream.read( (char *) &ngraph, sizeof(ngraph) );
    if (ngraph) {
        m_node = std::unique_ptr<Node>(new Node());
-       m_node->read(stream, version);
+       m_node->read(stream);
    }
 
    stream.read((char *) &m_location, sizeof(m_location));
@@ -48,7 +48,7 @@ std::istream& Point::read(std::istream& stream, int version, int attr_count)
    return stream;
 }
 
-std::ostream &Point::write(std::ostream& stream, int version)
+std::ostream &Point::write(std::ostream& stream)
 {
    stream.write( (char *) &m_state, sizeof(m_state) );
    // block is the same size as m_noderef used to be for ease of replacement:
@@ -62,7 +62,7 @@ std::ostream &Point::write(std::ostream& stream, int version)
    if (m_node) {
       ngraph = true;
       stream.write( (char *) &ngraph, sizeof(ngraph) );
-      m_node->write(stream, version);
+      m_node->write(stream);
    }
    else {
       ngraph = false;

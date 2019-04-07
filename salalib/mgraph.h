@@ -125,8 +125,8 @@ private:
        m_pointMaps.erase(m_pointMaps.begin() + i);
    }
 
-   bool readPointMaps(std::istream &stream, int version );
-   bool writePointMaps( std::ofstream& stream, int version, bool displayedmaponly = false );
+   bool readPointMaps(std::istream &stream);
+   bool writePointMaps(std::ofstream& stream, bool displayedmaponly = false );
 
    std::recursive_mutex mLock;
 public:
@@ -268,14 +268,14 @@ public:
        m_shapeGraphs.erase(m_shapeGraphs.begin() + i);
    }
 
-   bool readShapeGraphs(std::istream &stream, int version );
-   bool writeShapeGraphs( std::ofstream& stream, int version, bool displayedmaponly = false );
+   bool readShapeGraphs(std::istream &stream);
+   bool writeShapeGraphs(std::ofstream& stream, bool displayedmaponly = false );
 
    std::vector<ShapeMap>& getDataMaps()
    { return m_dataMaps; }
 
-   bool readDataMaps(std::istream &stream, int version );
-   bool writeDataMaps( std::ofstream& stream, int version, bool displayedmaponly = false );
+   bool readDataMaps(std::istream &stream);
+   bool writeDataMaps(std::ofstream& stream, bool displayedmaponly = false );
 
    //
    int getDisplayedMapType();

@@ -78,7 +78,7 @@ TEST_CASE("test attribute column")
     AttributeColumnImpl copy("");
     {
         std::ifstream infile(scf.Filename());
-        copy.read(infile, METAGRAPH_VERSION);
+        copy.read(infile);
     }
     REQUIRE(copy.getName() == "colName");
     REQUIRE(copy.getFormula() == "");
@@ -156,7 +156,7 @@ TEST_CASE("test attribute row")
     AttributeRowImpl copiedRow(copiedColMan.get());
     {
         std::ifstream infile(scf.Filename());
-        copiedRow.read(infile, METAGRAPH_VERSION);
+        copiedRow.read(infile);
     }
 
     REQUIRE(copiedRow.getValue(0) == Approx(1.2f));
@@ -445,7 +445,7 @@ TEST_CASE("Attribute Table - serialisation")
     LayerManagerImpl copyLayerManager;
     {
         std::ifstream infile(newTableFile.Filename());
-        copyTable.read(infile, copyLayerManager, METAGRAPH_VERSION);
+        copyTable.read(infile, copyLayerManager);
     }
 
     auto& copyRow = copyTable.getRow(AttributeKey(0));

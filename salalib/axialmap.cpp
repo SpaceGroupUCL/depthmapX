@@ -178,7 +178,7 @@ void ShapeGraph::outputNet(std::ostream& netfile) const
    }
 }
 
-bool ShapeGraph::read(std::istream &stream, int version )
+bool ShapeGraph::read(std::istream &stream)
 {
    m_attributes->clear();
    m_connectors.clear();
@@ -196,16 +196,16 @@ bool ShapeGraph::read(std::istream &stream, int version )
       m_keyvertices.push_back(std::set<int>(tempVec.begin(), tempVec.end()));
    }
    // now base class read:
-   ShapeMap::read(stream,version);
+   ShapeMap::read(stream);
 
    return true;
 }
 
-bool ShapeGraph::readold( std::istream& stream, int version )
+bool ShapeGraph::readold( std::istream& stream)
 {
    // read in from old base class
    SpacePixel linemap;
-   linemap.read(stream, version);
+   linemap.read(stream);
    const std::map<int,LineTest>& lines = linemap.getAllLines();
 
    m_name = linemap.getName();
@@ -239,7 +239,7 @@ bool ShapeGraph::readold( std::istream& stream, int version )
    int displayed_attribute;  // n.b., temp variable necessary to force recalc below
    stream.read((char *)&displayed_attribute,sizeof(displayed_attribute));
 
-   m_attributes->read(stream, m_layers, version);
+   m_attributes->read(stream, m_layers);
    int size;
    stream.read((char *)&size,sizeof(size));
    for (int j = 0; j < size; j++) {
@@ -258,7 +258,7 @@ bool ShapeGraph::readold( std::istream& stream, int version )
    char x = stream.get();
    if (x == 'm') {
       m_mapinfodata = MapInfoData();
-      m_mapinfodata.read(stream,version);
+      m_mapinfodata.read(stream);
       m_hasMapInfoData = true;
    }
 
@@ -271,7 +271,7 @@ bool ShapeGraph::readold( std::istream& stream, int version )
    return true;
 }
 
-bool ShapeGraph::write( std::ofstream& stream, int version )
+bool ShapeGraph::write( std::ofstream& stream )
 {
    // note keyvertexcount and keyvertices are different things!  (length keyvertices not the same as keyvertexcount!)
    stream.write((char *)&m_keyvertexcount,sizeof(m_keyvertexcount));
@@ -282,7 +282,7 @@ bool ShapeGraph::write( std::ofstream& stream, int version )
    }
 
    // now simply run base class write:
-   ShapeMap::write(stream,version);
+   ShapeMap::write(stream);
 
    return true;
 }

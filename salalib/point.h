@@ -167,8 +167,8 @@ public:
       { return m_grid_connections; }
    float getBinDistance(int i);
 public:
-   std::istream &read(std::istream &stream, int version, int attr_count);
-   std::ostream& write(std::ostream &stream, int version);
+   std::istream &read(std::istream &stream);
+   std::ostream& write(std::ostream &stream);
    //
 protected:
    // for user processing, set their own data on the point:
