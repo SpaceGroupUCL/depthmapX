@@ -26,5 +26,5 @@
 class VGAMetricDepth : IVGA {
   public:
     std::string getAnalysisName() const override { return "Metric Depth"; }
-    bool run(Communicator *comm, const Options &options, PointMap &map, bool) override;
+    bool run(Communicator *comm, const Options &, PointMap &map, bool) override;
 };

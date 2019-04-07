@@ -22,7 +22,7 @@
 
 // revised to use tulip bins for faster analysis of large spaces
 
-bool SegmentTulipDepth::run(Communicator *comm, const Options &options, ShapeGraph &map, bool simple_version) {
+bool SegmentTulipDepth::run(Communicator *, const Options &, ShapeGraph &map, bool) {
 
     AttributeTable &attributes = map.getAttributeTable();
 

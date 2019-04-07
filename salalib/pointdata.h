@@ -173,7 +173,7 @@ public:
    bool sieve2(sparkSieve2& sieve, std::vector<PixelRef>& addlist, int q, int depth, PixelRef curs);
    // bool makeGraph( Graph& graph, int optimization_level = 0, Communicator *comm = NULL);
    //
-   bool binDisplay(Communicator *comm);
+   bool binDisplay(Communicator *);
    bool mergePoints(const Point2f& p);
    bool unmergePoints();
    bool unmergePixel(PixelRef a);

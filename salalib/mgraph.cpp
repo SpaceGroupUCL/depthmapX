@@ -938,7 +938,7 @@ bool MetaGraph::convertDataToSegment(Communicator *comm, std::string layer_name,
 
 // note: type flag says whether this is graph to data map or drawing to data map
 
-bool MetaGraph::convertToData(Communicator *comm, std::string layer_name, bool keeporiginal, int shapeMapType, bool copydata)
+bool MetaGraph::convertToData(Communicator *, std::string layer_name, bool keeporiginal, int shapeMapType, bool copydata)
 {
    int oldstate = m_state;
 
@@ -1020,7 +1020,7 @@ bool MetaGraph::convertToData(Communicator *comm, std::string layer_name, bool k
    return retvar;
 }
 
-bool MetaGraph::convertToDrawing(Communicator *comm, std::string layer_name, bool fromDisplayedDataMap)
+bool MetaGraph::convertToDrawing(Communicator *, std::string layer_name, bool fromDisplayedDataMap)
 {
    bool retvar = false;
 
@@ -1270,7 +1270,7 @@ bool MetaGraph::makeFewestLineMap( Communicator *communicator, int replace )
    return retvar;
 }
 
-bool MetaGraph::analyseAxial( Communicator *communicator, Options options, bool simple_version ) // options copied to keep thread safe
+bool MetaGraph::analyseAxial( Communicator *communicator, Options options, bool ) // options copied to keep thread safe
 {
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload) 
 

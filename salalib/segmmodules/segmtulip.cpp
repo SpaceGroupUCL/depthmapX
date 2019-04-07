@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &map, bool simple_version) {
+bool SegmentTulip::run(Communicator *, const Options &options, ShapeGraph &map, bool) {
 
     if (map.getMapType() != ShapeMap::SEGMENTMAP) {
         return false;

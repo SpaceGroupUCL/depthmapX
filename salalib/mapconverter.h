@@ -11,15 +11,15 @@ std::unique_ptr<ShapeGraph> convertDrawingToAxial(Communicator *comm, const std:
                                                   const std::vector<SpacePixelFile> &drawingFiles);
 std::unique_ptr<ShapeGraph> convertDataToAxial(Communicator *comm, const std::string& name,
                                                ShapeMap& shapemap, bool copydata = false);
-std::unique_ptr<ShapeGraph> convertDrawingToConvex(Communicator *comm, const std::string& name,
+std::unique_ptr<ShapeGraph> convertDrawingToConvex(Communicator *, const std::string& name,
                                                    const std::vector<SpacePixelFile> &drawingFiles);
-std::unique_ptr<ShapeGraph> convertDataToConvex(Communicator *comm, const std::string& name,
+std::unique_ptr<ShapeGraph> convertDataToConvex(Communicator *, const std::string& name,
                                                 ShapeMap& shapemap, bool copydata = false);
 std::unique_ptr<ShapeGraph> convertDrawingToSegment(Communicator *comm, const std::string& name,
                                                     const std::vector<SpacePixelFile> &drawingFiles);
 std::unique_ptr<ShapeGraph> convertDataToSegment(Communicator *comm, const std::string& name,
                                                  ShapeMap& shapemap, bool copydata = false);
-std::unique_ptr<ShapeGraph> convertAxialToSegment(Communicator *comm, ShapeGraph& axialMap,
+std::unique_ptr<ShapeGraph> convertAxialToSegment(Communicator *, ShapeGraph& axialMap,
                                                   const std::string& name, bool keeporiginal = true,
                                                   bool pushvalues = false, double stubremoval = 0.0);
 

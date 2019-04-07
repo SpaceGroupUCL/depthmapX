@@ -207,7 +207,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToAxial(Communicator *comm,
 
 // yet more conversions, this time polygons to shape elements
 
-std::unique_ptr<ShapeGraph> MapConverter::convertDrawingToConvex(Communicator *comm, const std::string& name,
+std::unique_ptr<ShapeGraph> MapConverter::convertDrawingToConvex(Communicator *, const std::string& name,
                                                                  const std::vector<SpacePixelFile> &drawingFiles)
 {
    QtRegion region;
@@ -246,7 +246,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDrawingToConvex(Communicator *c
    return usermap;
 }
 
-std::unique_ptr<ShapeGraph> MapConverter::convertDataToConvex(Communicator *comm, const std::string& name,
+std::unique_ptr<ShapeGraph> MapConverter::convertDataToConvex(Communicator *, const std::string& name,
                                                               ShapeMap& shapemap, bool copydata)
 {
    std::unique_ptr<ShapeGraph> usermap(new ShapeGraph(name,ShapeMap::CONVEXMAP));
@@ -492,7 +492,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToSegment(Communicator *com
 }
 
 // stubremoval is fraction of overhanging line length before axial "stub" is removed
-std::unique_ptr<ShapeGraph> MapConverter::convertAxialToSegment(Communicator *comm, ShapeGraph& axialMap,
+std::unique_ptr<ShapeGraph> MapConverter::convertAxialToSegment(Communicator *, ShapeGraph& axialMap,
                                                                 const std::string& name, bool keeporiginal,
                                                                 bool copydata, double stubremoval)
 {

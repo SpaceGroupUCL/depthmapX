@@ -1578,7 +1578,7 @@ bool PointMap::sieve2(sparkSieve2& sieve, std::vector<PixelRef>& addlist, int q,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool PointMap::binDisplay(Communicator *comm)
+bool PointMap::binDisplay(Communicator *)
 {
    int bindisplay_col = m_attributes->insertOrResetColumn("Node Bins");
 
