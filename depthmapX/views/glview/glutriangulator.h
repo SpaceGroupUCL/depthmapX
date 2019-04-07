@@ -3,6 +3,11 @@
 #include "genlib/p2dpoly.h"
 #include <vector>
 
+// This is required to silence the warnings for OpenGL deprecation in macOS
+#ifndef GL_SILENCE_DEPRECATION
+#define GL_SILENCE_DEPRECATION true
+#endif
+
 #ifdef __linux__
 #include "GL/glu.h"
 #elif _WIN32
