@@ -156,7 +156,7 @@ class SpacePixel : public PixelBase {
     // for screen drawing:
     PafColor getLineColor(bool in_color = true) const { return m_color; }
     int getLineStyle() const { return m_style; }
-    const bool getLineSelected() const {
+    bool getLineSelected() const {
         return false;
     } // selection not enabled as yet for non-axial lines -- note: major change around when it happens
     void setColor(const PafColor &color) { m_color = color; }

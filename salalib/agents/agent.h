@@ -91,13 +91,13 @@ class Agent {
     bool gateEncountered() { return m_gate_encountered; }
     const Point2f &getLoc() const { return m_loc; }
     //
-    const bool atTarget() const { return m_at_target; }
-    const bool atDestination() const { return m_at_destination; }
+    bool atTarget() const { return m_at_target; }
+    bool atDestination() const { return m_at_destination; }
     //
     const Point2f &getLocation() const { return m_loc; }
     const Point2f &getVector() const { return m_vector; }
     const PixelRef getNode() const { return m_node; }
-    const int getFrame() const { return m_frame; }
+    int getFrame() const { return m_frame; }
     const PointMap &getPointMap() const { return *m_pointmap; }
 };
 

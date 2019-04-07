@@ -769,7 +769,7 @@ struct SalaBuffer
    { bufpos = -1; buffer[0] = '\0'; }
    operator std::string()
    { buffer[bufpos + 1] = '\0'; return std::string(buffer); }
-   const bool empty()
+   bool empty()
    { return bufpos == -1; }
 };
 

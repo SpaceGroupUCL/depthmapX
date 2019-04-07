@@ -309,10 +309,10 @@ class ShapeMap : public PixelBase {
 
     void clearAll();
     // num shapes total
-    const size_t getShapeCount() const { return m_shapes.size(); }
+    size_t getShapeCount() const { return m_shapes.size(); }
     // num shapes for this object (note, request by object rowid
     // -- on interrogation, this is what you will usually receive)
-    const size_t getShapeCount(int rowid) const {
+    size_t getShapeCount(int rowid) const {
         return depthmapX::getMapAtIndex(m_shapes, rowid)->second.m_points.size();
     }
     //
