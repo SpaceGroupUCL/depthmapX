@@ -153,18 +153,6 @@ class SpacePixel : public PixelBase {
     bool isEditable() const { return m_edit; }
 
   public:
-    // for screen drawing:
-    PafColor getLineColor(bool in_color = true) const { return m_color; }
-    int getLineStyle() const { return m_style; }
-    bool getLineSelected() const {
-        return false;
-    } // selection not enabled as yet for non-axial lines -- note: major change around when it happens
-    void setColor(const PafColor &color) { m_color = color; }
-    void setStyle(const int style) { m_style = style; }
-    // just to know...
-    int getLineCount() const { return (int)m_lines.size(); }
-
-  public:
     virtual bool read(std::istream &stream);
     virtual bool write(std::ofstream &stream);
     friend bool operator==(const SpacePixel &a, const SpacePixel &b);
