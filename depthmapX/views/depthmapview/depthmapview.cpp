@@ -190,10 +190,14 @@ bool QDepthmapView::eventFilter(QObject *object, QEvent *e)
         case QEvent::MouseButtonPress:
         case QEvent::MouseButtonRelease:
         case QEvent::MouseButtonDblClick:
-        case QEvent::MouseMove:
+        case QEvent::MouseMove: {
             Qt::KeyboardModifiers keyMods = QApplication::keyboardModifiers();
             pressed_nFlags = ( keyMods & Qt::ShiftModifier ) ? pressed_nFlags |= MK_SHIFT : pressed_nFlags &= ~MK_SHIFT;
             pressed_nFlags = ( keyMods & Qt::ControlModifier ) ? pressed_nFlags |= MK_CONTROL : pressed_nFlags &= ~MK_CONTROL;
+            break;
+        }
+        default:
+            break;
     }
 
     if(e->type() == QEvent::ToolTip)
@@ -753,6 +757,8 @@ void QDepthmapView::mousePressEvent(QMouseEvent *e)
         break;
     case Qt::RightButton:
         pressed_nFlags = MK_RBUTTON;
+        break;
+    default:
         break;
     }
 	QPoint point = e->pos();

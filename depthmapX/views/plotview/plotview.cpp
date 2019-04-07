@@ -549,6 +549,8 @@ void QPlotView::mousePressEvent(QMouseEvent *e) {
     case Qt::RightButton:
         pressed_nFlags = MK_RBUTTON;
         break;
+    default:
+        break;
     }
     m_mouse_point = e->pos();
     m_drag_rect_a = QRect(0, 0, 0, 0);

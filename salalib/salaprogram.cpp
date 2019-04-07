@@ -1246,6 +1246,8 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                      throw SalaError("Cannot be applied to " + data.getTypeIndefArt() + data.getTypeStr(),m_line);
                }
                break;
+            default:
+                break;
             }
          }
          catch (SalaError e)
@@ -1363,6 +1365,8 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
 	       }
 #endif               
                break;
+            default:
+                break;
             }
          }
          catch (SalaError e)
@@ -1447,6 +1451,8 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
             case SalaObj::S_ATAN:
                data = atan(evaluate(pointer,p_obj).toDouble());
                break;
+            default:
+                break;
             }
          }
          catch (SalaError e)

@@ -1253,6 +1253,8 @@ void Q3DView::mousePressEvent(QMouseEvent *event)
     case Qt::RightButton:
         OnRButtonDown(0, event->pos());
         break;
+    default:
+        break;
     }
 }
 
@@ -1266,6 +1268,8 @@ void Q3DView::mouseReleaseEvent(QMouseEvent *event)
 
     case Qt::RightButton:
         OnRButtonUp(0, event->pos());
+        break;
+    default:
         break;
     }
 }

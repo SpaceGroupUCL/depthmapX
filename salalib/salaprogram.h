@@ -700,6 +700,8 @@ inline const std::string SalaObj::getTypeStr() const
       return "tuple";
    case S_THIS:
       return "this";
+   default:
+       break;
    }
    if (type & S_GRAPHOBJ) {
       return "graph object";
