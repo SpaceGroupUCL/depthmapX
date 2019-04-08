@@ -399,7 +399,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             int dir = (lineindex.dir == 1) ? 0 : 1;
             int coverage = lineindex.coverage & uncovered[ref][dir];
             if (coverage != 0) {
-                register int rbin = 0;
+                int rbin = 0;
                 int rbinbase;
                 if (lineindex.previous.ref != -1) {
                     uncovered[ref][dir] &= ~coverage;
@@ -422,7 +422,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
                 }
                 Connector &line = map.getConnections()[ref];
                 float seglength;
-                register int extradepth;
+                int extradepth;
                 if (lineindex.dir != -1) {
                     for (auto &segconn : line.m_forward_segconns) {
                         rbin = rbinbase;

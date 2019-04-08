@@ -81,7 +81,7 @@ bool SegmentTulipDepth::run(Communicator *, const Options &, ShapeGraph &map, bo
           // (note the -1)
           double depth_to_line = depthlevel / ((tulip_bins - 1) * 0.5);
           map.getAttributeRowFromShapeIndex(lineindex.ref).setValue(stepdepth_col,depth_to_line);
-          register int extradepth;
+          int extradepth;
           if (lineindex.dir != -1) {
              for (auto& segconn: line.m_forward_segconns) {
                 if (!covered[segconn.first.ref]) {

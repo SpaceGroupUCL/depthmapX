@@ -1118,7 +1118,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
    if (pointer < 0) {
       throw SalaError("Missing argument",m_line);
    }
-   register SalaObj data = m_eval_stack[pointer];
+   SalaObj data = m_eval_stack[pointer];
    pointer--;
    if (data.type == SalaObj::S_FUNCTION) {
       SalaObj::Func func = data.data.func;

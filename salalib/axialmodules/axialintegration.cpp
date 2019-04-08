@@ -289,7 +289,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
             // include this line in total weights (as per nodecount)
             total_weight += rootweight;
         }
-        register int index = -1;
+        int index = -1;
         int r = 0;
         for (int radius : radii) {
             while (foundlist.a().size()) {
