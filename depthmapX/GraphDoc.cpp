@@ -104,7 +104,6 @@ void QGraphDoc::exceptionThrownInRenderThread(int type, std::string message) {
         message << "This operation requires isovist analysis. To run it go to: ";
         message << "Tools -> Visibility -> Run Visibility Graph Analysis... ";
         message << "and select \"Calculate isovist properties\"";
-        message << flush;
         QMessageBox::warning(this, tr("Warning"), tr(message.str().c_str()),
                              QMessageBox::Ok, QMessageBox::Ok);
     }
@@ -406,7 +405,6 @@ void QGraphDoc::OnVGALinksFileImport()
             message << fileName;
             message << "\n\n Error: ";
             message << e.what();
-            message << flush;
             QMessageBox::warning(this, tr("Warning"), tr(message.str().c_str()),
                                                    QMessageBox::Ok, QMessageBox::Ok);
         }
@@ -417,7 +415,6 @@ void QGraphDoc::OnVGALinksFileImport()
             message << fileName;
             message << "\n\n Error: ";
             message << e.what();
-            message << flush;
             QMessageBox::warning(this, tr("Warning"), tr(message.str().c_str()),
                                                    QMessageBox::Ok, QMessageBox::Ok);
         }
