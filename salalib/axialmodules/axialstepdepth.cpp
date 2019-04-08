@@ -17,7 +17,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "salalib/axialmodules/axialstepdepth.h"
-#include "salalib/axialmodules/axialhelpers.h"
 
 #include "genlib/pflipper.h"
 #include "genlib/stringutils.h"
