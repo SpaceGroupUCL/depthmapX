@@ -329,14 +329,14 @@ PixelRef SpacePixel::pixelate(const Point2f &p, bool constrain, int) const {
 
     r.x = short(p1.x * double(m_cols - 1e-9));
     if (constrain) {
-        if (r.x >= m_cols)
+        if (r.x >= static_cast<short>(m_cols))
             r.x = m_cols - 1;
         else if (r.x < 0)
             r.x = 0;
     }
     r.y = short(p1.y * double(m_rows - 1e-9));
     if (constrain) {
-        if (r.y >= m_rows)
+        if (r.y >= static_cast<short>(m_rows))
             r.y = m_rows - 1;
         else if (r.y < 0)
             r.y = 0;
@@ -488,7 +488,8 @@ int SpacePixel::addLineDynamic(const Line &line) {
 
     for (size_t i = 0; i < list.size(); i++) {
         // note: dynamic lines could be dodgy... only pixelate bits that fall in range
-        if (list[i].x >= 0 && list[i].y >= 0 && list[i].x < m_cols && list[i].y < m_rows) {
+        if (list[i].x >= 0 && list[i].y >= 0 &&
+                static_cast<size_t>(list[i].x) < m_cols && static_cast<size_t>(list[i].y) < m_rows) {
             // note, this probably won't be reordered on dynamic
             m_pixel_lines(static_cast<size_t>(list[i].y), static_cast<size_t>(list[i].x)).push_back(m_ref);
         }

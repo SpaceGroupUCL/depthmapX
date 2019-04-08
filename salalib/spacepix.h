@@ -45,7 +45,8 @@ class PixelBase {
     PixelRefVector pixelateLine(Line l, int scalefactor = 1) const;
     PixelRefVector pixelateLineTouching(Line l, double tolerance) const;
     PixelRefVector quickPixelateLine(PixelRef p, PixelRef q);
-    bool includes(const PixelRef pix) const { return (pix.x >= 0 && pix.x < m_cols && pix.y >= 0 && pix.y < m_rows); }
+    bool includes(const PixelRef pix) const { return (pix.x >= 0 && pix.x < static_cast<short>(m_cols) &&
+                                                      pix.y >= 0 && pix.y < static_cast<short>(m_rows)); }
     size_t getCols() const { return m_cols; }
     size_t getRows() const { return m_rows; }
     const QtRegion &getRegion() const { return m_region; }

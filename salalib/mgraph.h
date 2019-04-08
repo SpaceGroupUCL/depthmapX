@@ -225,12 +225,12 @@ public:
    size_t getDisplayedDataMapRef() const
    { return m_displayed_datamap; }
 
-   void removeDataMap(int i)
+   void removeDataMap(size_t i)
    { if (m_displayed_datamap >= i) m_displayed_datamap--; m_dataMaps.erase(m_dataMaps.begin() + i); }
 
    void setDisplayedDataMapRef(size_t map)
    {
-      if (m_displayed_datamap != -1 && m_displayed_datamap != map)
+      if (static_cast<int>(m_displayed_datamap) != -1 && m_displayed_datamap != map)
          m_dataMaps[m_displayed_datamap].clearSel();
       m_displayed_datamap = map;
    }

@@ -294,7 +294,7 @@ void AllLineMap::makeDivisions(const std::vector<PolyConnector>& polyconnections
 
    for (size_t i = 0; i < polyconnections.size(); i++) {
       PixelRefVector pixels = pixelateLine(polyconnections[i].line);
-      std::vector<int> testedshapes;
+      std::vector<size_t> testedshapes;
       auto connIter = radialdivisions.find(polyconnections[i].key);
       size_t connindex = std::distance(radialdivisions.begin(), connIter);
       double tolerance = sqrt(TOLERANCE_A);// * polyconnections[i].line.length();
@@ -317,7 +317,7 @@ void AllLineMap::makeDivisions(const std::vector<PolyConnector>& polyconnections
                case 2:
                   {
                      size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
-                     if (int(index) != shape.m_shape_ref) {
+                     if (index != shape.m_shape_ref) {
                         throw 1; // for the code to work later this can't be true!
                      }
                      axialdividers[index].insert(connindex);
@@ -327,7 +327,7 @@ void AllLineMap::makeDivisions(const std::vector<PolyConnector>& polyconnections
                case 1:
                   {
                      size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
-                     if (int(index) != shape.m_shape_ref) {
+                     if (index != shape.m_shape_ref) {
                         throw 1; // for the code to work later this can't be true!
                      }
                      //

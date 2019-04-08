@@ -535,7 +535,7 @@ void ShapeGraph::makeSegmentMap(std::vector<Line>& lines, std::vector<Connector>
          // find the intersection point and add...
          // note: more than one break at the same place allowed
          auto shapeJ = depthmapX::getMapAtIndex(m_shapes, connections[j])->second;
-         if (i != connections[j] && shapeJ.isLine()) {
+         if (static_cast<int>(i) != connections[j] && shapeJ.isLine()) {
             breaks.push_back(std::make_pair(parity * line.intersection_point( shapeJ.getLine(), axis, TOLERANCE_A ),
                                          connections[j]));
          }
@@ -728,7 +728,7 @@ void ShapeGraph::pushAxialValues(ShapeGraph& axialmap)
    }
 
    std::vector<int> colindices;
-   for (int i = 0; i < axialmap.m_attributes->getNumColumns(); i++) {
+   for (size_t i = 0; i < axialmap.m_attributes->getNumColumns(); i++) {
       std::string colname = std::string("Axial ") + axialmap.m_attributes->getColumnName(i);
       colindices.push_back(m_attributes->getOrInsertColumn(colname));
    }
@@ -737,7 +737,7 @@ void ShapeGraph::pushAxialValues(ShapeGraph& axialmap)
       // P.K: The original code here got the index of the row, but the column
       // "Axial Line Ref" should actually contain keys, not indices
       AttributeRow& row = axialmap.m_attributes->getRow(AttributeKey(axialref));
-      for (int k = 0; k < axialmap.m_attributes->getNumColumns(); k++) {
+      for (size_t k = 0; k < axialmap.m_attributes->getNumColumns(); k++) {
          float val = row.getValue(k);
          // need to look up the column index:
          iter->getRow().setValue(colindices[k],val);

@@ -209,8 +209,8 @@ bool PointMap::clearPoints()
       }
    }
    else { // COMPOUND_SELECTION (note, need to test bitwise now)
-      for (int i = 0; i < m_cols; i++) {
-         for (int j = 0; j < m_rows; j++) {
+      for (size_t i = 0; i < m_cols; i++) {
+         for (size_t j = 0; j < m_rows; j++) {
             Point& pnt = m_points(static_cast<size_t>(j), static_cast<size_t>(i));
             if (pnt.m_state & (Point::SELECTED | Point::FILLED)) {
                pnt.set( Point::EMPTY, m_undocounter );
@@ -271,11 +271,11 @@ PixelRef PointMap::pixelate( const Point2f& p, bool constrain, int scalefactor )
    if (constrain) {
       if (ref.x < 0) 
          ref.x = 0;
-      else if (ref.x >= m_cols * scalefactor) 
+      else if (ref.x >= static_cast<short>(m_cols * scalefactor))
          ref.x = (m_cols * scalefactor) - 1;
       if (ref.y < 0) 
          ref.y = 0;
-      else if (ref.y >= m_rows * scalefactor) 
+      else if (ref.y >= static_cast<short>(m_rows * scalefactor))
          ref.y = (m_rows * scalefactor) - 1;
    }
 
@@ -320,8 +320,8 @@ bool PointMap::blockLines()
       }
    }
 
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
+   for (size_t i = 0; i < m_cols; i++) {
+      for (size_t j = 0; j < m_rows; j++) {
          PixelRef curs = PixelRef( i, j );
          Point& pt = getPoint( curs );
          QtRegion viewport = regionate( curs, 1e-10 );
@@ -359,8 +359,8 @@ void PointMap::blockLine(const Line& li)
 void PointMap::unblockLines(bool clearblockedflag)
 {
    // just ensure lines don't exist to start off with (e.g., if someone's been playing with the visible layers)
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
+   for (size_t i = 0; i < m_cols; i++) {
+      for (size_t j = 0; j < m_rows; j++) {
          PixelRef curs = PixelRef(i,j);
          getPoint(curs).m_lines.clear();
          if (clearblockedflag) {
@@ -482,7 +482,7 @@ bool PointMap::makePoints(const Point2f& seed, int fill_type, Communicator *comm
 
 int PointMap::expand( const PixelRef p1, const PixelRef p2, PixelRefVector& list, int filltype)
 {
-   if (p2.x < 0 || p2.x >= m_cols || p2.y < 0 || p2.y >= m_rows) {
+   if (p2.x < 0 || p2.x >= static_cast<short>(m_cols) || p2.y < 0 || p2.y >= static_cast<short>(m_rows)) {
       // 1 = off edge
       return 1;
    }
@@ -520,8 +520,8 @@ void PointMap::outputPoints(std::ostream& stream, char delim)
    stream.precision(12);
 
    int count = 0;
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
+   for (size_t i = 0; i < m_cols; i++) {
+      for (size_t j = 0; j < m_rows; j++) {
 
          PixelRef curs = PixelRef( i, j );
 
@@ -597,8 +597,8 @@ void PointMap::outputNet(std::ostream& netfile)
    // this is a bid of a faff, as we first have to get the point locations, 
    // then the connections from a lookup table... ickity ick ick...
    std::map<PixelRef,PixelRefVector> graph;
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
+   for (size_t i = 0; i < m_cols; i++) {
+      for (size_t j = 0; j < m_rows; j++) {
          Point& pnt = m_points(static_cast<size_t>(j), static_cast<size_t>(i));
          if (pnt.filled() && pnt.m_node) {
             PixelRef pix(i,j);
@@ -626,7 +626,7 @@ void PointMap::outputNet(std::ostream& netfile)
       PixelRefVector& list = iter.second;
       for (size_t m = 0; m < list.size(); m++) {
          size_t n = depthmapX::findIndexFromKey(graph, list[m]);
-         if (n != -1 && k < n) {
+         if (static_cast<int>(n) != -1 && k < n) {
             netfile << (k+1) << " " << (n+1) << " 1" << std::endl;
          }
       }
@@ -636,8 +636,8 @@ void PointMap::outputNet(std::ostream& netfile)
 void PointMap::outputConnections(std::ostream& myout)
 {
    myout << "#graph v1.0" << std::endl;
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
+   for (size_t i = 0; i < m_cols; i++) {
+      for (size_t j = 0; j < m_rows; j++) {
          Point& pnt = m_points(static_cast<size_t>(j), static_cast<size_t>(i));
          if (pnt.filled() && pnt.m_node) {
             PixelRef pix(i,j);
@@ -657,9 +657,9 @@ void PointMap::outputConnectionsAsCSV(std::ostream& myout, std::string delim)
 {
     myout << "RefFrom" << delim << "RefTo";
     std::unordered_set<PixelRef, hashPixelRef> seenPix;
-    for (int i = 0; i < m_cols; i++)
+    for (size_t i = 0; i < m_cols; i++)
     {
-        for (int j = 0; j < m_rows; j++)
+        for (size_t j = 0; j < m_rows; j++)
         {
             Point& pnt = m_points(static_cast<size_t>(j), static_cast<size_t>(i));
             if (pnt.filled() && pnt.m_node)
@@ -687,9 +687,9 @@ void PointMap::outputLinksAsCSV(std::ostream& myout, std::string delim)
 {
     myout << "RefFrom" << delim << "RefTo";
     std::unordered_set<PixelRef, hashPixelRef> seenPix;
-    for (int i = 0; i < m_cols; i++)
+    for (size_t i = 0; i < m_cols; i++)
     {
-        for (int j = 0; j < m_rows; j++)
+        for (size_t j = 0; j < m_rows; j++)
         {
             Point& pnt = m_points(static_cast<size_t>(j), static_cast<size_t>(i));
             if (pnt.filled() && pnt.m_node)
@@ -718,8 +718,8 @@ void PointMap::outputBinSummaries(std::ostream& myout)
    }
    myout << std::endl;
 
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
+   for (size_t i = 0; i < m_cols; i++) {
+      for (size_t j = 0; j < m_rows; j++) {
 
          Point p = getPoint(PixelRef(i, j));
 
@@ -1123,7 +1123,7 @@ bool PointMap::read(std::istream& stream )
       }
 
 
-      for (int k = 0; k < m_rows; k++) {
+      for (size_t k = 0; k < m_rows; k++) {
          Point& pnt = m_points(k, j);
          // Old style point node reffing and also unselects selected nodes which would otherwise be difficult
 
@@ -1203,8 +1203,8 @@ int PointMap::tagState(bool settag)
 
    int count = 0;
 
-   for (int i = 0; i < m_cols; i++) {
-      for (int j = 0; j < m_rows; j++) {
+   for (size_t i = 0; i < m_cols; i++) {
+      for (size_t j = 0; j < m_rows; j++) {
 
          PixelRef curs = PixelRef( i, j );
 
@@ -1285,9 +1285,9 @@ bool PointMap::sparkGraph2( Communicator *comm, bool boundarygraph, double maxdi
 
    count = 0;
 
-   for (int i = 0; i < m_cols; i++) {
+   for (size_t i = 0; i < m_cols; i++) {
 
-      for (int j = 0; j < m_rows; j++) {
+      for (size_t j = 0; j < m_rows; j++) {
 
          PixelRef curs = PixelRef( i, j );
    

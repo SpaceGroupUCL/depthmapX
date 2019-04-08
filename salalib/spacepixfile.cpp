@@ -3,7 +3,7 @@
 void SpacePixelFile::makeViewportShapes( const QtRegion& viewport ) const
 {
    m_current_layer = -1;
-   for (size_t i = m_spacePixels.size() - 1; i != -1; i--) {
+   for (size_t i = m_spacePixels.size() - 1; static_cast<int>(i) != -1; i--) {
       if (m_spacePixels[i].isShown()) {
          m_current_layer = (int) i;
          m_spacePixels[i].makeViewportShapes( (viewport.atZero() ? m_region : viewport) );
@@ -17,7 +17,7 @@ bool SpacePixelFile::findNextShape(bool& nextlayer) const
       return false;
    while (!m_spacePixels[m_current_layer].findNextShape(nextlayer)) {
       while (++m_current_layer < (int)m_spacePixels.size() && !m_spacePixels[m_current_layer].isShown());
-      if (m_current_layer == m_spacePixels.size()) {
+      if (m_current_layer == static_cast<int>(m_spacePixels.size())) {
          m_current_layer = -1;
          return false;
       }

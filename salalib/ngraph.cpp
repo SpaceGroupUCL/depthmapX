@@ -409,14 +409,14 @@ void Bin::next() const
 {
    if (m_curpix.move(m_dir).col(m_dir) > m_pixel_vecs[m_curvec].end().col(m_dir)) {
       m_curvec++;
-      if (m_curvec < m_pixel_vecs.size())
+      if (m_curvec < static_cast<int>(m_pixel_vecs.size()))
          m_curpix = m_pixel_vecs[m_curvec].m_start;
    }
 }
 
 bool Bin::is_tail() const
 {
-   return m_curvec >= m_pixel_vecs.size();
+   return m_curvec >= static_cast<int>(m_pixel_vecs.size());
 }
 
 PixelRef Bin::cursor() const

@@ -2938,7 +2938,7 @@ bool MetaGraph::findNextShape(bool& nextlayer) const
       return false;
    while (!m_drawingFiles[m_current_layer].findNextShape(nextlayer)) {
       while (++m_current_layer < (int)m_drawingFiles.size() && !m_drawingFiles[m_current_layer].isShown());
-      if (m_current_layer == m_drawingFiles.size()) {
+      if (m_current_layer == static_cast<int>(m_drawingFiles.size())) {
          m_current_layer = -1;
          return false;
       }

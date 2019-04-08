@@ -66,8 +66,8 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
     depthmapX::RowMatrix<int> miscs(map.getRows(), map.getCols());
     depthmapX::RowMatrix<PixelRef> extents(map.getRows(), map.getCols());
 
-    for (int i = 0; i < map.getCols(); i++) {
-        for (int j = 0; j < map.getRows(); j++) {
+    for (size_t i = 0; i < map.getCols(); i++) {
+        for (size_t j = 0; j < map.getRows(); j++) {
             PixelRef curs = PixelRef(i, j);
             if (map.getPoint(curs).filled()) {
 
@@ -76,8 +76,8 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
                     continue;
                 }
 
-                for (int ii = 0; ii < map.getCols(); ii++) {
-                    for (int jj = 0; jj < map.getRows(); jj++) {
+                for (size_t ii = 0; ii < map.getCols(); ii++) {
+                    for (size_t jj = 0; jj < map.getRows(); jj++) {
                         miscs(jj, ii) = 0;
                         extents(jj, ii) = PixelRef(ii, jj);
                     }

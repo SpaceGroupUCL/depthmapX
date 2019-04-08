@@ -316,7 +316,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                         if (options.choice && previous != -1) {
                             // both directional paths are now recorded for choice
                             // (coincidentally fixes choice problem which was completely wrong)
-                            int here = index;   // note: start counting from index as actually looking ahead here
+                            size_t here = index;   // note: start counting from index as actually looking ahead here
                             while (here != i) { // not i means not the current root for the path
                                 audittrail[here][r].choice += 1;
                                 audittrail[here][r].weighted_choice += weight * rootweight;
@@ -478,7 +478,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
             i++;
             AttributeRow &row = iter.getRow();
             double total_choice = 0.0, w_total_choice = 0.0;
-            for (int r = 0; r < radii.size(); r++) {
+            for (size_t r = 0; r < radii.size(); r++) {
                 total_choice += audittrail[i][r].choice;
                 w_total_choice += audittrail[i][r].weighted_choice;
                 // n.b., normalise choice according to (n-1)(n-2)/2 (maximum possible through routes)

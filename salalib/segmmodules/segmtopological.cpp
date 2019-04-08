@@ -137,7 +137,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
 
                 connected_cursor = iter->first.ref;
 
-                if (seen[connected_cursor] > segdepth && connected_cursor != cursor) {
+                if (seen[connected_cursor] > segdepth && static_cast<size_t>(connected_cursor) != cursor) {
                     bool seenalready = (seen[connected_cursor] == 0xffffffff) ? false : true;
                     float length = seglengths[connected_cursor];
                     int axialref = axialrefs[connected_cursor];

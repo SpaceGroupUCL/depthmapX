@@ -161,7 +161,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToAxial(Communicator *comm,
        });
 
        std::vector<std::string> newColumns;
-       for (int i = 0; i < indices.size(); i++) {
+       for (size_t i = 0; i < indices.size(); i++) {
           int idx = indices[i];
           std::string colname = input.getColumnName(idx);
           for (size_t k = 1; output.hasColumn(colname); k++){
@@ -170,7 +170,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToAxial(Communicator *comm,
           newColumns.push_back(colname);
           output.insertOrResetColumn(colname);
        }
-       for (int i = 0; i < indices.size(); i++) {
+       for (size_t i = 0; i < indices.size(); i++) {
           inOutColumns[indices[i]] = output.getOrInsertColumn(newColumns[i]);
        }
    }
@@ -259,9 +259,9 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToConvex(Communicator *, co
    AttributeTable& input = shapemap.getAttributeTable();
    if (copydata) {
       AttributeTable& output = usermap->getAttributeTable();
-      for (int i = 0; i < input.getNumColumns(); i++) {
+      for (size_t i = 0; i < input.getNumColumns(); i++) {
          std::string colname = input.getColumnName(i);
-         for (int k = 1; output.getColumnIndex(colname) != -1; k++){
+         for (int k = 1; static_cast<int>(output.getColumnIndex(colname)) != -1; k++){
             colname = dXstring::formatString(k,input.getColumnName(i) + " %d");
          }
          attrCols.push_back(output.insertOrResetColumn(colname));
@@ -270,7 +270,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToConvex(Communicator *, co
 
    for (auto refShape: refShapes) {
       if ( copydata ){
-          for ( int i = 0; i < input.getNumColumns(); ++i ){
+          for ( size_t i = 0; i < input.getNumColumns(); ++i ){
               extraAttr[attrCols[size_t(i)]] = input.getRow(AttributeKey(refShape.first)).getValue(i);
           }
       }
@@ -449,7 +449,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToSegment(Communicator *com
        });
 
        std::vector<std::string> newColumns;
-       for (int i = 0; i < indices.size(); i++) {
+       for (size_t i = 0; i < indices.size(); i++) {
           int idx = indices[i];
           std::string colname = input.getColumnName(idx);
           for (size_t k = 1; output.hasColumn(colname); k++){
@@ -458,7 +458,7 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToSegment(Communicator *com
           newColumns.push_back(colname);
           output.insertOrResetColumn(colname);
        }
-       for (int i = 0; i < indices.size(); i++) {
+       for (size_t i = 0; i < indices.size(); i++) {
           inOutColumns[indices[i]] = output.getOrInsertColumn(newColumns[i]);
        }
    }

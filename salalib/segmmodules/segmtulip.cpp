@@ -386,7 +386,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             while (!bins[currentbin].size()) {
                 depthlevel++;
                 currentbin++;
-                if (currentbin == tulip_bins) {
+                if (currentbin == static_cast<size_t>(tulip_bins)) {
                     currentbin = 0;
                 }
             }
@@ -552,13 +552,13 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
                         // note, graph may be directed (e.g., for one way streets), so both ways must be included from
                         // now on:
                         SegmentRef here = SegmentRef(dir == 0 ? 1 : -1, j);
-                        if (here.ref != cursor) {
+                        if (here.ref != static_cast<int>(cursor)) {
                             int choicecount = 0;
                             double choiceweight = 0.0;
                             // EFEF*
                             double choiceweight2 = 0.0;
                             //*EFEF
-                            while (here.ref != cursor) { // not rowid means not the current root for the path
+                            while (here.ref != static_cast<int>(cursor)) { // not rowid means not the current root for the path
                                 int heredir = (here.dir == 1) ? 0 : 1;
                                 // each node has the existing choicecount and choiceweight from previously encountered
                                 // nodes added to it

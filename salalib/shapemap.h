@@ -385,7 +385,7 @@ class ShapeMap : public PixelBase {
     bool pointInPoly(const Point2f &p, int shaperef) const;
     // retrieve lists of polys point intersects:
     std::vector<int> pointInPolyList(const Point2f &p) const;
-    std::vector<int> lineInPolyList(const Line &li, int lineref = -1, double tolerance = 0.0) const;
+    std::vector<int> lineInPolyList(const Line &li, size_t lineref = -1, double tolerance = 0.0) const;
     std::vector<int> polyInPolyList(int polyref, double tolerance = 0.0) const;
     std::vector<int> shapeInPolyList(const SalaShape &shape);
     // helper to make actual test of point in shape:

@@ -44,7 +44,7 @@ int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& 
    // set up a list of readable columns from the headers:
    // 
    std::vector<std::string> colnames;
-   std::vector<int> readable, colindexes;
+   std::vector<size_t> readable, colindexes;
    for (size_t i = 0; i < columnheads.size(); i++) {
       dXstring::ltrim(columnheads[i]);
       auto tokens = dXstring::split(columnheads[i], ' ',true);
@@ -65,7 +65,7 @@ int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& 
 
    std::string textline;
    std::vector<std::vector<Point2f>> pointsets;
-   std::vector<int> duplicates;
+   std::vector<size_t> duplicates;
    std::vector<int> types;
 
    try {

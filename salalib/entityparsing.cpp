@@ -90,19 +90,19 @@ namespace EntityParsing {
                 }
                 for (i = 0; i < strings.size(); i++)
                 {
-                    if (i == x1col)
+                    if (static_cast<int>(i) == x1col)
                     {
                         p1.x = std::atof(strings[i].c_str());
                     }
-                    else if (i == y1col)
+                    else if (static_cast<int>(i) == y1col)
                     {
                         p1.y = std::atof(strings[i].c_str());
                     }
-                    else if (i == x2col)
+                    else if (static_cast<int>(i) == x2col)
                     {
                         p2.x = std::atof(strings[i].c_str());
                     }
-                    else if (i == y2col)
+                    else if (static_cast<int>(i) == y2col)
                     {
                         p2.y = std::atof(strings[i].c_str());
                     }
@@ -173,11 +173,11 @@ namespace EntityParsing {
                 }
                 for (i = 0; i < strings.size(); i++)
                 {
-                    if (i == xcol)
+                    if (static_cast<int>(i) == xcol)
                     {
                         p.x = std::atof(strings[i].c_str());
                     }
-                    else if (i == ycol)
+                    else if (static_cast<int>(i) == ycol)
                     {
                         p.y = std::atof(strings[i].c_str());
                     }
@@ -262,7 +262,7 @@ namespace EntityParsing {
                 {
                     continue;
                 }
-                if (strings.size() <= maxCol)
+                if (static_cast<int>(strings.size()) <= maxCol)
                 {
                     std::stringstream message;
                     message << "Error parsing line: " << inputline << std::flush;
