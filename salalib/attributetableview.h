@@ -46,6 +46,7 @@ class AttributeTableHandle : public AttributeTableView
 {
 public:
     AttributeTableHandle(AttributeTable &table) : AttributeTableView(table), m_mutableTable(table){}
+    virtual ~AttributeTableHandle(){}
     typedef std::vector<AttributeIndexItem> Index;
     const Index& getTableIndex() const {return m_mutableIndex;}
     virtual void setDisplayColIndex(int columnIndex);

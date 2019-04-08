@@ -239,6 +239,7 @@ class AttributeTable : public AttributeColumnManager
     // AttributeTable "interface" - the actual table handling
 public:
     AttributeTable(){}
+    virtual ~AttributeTable(){}
     AttributeTable(AttributeTable&&) = default;
     AttributeTable& operator =(AttributeTable&&) = default;
     AttributeTable(const AttributeTable& ) = delete;

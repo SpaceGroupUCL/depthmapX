@@ -107,6 +107,7 @@ private:
 public:
    PointMap(const QtRegion& parentRegion, const std::vector<SpacePixelFile>& drawingFiles,
             const std::string& name = std::string("VGA Map"));
+   virtual ~PointMap() {}
    void copy(const PointMap& other);
    const std::string& getName() const
    { return m_name; }
