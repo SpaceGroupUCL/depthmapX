@@ -94,9 +94,9 @@ void LayerManagerImpl::read(std::istream &stream)
     KeyType dummy;
     stream.read((char *)&dummy, sizeof(dummy));
     stream.read((char *)&m_visibleLayers, sizeof(m_visibleLayers));
-    size_t count;
+    int count;
     stream.read((char *)&count, sizeof(int));
-    for( size_t i = 0; i < count; ++i)
+    for( int i = 0; i < count; ++i)
     {
         stream.read((char *)&dummy, sizeof(dummy));
         m_layers.push_back(dXstring::readString(stream));
