@@ -40,6 +40,7 @@
 #include <math.h>
 #include <float.h>
 #include <time.h>
+#include <cmath>
 
 namespace mgraph440 {
 
@@ -293,7 +294,7 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset)
          try {
             SalaObj val = evaluate();
             float v = (float) val.toDouble();   // note, toDouble will type check and throw if there's a problem
-            if (!isfinite(v)) {
+            if (!std::isfinite(v)) {
                v = -1.0f;
             }
             table->changeValue(pointmap ? table->getRowid(row) : row,m_col,v);
@@ -311,7 +312,7 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset)
          try {
             SalaObj val = evaluate();
             float v = (float) val.toDouble();   // note, toDouble will type check and throw if there's a problem
-            if (!isfinite(v)) {
+            if (!std::isfinite(v)) {
                v = -1.0f;
             }
             table->changeValue(i,m_col,v);

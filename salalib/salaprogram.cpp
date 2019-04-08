@@ -42,6 +42,7 @@
 #include <float.h>
 #include <time.h>
 #include <cstring>
+#include <cmath>
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -284,7 +285,7 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset)
          try {
             SalaObj val = evaluate();
             float v = (float) val.toDouble();   // note, toDouble will type check and throw if there's a problem
-            if (!isfinite(v)) {
+            if (!std::isfinite(v)) {
                v = -1.0f;
             }
             table->getRow(AttributeKey(sel)).setValue(m_col,v);
@@ -302,7 +303,7 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset)
          try {
             SalaObj val = evaluate();
             float v = (float) val.toDouble();   // note, toDouble will type check and throw if there's a problem
-            if (!isfinite(v)) {
+            if (!std::isfinite(v)) {
                v = -1.0f;
             }
             iter->getRow().setValue(m_col,v);

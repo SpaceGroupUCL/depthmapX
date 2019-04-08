@@ -755,7 +755,7 @@ void Q3DView::CreateAgent(QPoint point)
                 mvmatrix, projmatrix, viewport, &wx2, &wy2, &wz2);
 
    // 0 plane has to lie between wz1 and wz2:
-   if (isfinite(wz1) && isfinite(wz2) && wz1 > 0 && wz2 < 0) {
+   if (std::isfinite(wz1) && std::isfinite(wz2) && wz1 > 0 && wz2 < 0) {
       double scaling = wz1/(wz2-wz1);
       Point2f p(wx1-scaling*(wx2-wx1),wy1-scaling*(wy2-wy1));
 
