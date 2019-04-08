@@ -2641,17 +2641,17 @@ int MetaGraph::write( const std::string& filename, int version, bool currentlaye
       if (oldstate & POINTMAPS) {
          type = 'p';
          stream.write(&type, 1);
-         writePointMaps( stream, version );
+         writePointMaps( stream );
       }
       if (oldstate & SHAPEGRAPHS) {
          type = 'x';
          stream.write(&type, 1);
-         writeShapeGraphs( stream, version );
+         writeShapeGraphs( stream );
       }
       if (oldstate & DATAMAPS) {
          type = 's';
          stream.write(&type, 1);
-         writeDataMaps( stream, version );
+         writeDataMaps( stream );
       }
    }
 
