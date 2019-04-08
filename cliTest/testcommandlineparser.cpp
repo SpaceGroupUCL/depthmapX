@@ -70,8 +70,8 @@ private:
 
 TEST_CASE("Invalid Parser","Constructor"){
     std::vector<std::unique_ptr<IModeParser> > parsers;
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST1"))));
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST2"))));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST1")));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST2")));
 
     Mock<IModeParserFactory> factoryMock;
     When(Method(factoryMock,getModeParsers)).AlwaysReturn(parsers);
@@ -143,8 +143,8 @@ TEST_CASE("Invalid Parser","Constructor"){
 
 TEST_CASE("Valid Parser","CheckValues"){
     std::vector<std::unique_ptr<IModeParser> > parsers;
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST1"))));
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST2"))));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST1")));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST2")));
 
     Mock<IModeParserFactory> factoryMock;
     When(Method(factoryMock,getModeParsers)).AlwaysReturn(parsers);
@@ -187,8 +187,8 @@ TEST_CASE("Valid Parser","CheckValues"){
 
 TEST_CASE("Run Tests","Check we only run if it's appropriate"){
     std::vector<std::unique_ptr<IModeParser> > parsers;
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST1"))));
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST2"))));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST1")));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST2")));
 
     Mock<IModeParserFactory> factoryMock;
     When(Method(factoryMock,getModeParsers)).AlwaysReturn(parsers);
@@ -260,8 +260,8 @@ TEST_CASE("Run Tests","Check we only run if it's appropriate"){
 TEST_CASE("Invalid Parser Need Help", "CheckForHelp")
 {
     std::vector<std::unique_ptr<IModeParser> > parsers;
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST1"))));
-    parsers.push_back(std::move(std::unique_ptr<IModeParser>(new TestParser("TEST2"))));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST1")));
+    parsers.push_back(std::unique_ptr<IModeParser>(new TestParser("TEST2")));
 
     Mock<IModeParserFactory> factoryMock;
     When(Method(factoryMock,getModeParsers)).AlwaysReturn(parsers);

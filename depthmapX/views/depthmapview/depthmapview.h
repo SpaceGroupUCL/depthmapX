@@ -36,7 +36,7 @@ public:
                   Settings &settings,
                   QWidget *parent = Q_NULLPTR);
     ~QDepthmapView();
-    QSize sizeHint() const;
+    QSize sizeHint() const override;
     void SetRedrawflag();
     void saveToFile();
 

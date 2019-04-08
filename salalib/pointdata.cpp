@@ -1751,7 +1751,7 @@ void PointMap::addGridConnections()
             }
             bin.next();
          }
-         char dir;
+         char dir = PixelRef::NODIR;
          if (i == 0) {
             dir = PixelRef::VERTICAL;
          }

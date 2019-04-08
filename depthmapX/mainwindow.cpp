@@ -54,10 +54,8 @@ QmyEvent::QmyEvent(Type type, void* wp, int lp)
 void MainWindow::actionEvent ( QActionEvent * event )
 {
     int id;
-    if(id = event->action()->data().toInt())
+    if((id = event->action()->data().toInt()))
     {
-        int k = id;
-
     }
 }
 
@@ -966,7 +964,7 @@ void MainWindow::updateActiveWindows()
         current_view_type = QGraphDoc::VIEW_TABLE;
         return;
     }
-    else if(p = qobject_cast<Q3DView *>(activeSubWindow->widget()))
+    else if((p = qobject_cast<Q3DView *>(activeSubWindow->widget())))
     {
         editToolBar->hide();
         plotToolBar->hide();

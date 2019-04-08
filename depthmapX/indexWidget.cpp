@@ -32,7 +32,7 @@ QT_BEGIN_NAMESPACE
 AttribWindow::AttribWindow(QWidget *parent, bool custom)
     : QListWidget(parent)
 {
-    custom = NULL;
+    custom = false;
 
 	main_frm = parent;
     installEventFilter(this);
