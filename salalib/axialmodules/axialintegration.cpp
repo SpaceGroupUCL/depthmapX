@@ -17,7 +17,6 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "salalib/axialmodules/axialintegration.h"
-#include "salalib/axialmodules/axialhelpers.h"
 
 #include "genlib/pflipper.h"
 #include "genlib/stringutils.h"
@@ -279,7 +278,8 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
 
         std::vector<int> depthcounts;
         depthcounts.push_back(0);
-        pflipper<IntPairVector> foundlist;
+
+        pflipper<std::vector<std::pair<int, int>>> foundlist;
         foundlist.a().push_back(std::pair<int, int>(i, -1));
         covered[i] = true;
         int total_depth = 0, depth = 1, node_count = 1, pos = -1, previous = -1; // node_count includes this 1
