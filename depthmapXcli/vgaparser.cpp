@@ -23,7 +23,7 @@
 using namespace depthmapX;
 
 
-VgaParser::VgaParser() : m_vgaMode(VgaMode::NONE), m_globalMeasures(false), m_localMeasures(false)
+VgaParser::VgaParser() : m_vgaMode(VgaMode::NONE), m_localMeasures(false), m_globalMeasures(false)
 {}
 
 void VgaParser::parse(int argc, char *argv[])

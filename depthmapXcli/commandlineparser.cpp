@@ -44,7 +44,7 @@ void CommandLineParser::printVersion(){
 
 
 CommandLineParser::CommandLineParser(const IModeParserFactory &parserFactory)
-    :  m_simpleMode(false), _modeParser(0), _parserFactory(parserFactory)
+    :  m_simpleMode(false), _parserFactory(parserFactory), _modeParser(0)
 {}
 
 void CommandLineParser::parse(size_t argc, char *argv[])
