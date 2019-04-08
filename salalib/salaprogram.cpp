@@ -333,8 +333,7 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset)
 bool SalaProgram::runselect(std::vector<int> &selsetout, const std::set<int>& selsetin)
 {
    AttributeTable *table = m_thisobj.getTable();
-   bool pointmap = (m_thisobj.type & SalaObj::S_POINTMAP) ? true : false;
-   //
+
    if (selsetin.size()) {
       for (auto& key: selsetin) {
          try {
@@ -407,7 +406,6 @@ int SalaCommand::parse(std::istream& program, int line)
    int last = SP_FUNCTION;
    bool endloop = false;
    bool overridecache = false;
-   bool firstword = true;
    SalaBuffer buffer;
    char cache = ' ';
    //

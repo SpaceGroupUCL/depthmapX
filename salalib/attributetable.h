@@ -321,7 +321,6 @@ private:
     std::map<std::string, size_t> m_columnMapping;
     std::vector<AttributeColumnImpl> m_columns;
     KeyColumn m_keyColumn;
-    int64_t m_visibleLayers;
     DisplayParams m_displayParams;
 
 private:

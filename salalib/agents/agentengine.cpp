@@ -64,8 +64,6 @@ void AgentEngine::run(Communicator *comm, PointMap *pointmap) {
     }
 
     for (int i = 0; i < m_timesteps; i++) {
-
-        size_t j;
         for (auto &agentSet : agentSets) {
             int q = invcumpoisson(prandomr(), agentSet.m_release_rate);
             int length = agentSet.agents.size();

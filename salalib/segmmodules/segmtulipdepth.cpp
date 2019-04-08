@@ -86,7 +86,6 @@ bool SegmentTulipDepth::run(Communicator *, const Options &, ShapeGraph &map, bo
              for (auto& segconn: line.m_forward_segconns) {
                 if (!covered[segconn.first.ref]) {
                    extradepth = (int) floor(segconn.second * tulip_bins * 0.5);
-                   auto currIter = binIter;
                    bins[(currentbin + tulip_bins + extradepth) % tulip_bins].push_back(
                        SegmentData(segconn.first,lineindex.ref,lineindex.segdepth+1,0.0,0));
                    opencount++;

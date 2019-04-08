@@ -304,8 +304,6 @@ bool PointMap::blockLines()
    // just ensure lines don't exist to start off with (e.g., if someone's been playing with the visible layers)
    unblockLines();
 
-   size_t count = 0;
-
    // This used to use a packed Linekey (file, layer, line), but
    // would require a key with (file, layer, shaperef, seg) when used with shaperef,
    // so just switched to an integer key:
@@ -720,7 +718,6 @@ void PointMap::outputBinSummaries(std::ostream& myout)
    }
    myout << std::endl;
 
-   int count = 0;
    for (int i = 0; i < m_cols; i++) {
       for (int j = 0; j < m_rows; j++) {
 
@@ -1101,9 +1098,6 @@ bool PointMap::read(std::istream& stream )
       Point2f(m_bottom_left.x+double(m_cols-1)*m_spacing + m_spacing/2.0,
               m_bottom_left.y+double(m_rows-1)*m_spacing + m_spacing/2.0) );
 
-   // for old data versions:
-   int attr_count = -1, which_attributes = -1;
-
    int displayed_attribute;  // n.b., temp variable necessary to force recalc below
 
    // our data read
@@ -1394,7 +1388,6 @@ bool PointMap::sparkPixel2(PixelRef curs, int make, double maxdist)
       far_bin_dists[i] = 0.0f;
    }
    int neighbourhood_size = 0;
-   int max_depth = 0;
    double total_dist = 0.0;
    double total_dist_sqr = 0.0;
 
@@ -1497,8 +1490,6 @@ bool PointMap::sparkPixel2(PixelRef curs, int make, double maxdist)
 
    }  // <- for (int q = 0; q < 8; q++)
 
-   Point2f point = depixelate(curs);
-
    if (make & 1) {
       // The bins are cleared in the make function!
       Point& pt = getPoint( curs );
@@ -1585,8 +1576,6 @@ bool PointMap::binDisplay(Communicator *)
    for (auto& sel: m_selection_set) {
       Point& p = getPoint(sel);
       // Code for colouring pretty bins:
-      int count = 1;
-      int dir = 0;
       for (int i = 0; i < 32; i++) {
          Bin& b = p.m_node->bin(i);
          b.first();

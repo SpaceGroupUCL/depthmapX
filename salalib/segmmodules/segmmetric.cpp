@@ -92,7 +92,7 @@ bool SegmentMetric::run(Communicator *comm, const Options &options, ShapeGraph &
         audittrail[cursor] = TopoMetSegmentRef(cursor, Connector::SEG_CONN_ALL, rootseglength * 0.5, -1);
         int open = 1;
         unsigned int segdepth = 0;
-        double metdepth = 0.0, total = 0.0, wtotal = 0.0, wtotaldepth = 0.0, totalsegdepth = 0.0, totalmetdepth = 0.0;
+        double total = 0.0, wtotal = 0.0, wtotaldepth = 0.0, totalsegdepth = 0.0, totalmetdepth = 0.0;
         while (open != 0) {
             while (list[bin].size() == 0) {
                 bin++;
@@ -139,7 +139,6 @@ bool SegmentMetric::run(Communicator *comm, const Options &options, ShapeGraph &
                 if (seen[connected_cursor] > segdepth && connected_cursor != cursor) {
                     bool seenalready = (seen[connected_cursor] == 0xffffffff) ? false : true;
                     float length = seglengths[connected_cursor];
-                    int axialref = axialrefs[connected_cursor];
                     audittrail[connected_cursor] =
                         TopoMetSegmentRef(connected_cursor, here.dir, here.dist + length, here.ref);
                     seen[connected_cursor] = segdepth;

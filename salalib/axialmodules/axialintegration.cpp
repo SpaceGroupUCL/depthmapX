@@ -478,8 +478,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
             i++;
             AttributeRow &row = iter.getRow();
             double total_choice = 0.0, w_total_choice = 0.0;
-            int r = 0;
-            for (int radius : radii) {
+            for (int r = 0; r < radii.size(); r++) {
                 total_choice += audittrail[i][r].choice;
                 w_total_choice += audittrail[i][r].weighted_choice;
                 // n.b., normalise choice according to (n-1)(n-2)/2 (maximum possible through routes)
@@ -503,7 +502,6 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                         row.setValue(nw_choice_col[r], -1);
                     }
                 }
-                ++r;
             }
         }
         for (size_t i = 0; i < map.getShapeCount(); i++) {

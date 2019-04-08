@@ -185,7 +185,6 @@ bool ShapeGraph::read(std::istream &stream)
    m_selection = false;
    m_map_type = ShapeMap::EMPTYMAP;
 
-   bool segmentmap = false;
    // note that keyvertexcount and keyvertices are different things! (length keyvertices not the same as keyvertexcount!)
    stream.read((char *)&m_keyvertexcount,sizeof(m_keyvertexcount));
    int size;

@@ -598,7 +598,6 @@ inline int flagoctant(int bin)
 
 inline int q_opposite(int bin)
 {
-   int q = -1;
    int opposing_bin = (16 + bin) % 32;
 
             //      \ 6 | 7 /

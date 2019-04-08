@@ -25,7 +25,6 @@ AllLineMap::AllLineMap(Communicator *comm,
    // for ease, I'm just going to make a construction line set from all the visible lines...
 
    QtRegion region;
-   int size = 0;
 
    std::vector<Line> lines;
 

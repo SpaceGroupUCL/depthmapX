@@ -1332,7 +1332,7 @@ bool MetaGraph::analyseTopoMetMultipleRadii( Communicator *communicator, Options
 
    try {
       // note: "output_type" reused for analysis type (either 0 = topological or 1 = metric)
-      for(double radius: options.radius_set) {
+      for(size_t r = 0; r < options.radius_set.size(); r++) {
           if(options.output_type == 0) {
               if(!SegmentTopological().run(communicator, options, getDisplayedShapeGraph(), false))
                   retvar = false;

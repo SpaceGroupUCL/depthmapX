@@ -361,8 +361,6 @@ namespace dm_runmethods
     {
         auto mGraph = loadGraph(clp.getFileName().c_str(), perfWriter);
 
-        auto state = mGraph->getState();
-
         std::cout << "Running segment analysis... " << std::flush;
         Options options;
         const std::vector<double>& radii = sp.getRadii();

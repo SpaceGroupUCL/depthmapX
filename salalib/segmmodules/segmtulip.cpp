@@ -115,7 +115,6 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
     size_t r;
     for (r = 0; r < radius_unconverted.size(); r++) {
         std::string radius_text = makeRadiusText(options.radius_type, radius_unconverted[r]);
-        int choice_col = -1, n_choice_col = -1, w_choice_col = -1, nw_choice_col = -1;
         if (options.choice) {
             // EF routeweight *
             if (routeweight_col != -1) {
@@ -369,9 +368,6 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
 
         double rootseglength = row.getValue(length_col);
         double rootweight = (options.weighted_measure_col != -1) ? weights[cursor] : 0.0;
-        // EFEF
-        double rootweight2 = (weighting_col2 != -1) ? weights2[cursor] : 0.0;
-        // EFEF
 
         // setup: direction 0 (both ways), segment i, previous -1, segdepth (step depth) 0, metricdepth 0.5 *
         // rootseglength, bin 0
@@ -383,9 +379,6 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
         // this version below is only designed to be used temporarily --
         // could be on an option?
         // bins[0].push_back(SegmentData(0,rowid,SegmentRef(),0,0.0,radiusmask));
-        Connector &thisline = map.getConnections()[cursor];
-        std::vector<int> node_count;
-        double weight = 0.0;
         int depthlevel = 0;
         int opencount = 1;
         size_t currentbin = 0;

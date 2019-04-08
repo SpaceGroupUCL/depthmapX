@@ -32,35 +32,6 @@ static unsigned int g_nicecolor[] = {
    0x00DD3333, // 9 red
 };
 
-// Test a range designed to try to keep consitent saturation and brightness of g_nicecolor, and only move hue
-static unsigned int g_nicecolorhsb[] = { 
-   0x003333DD, // 0 blue
-   0x003377DD, // 1
-   0x0033BBDD, // 2
-   0x0033DDBB, // 3
-   0x0033DD55, // 4
-   0x0055DD33, // 5
-   0x00BBDD33, // 6
-   0x00DDBB33, // 7
-   0x00DD7733, // 8
-   0x00DD3333, // 9 red
-};
-
-
-static unsigned int g_hsbcolor[] = { 
-   0x003333DD, // 0 blue
-   0x003388DD, // 1
-   0x0022CCDD, // 2
-   0x0022CCBB, // 3
-   0x0022DD88, // 4
-   0x0088DD22, // 5
-   0x00BBCC22, // 6
-   0x00DDCC22, // 7
-   0x00DD8833, // 8
-   0x00DD3333, // 9 red
-};
-
-
 static unsigned int g_greyscale[] = { 
    0x00000000, // 0 black
    0x00444444, // 1
