@@ -1247,7 +1247,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                   break;
                }
             }
-            e.lineno = m_line; throw e;
+            e.lineno = m_line; throw std::move(e);
          }
       }
       else if (group == SalaObj::S_LOGICAL_OPS) {
@@ -1372,7 +1372,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                   break;
                }
             }
-            e.lineno = m_line; throw e;
+            e.lineno = m_line; throw std::move(e);
          }
       }
       else if (group == SalaObj::S_GLOBAL_FUNCS) {
@@ -1452,7 +1452,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                   break;
                }
             }
-            e.lineno = m_line; throw e;
+            e.lineno = m_line; throw std::move(e);
          }
       }
       else if (group == SalaObj::S_MEMBER_FUNCS) {
@@ -1580,7 +1580,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                   break;
                }
             }
-            e.lineno = m_line; throw e;
+            e.lineno = m_line; throw std::move(e);
          }
       }
    }
