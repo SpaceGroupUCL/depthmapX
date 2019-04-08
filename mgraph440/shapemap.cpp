@@ -97,7 +97,7 @@ bool ShapeMap::read( std::ifstream& stream, int version, bool drawinglayer )
       m_region = layer.m_region;
       m_rows = layer.m_rows;
       m_cols = layer.m_cols;
-      m_tolerance = __max(m_region.width(), m_region.height()) * TOLERANCE_A;
+      m_tolerance = std::max(m_region.width(), m_region.height()) * TOLERANCE_A;
       m_shape_ref = -1;
       for (size_t i = 0; i < layer.m_lines.size(); i++) {
          m_shape_ref++;
@@ -154,7 +154,7 @@ bool ShapeMap::read( std::ifstream& stream, int version, bool drawinglayer )
    stream.read( (char *) &m_rows, sizeof(m_rows) );
    stream.read( (char *) &m_cols, sizeof(m_cols) );
    // calculate geom data:
-   m_tolerance = __max(m_region.width(), m_region.height()) * TOLERANCE_A;
+   m_tolerance = std::max(m_region.width(), m_region.height()) * TOLERANCE_A;
 
    // read next object ref to be used:
    stream.read((char *) &m_obj_ref, sizeof(m_obj_ref));
@@ -731,8 +731,8 @@ void ShapeMap::init(int size, const QtRegion &r)
       delete [] m_display_shapes;
       m_display_shapes = NULL;
    }
-   m_rows = __min(__max(20,(int)sqrt((double)size)),32768);
-   m_cols = __min(__max(20,(int)sqrt((double)size)),32768);
+   m_rows = std::min(std::max(20,(int)sqrt((double)size)),32768);
+   m_cols = std::min(std::max(20,(int)sqrt((double)size)),32768);
    if (m_region.atZero()) {
       m_region = r;
    }
@@ -740,7 +740,7 @@ void ShapeMap::init(int size, const QtRegion &r)
       m_region = runion(m_region,r);
    }
    // calculate geom data:
-   m_tolerance = __max(m_region.width(), m_region.height()) * TOLERANCE_A;
+   m_tolerance = std::max(m_region.width(), m_region.height()) * TOLERANCE_A;
    //
    m_pixel_shapes = new pqvector<ShapeRef> *[m_cols];
    for (int i = 0; i < m_cols; i++) {
@@ -818,8 +818,8 @@ int ShapeMap::connectIntersected(int rowid, bool linegraph)
       m_connectors.push_back( Connector() );
    }
    int connectivity = linegraph ?
-      getLineConnections( shaperef, m_connectors[rowid].m_connections, TOLERANCE_B*__max(m_region.height(),m_region.width())) :
-      getShapeConnections( shaperef, m_connectors[rowid].m_connections, TOLERANCE_B*__max(m_region.height(),m_region.width()));
+      getLineConnections( shaperef, m_connectors[rowid].m_connections, TOLERANCE_B*std::max(m_region.height(),m_region.width())) :
+      getShapeConnections( shaperef, m_connectors[rowid].m_connections, TOLERANCE_B*std::max(m_region.height(),m_region.width()));
    m_attributes.setValue(rowid, conn_col, (float) connectivity );
    if (linegraph) {
       m_attributes.setValue(rowid, leng_col, (float) m_shapes[rowid].getLength() );

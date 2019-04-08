@@ -11,11 +11,6 @@
 
 namespace mgraph440 {
 
-#if !defined(_WIN32)
-#define     __max(x,y)  ((x<y) ? y: x)
-#define     __min(x,y)	((x<y) ? x: y)
-#endif
-
 class SalaShape : public pqvector<Point2f>
 {
 public:
