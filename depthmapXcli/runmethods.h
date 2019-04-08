@@ -35,7 +35,7 @@ class Line;
 class Point2f;
 
 namespace dm_runmethods{
-    void importFiles(const CommandLineParser &cmdP, const std::vector<std::string> &filesToImport, IPerformanceSink &perfWriter);
+    void importFiles(const CommandLineParser &cmdP, const std::vector<std::string> &, IPerformanceSink &perfWriter);
     void linkGraph(const CommandLineParser &cmdP, const LinkParser &parser, IPerformanceSink &perfWriter );
     void runVga(const CommandLineParser &cmdP, const VgaParser &vgaP, const IRadiusConverter &converter, IPerformanceSink &perfWriter );
     void runVisualPrep(const CommandLineParser &clp, double gridSize, const std::vector<Point2f> &fillPoints, double maxVisibility, bool boundaryGraph, bool makeGraph, bool unmakeGraph, bool removeLinksWhenUnmaking, IPerformanceSink &perfWriter);

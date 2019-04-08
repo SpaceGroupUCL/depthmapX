@@ -50,14 +50,14 @@ bool VGAVisualGlobalDepth::run(Communicator *, const Options &, PointMap &map, b
                 AttributeRow &row = attributes.getRow(AttributeKey(*currLvlIter));
                 row.setValue(col, float(level));
                 if (!p.contextfilled() || currLvlIter->iseven() || level == 0) {
-                    p.getNode().extractUnseen(search_tree[level + 1], &map, p.m_misc);
+                    p.getNode().extractUnseen(search_tree[level + 1], &map);
                     p.m_misc = ~0;
                     if (!p.getMergePixel().empty()) {
                         Point &p2 = map.getPoint(p.getMergePixel());
                         if (p2.m_misc != ~0) {
                             AttributeRow &mergePixelRow = attributes.getRow(AttributeKey(p.getMergePixel()));
                             mergePixelRow.setValue(col, float(level));
-                            p2.getNode().extractUnseen(search_tree[level + 1], &map, p2.m_misc); // did say p.misc
+                            p2.getNode().extractUnseen(search_tree[level + 1], &map); // did say p.misc
                             p2.m_misc = ~0;
                         }
                     }

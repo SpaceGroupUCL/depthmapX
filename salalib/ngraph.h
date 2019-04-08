@@ -104,7 +104,7 @@ public:
 public:
    // Note: this function clears the bins as it goes
    void make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, int q_octants);
-   void extractUnseen(PixelRefVector& pixels, PointMap *pointdata, int binmark);
+   void extractUnseen(PixelRefVector& pixels, PointMap *pointdata);
    void extractMetric(std::set<MetricTriple> &pixels, PointMap *pointdata, const MetricTriple& curs);
    void extractAngular(std::set<AngularTriple> &pixels, PointMap *pointdata, const AngularTriple& curs);
    bool concaveConnected();

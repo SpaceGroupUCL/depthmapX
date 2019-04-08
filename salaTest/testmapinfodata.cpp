@@ -79,7 +79,7 @@ TEST_CASE("MapInfo failing column attribute columns", "")
     std::vector<std::string> columnheads;
 
     MapInfoData mapinfodata;
-    REQUIRE_FALSE(mapinfodata.readcolumnheaders(mifstream, midstream, columnheads));
+    REQUIRE_FALSE(mapinfodata.readcolumnheaders(mifstream, columnheads));
 }
 
 TEST_CASE("Complete proper MapInfo file", "")

@@ -1202,7 +1202,7 @@ bool PointMap::write( std::ostream& stream )
 
 // Visibility graph construction constants
 
-int PointMap::tagState(bool settag, bool sparkgraph)
+int PointMap::tagState(bool settag)
 {
    m_selection_set.clear();
    m_selection = NO_SELECTION;
@@ -1279,7 +1279,7 @@ bool PointMap::sparkGraph2( Communicator *comm, bool boundarygraph, double maxdi
    m_attributes->insertOrResetColumn("Point Second Moment");
 
    // pre-label --- allows faster node access later on
-   int count = tagState( true, true );
+   int count = tagState( true );
 
    // start the timer when you know the true count including fixed points
    
@@ -1310,7 +1310,7 @@ bool PointMap::sparkGraph2( Communicator *comm, bool boundarygraph, double maxdi
             if (comm) {
                if (qtimer( atime, 500 )) {
                   if (comm->IsCancelled()) {
-                     tagState( false, true );         // <- the state field has been used for tagging visited nodes... set back to a state variable
+                     tagState( false );         // <- the state field has been used for tagging visited nodes... set back to a state variable
                      // (well, actually, no it hasn't!)
                      // Should clear all nodes and attributes here:
                      // Clear nodes
@@ -1327,7 +1327,7 @@ bool PointMap::sparkGraph2( Communicator *comm, bool boundarygraph, double maxdi
       } // rows
    } // cols
 
-   tagState( false, true );  // <- the state field has been used for tagging visited nodes... set back to a state variable
+   tagState( false );  // <- the state field has been used for tagging visited nodes... set back to a state variable
 
    // keeping lines blocked now is wasteful of memory... free the memory involved
    unblockLines(false);

@@ -47,7 +47,7 @@ public:
         _parseCalled = true;
     }
 
-    virtual void run(const CommandLineParser &clp, IPerformanceSink &perfWriter) const
+    virtual void run(const CommandLineParser &, IPerformanceSink &) const
     {
         _runCalled = true;
     }

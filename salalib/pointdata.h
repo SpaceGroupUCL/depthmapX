@@ -166,7 +166,7 @@ public:
       { return !m_processed && m_undocounter != 0; }
    void outputPoints(std::ostream& stream, char delim );
    void outputMergeLines(std::ostream& stream, char delim);
-   int  tagState(bool settag, bool sparkgraph = false);
+   int  tagState(bool settag);
    bool sparkGraph2(Communicator *comm, bool boundarygraph, double maxdist );
    bool unmake(bool removeLinks);
    bool sparkPixel2(PixelRef curs, int make, double maxdist = -1.0);

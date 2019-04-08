@@ -26,5 +26,5 @@
 class SegmentTopological : ISegment {
   public:
     std::string getAnalysisName() const override { return "Topological Analysis"; }
-    bool run(Communicator *, const Options &options, ShapeGraph &map, bool) override;
+    bool run(Communicator *comm, const Options &options, ShapeGraph &map, bool) override;
 };

@@ -1282,7 +1282,7 @@ void ShapeMap::pointPixelBorder(const PointMap &pointmap, std::map<int, int> &re
     }
     auto relation = relations.find(currpix);
     if (relation->second & side) {
-        poly.m_points.push_back(pointmap.depixelate(currpix) + pointOffset(pointmap, currpix, side));
+        poly.m_points.push_back(pointmap.depixelate(currpix) + pointOffset(pointmap, side));
         relation->second &= ~side; // <- clear to check all have been done later
         side <<= 1;
         if (side > ShapeRef::SHAPE_T) {
@@ -1378,7 +1378,7 @@ int ShapeMap::moveDir(int side) {
     return dir;
 }
 
-Point2f ShapeMap::pointOffset(const PointMap &pointmap, int currpix, int side) {
+Point2f ShapeMap::pointOffset(const PointMap &pointmap, int side) {
     Point2f p;
     switch (side) {
     case ShapeRef::SHAPE_L:

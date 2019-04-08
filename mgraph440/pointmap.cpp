@@ -328,7 +328,7 @@ void PointMap::setDisplayedAttribute(int col)
       m_displayed_attribute = col;
    }
    // make a local copy of the display params for access speed:
-   m_display_params = m_attributes.getDisplayParams(m_displayed_attribute);
+   m_display_params = m_attributes.getDisplayParams();
 
    m_attributes.setDisplayColumn(m_displayed_attribute,true);
 }

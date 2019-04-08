@@ -37,7 +37,7 @@ int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& 
    AttributeTable& attributes = map.getAttributeTable();
 
    // read mif table
-   if (!readcolumnheaders(miffile,midfile,columnheads)) {
+   if (!readcolumnheaders(miffile, columnheads)) {
       return MINFO_TABLE;
    }
 
@@ -444,7 +444,7 @@ bool MapInfoData::readheader(std::istream& miffile)
    return true;
 }
 
-bool MapInfoData::readcolumnheaders(std::istream& miffile, std::istream& midfile, std::vector<std::string>& columnheads)
+bool MapInfoData::readcolumnheaders(std::istream& miffile, std::vector<std::string>& columnheads)
 {
    std::string line;
 

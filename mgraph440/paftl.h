@@ -1286,7 +1286,7 @@ public:
    const T& operator [] (T pos) const
       { return m_data[pos+1]; }
 public:
-   ::std::istream& read( ::std::istream& stream, ::std::streampos offset = -1 );
+   ::std::istream& read(::std::istream& stream, ::std::streampos = -1);
    ::std::ostream& write( ::std::ostream& stream );
 };
 
@@ -1383,7 +1383,7 @@ void psubvec<T>::clear()
 }
 
 template <class T>
-::std::istream& psubvec<T>::read( ::std::istream& stream, ::std::streampos offset )
+::std::istream& psubvec<T>::read( ::std::istream& stream, ::std::streampos )
 {
    if (m_data) {
       delete [] m_data;

@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool SegmentMetric::run(Communicator *, const Options &options, ShapeGraph &map, bool) {
+bool SegmentMetric::run(Communicator *comm, const Options &options, ShapeGraph &map, bool) {
 
     AttributeTable &attributes = map.getAttributeTable();
 

@@ -374,7 +374,7 @@ class ShapeMap : public PixelBase {
     void undo();
     //
     // helpers:
-    Point2f pointOffset(const PointMap &pointmap, int currpix, int side);
+    Point2f pointOffset(const PointMap &pointmap, int side);
     int moveDir(int side);
     //
     void pointPixelBorder(const PointMap &pointmap, std::map<int, int> &relations, SalaShape &shape, int side,

@@ -57,12 +57,10 @@ void Node::make(const PixelRef pix, PixelRefVector *bins, float *bin_far_dists, 
    }
 }
 
-void Node::extractUnseen(PixelRefVector& pixels, PointMap *pointdata, int binmark)
+void Node::extractUnseen(PixelRefVector& pixels, PointMap *pointdata)
 {
    for (int i = 0; i < 32; i++) {
-//      if (~binmark & (1 << i)) {  // <- DON'T USE THIS, IT CAUSES TOO MANY ERRORS!
          m_bins[i].extractUnseen(pixels, pointdata, (1 << i));
-//      }
    }
 }
 
