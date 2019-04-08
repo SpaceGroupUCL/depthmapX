@@ -209,7 +209,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
             td_col.push_back(attributes.getColumnIndex(td_col_text.c_str()));
         }
     }
-    int control_col, controllability_col;
+    int control_col = -1, controllability_col = -1;
     if (options.local) {
         if (!simple_version) {
             control_col = attributes.getColumnIndex("Control");
@@ -483,7 +483,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                 w_total_choice += audittrail[i][r].weighted_choice;
                 // n.b., normalise choice according to (n-1)(n-2)/2 (maximum possible through routes)
                 double node_count = row.getValue(count_col[r]);
-                double total_weight;
+                double total_weight = 0;
                 if (options.weighted_measure_col != -1) {
                     total_weight = row.getValue(total_weight_col[r]);
                 }

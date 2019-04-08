@@ -362,7 +362,7 @@ namespace EntityParsing {
                     message << "Error parsing line: " << inputline << std::flush;
                     throw EntityParseException(message.str().c_str());
                 }
-                int from, to;
+                int from = -1, to = -1;
                 for (i = 0; i < strings.size(); i++)
                 {
                     if (i == size_t(fromcol))

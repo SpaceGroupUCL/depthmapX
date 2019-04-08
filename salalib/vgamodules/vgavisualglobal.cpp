@@ -28,7 +28,8 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
     }
     AttributeTable &attributes = map.getAttributeTable();
 
-    int entropy_col, rel_entropy_col, integ_dv_col, integ_pv_col, integ_tk_col, depth_col, count_col;
+    int entropy_col = -1, rel_entropy_col = -1, integ_dv_col = -1, integ_pv_col = -1, integ_tk_col = -1,
+        depth_col = -1, count_col = -1;
     std::string radius_text;
     if (options.radius != -1) {
         radius_text = std::string(" R") + dXstring::formatString(int(options.radius), "%d");
@@ -94,9 +95,10 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
                 int level = 0;
                 while (search_tree[level].size()) {
                     search_tree.push_back(PixelRefVector());
-                    const PixelRefVector& searchTreeAtLevel = search_tree[level];
+                    const PixelRefVector &searchTreeAtLevel = search_tree[level];
                     distribution.push_back(0);
-                    for (auto currLvlIter = searchTreeAtLevel.rbegin(); currLvlIter != searchTreeAtLevel.rend(); currLvlIter++) {
+                    for (auto currLvlIter = searchTreeAtLevel.rbegin(); currLvlIter != searchTreeAtLevel.rend();
+                         currLvlIter++) {
                         int &pmisc = miscs(currLvlIter->y, currLvlIter->x);
                         Point &p = map.getPoint(*currLvlIter);
                         if (p.filled() && pmisc != ~0) {
@@ -104,8 +106,7 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
                             total_nodes += 1;
                             distribution.back() += 1;
                             if ((int)options.radius == -1 ||
-                                (level < (int)options.radius &&
-                                    (!p.contextfilled() || currLvlIter->iseven()))) {
+                                (level < (int)options.radius && (!p.contextfilled() || currLvlIter->iseven()))) {
                                 extractUnseen(p.getNode(), search_tree[level + 1], miscs, extents);
                                 pmisc = ~0;
                                 if (!p.getMergePixel().empty()) {
@@ -215,7 +216,7 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
 }
 
 void VGAVisualGlobal::extractUnseen(Node &node, PixelRefVector &pixels, depthmapX::RowMatrix<int> &miscs,
-                   depthmapX::RowMatrix<PixelRef> &extents) {
+                                    depthmapX::RowMatrix<PixelRef> &extents) {
     for (int i = 0; i < 32; i++) {
         Bin &bin = node.bin(i);
         for (auto pixVec : bin.m_pixel_vecs) {

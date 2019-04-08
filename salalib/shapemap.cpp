@@ -1362,7 +1362,7 @@ void ShapeMap::removePolyPixels(int polyref) {
 /////////////////////////////////////////////////////////////////////////////////////////////////
 
 int ShapeMap::moveDir(int side) {
-    int dir;
+    int dir = PixelRef::NODIR;
     switch (side) {
     case ShapeRef::SHAPE_L:
         dir = PixelRef::NEGHORIZONTAL;

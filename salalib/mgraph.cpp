@@ -1670,17 +1670,14 @@ int MetaGraph::loadRT1(const std::vector<std::string>& fileset, Communicator *co
 
 ShapeMap &MetaGraph::createNewShapeMap(depthmapX::ImportType mapType, std::string name) {
 
-    switch(mapType) {
-        case depthmapX::ImportType::DRAWINGMAP: {
-            m_drawingFiles.back().m_spacePixels.emplace_back(name);
-            return m_drawingFiles.back().m_spacePixels.back();
-        }
-        case depthmapX::ImportType::DATAMAP: {
-            m_dataMaps.emplace_back(name,ShapeMap::DATAMAP);
-            m_dataMaps.back().setDisplayedAttribute(0);
-            return m_dataMaps.back();
-        }
+    if (mapType == depthmapX::ImportType::DATAMAP) {
+        m_dataMaps.emplace_back(name, ShapeMap::DATAMAP);
+        m_dataMaps.back().setDisplayedAttribute(0);
+        return m_dataMaps.back();
     }
+    // depthmapX::ImportType::DRAWINGMAP
+    m_drawingFiles.back().m_spacePixels.emplace_back(name);
+    return m_drawingFiles.back().m_spacePixels.back();
 }
 
 void MetaGraph::deleteShapeMap(depthmapX::ImportType mapType, ShapeMap &shapeMap) {
@@ -2440,8 +2437,6 @@ int MetaGraph::readFromStream( std::istream &stream, const std::string& filename
    //             p --- point data
    //             d --- data summary layers
 
-   bool conversion_required = false;
-
    char type;
    stream.read( &type, 1 );
    if (type == 'd') {
@@ -2476,8 +2471,6 @@ int MetaGraph::readFromStream( std::istream &stream, const std::string& filename
        return OK;
    }
    if (type == 'v') {
-
-      conversion_required = true;
 
       skipVirtualMem(stream);
 

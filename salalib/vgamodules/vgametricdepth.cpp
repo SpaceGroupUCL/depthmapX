@@ -27,7 +27,7 @@ bool VGAMetricDepth::run(Communicator *, const Options &, PointMap &map, bool) {
     // n.b., insert columns sets values to -1 if the column already exists
     int path_angle_col = attributes.insertOrResetColumn("Metric Step Shortest-Path Angle");
     int path_length_col = attributes.insertOrResetColumn("Metric Step Shortest-Path Length");
-    int dist_col;
+    int dist_col = -1;
     if (map.getSelSet().size() == 1) {
         // Note: Euclidean distance is currently only calculated from a single point
         dist_col = attributes.insertOrResetColumn("Metric Straight-Line Distance");

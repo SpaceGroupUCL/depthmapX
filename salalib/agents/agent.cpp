@@ -521,10 +521,8 @@ Point2f Agent::onLoSLook(bool wholeisovist, int look_type) {
 }
 
 Point2f Agent::onDirectedLoSLook(bool wholeisovist, int look_type) {
-    int bbin = -1;
     Point2f vec2 = m_destination - m_loc;
     vec2.normalise();
-    bbin = binfromvec(vec2);
     int targetbin = -1;
     int vbin = m_program->m_vbin;
     if (wholeisovist || vbin == -1) {

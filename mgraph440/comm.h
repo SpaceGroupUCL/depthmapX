@@ -166,10 +166,10 @@ protected:
 public:
         ICommunicator() { m_delete_flag = true; } // note: an ICommunicator lets IComm know that it should delete it
         virtual ~ICommunicator() {;}
-   virtual void CommPostMessage(int m, int x, int y = 0) const;
+   virtual void CommPostMessage(int m, int x) const;
 };
 
-inline void ICommunicator::CommPostMessage(int m, int x, int y) const
+inline void ICommunicator::CommPostMessage(int m, int x) const
 {
         switch (m) {
                 case Communicator::NUM_STEPS:
@@ -185,7 +185,6 @@ inline void ICommunicator::CommPostMessage(int m, int x, int y) const
                         record = x;
                         break;
         default:
-            y = 0;
             break;
     }
 }

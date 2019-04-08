@@ -131,14 +131,14 @@ void sparkSieve2::collectgarbage()
    m_blocks.clear();
 }
 
-// q quadrants:
-//
-//      \ 6 | 7 /
-//      0 \ | / 1
-//      - -   - -
-//      2 / | \ 3
-//      / 4 | 5 \
-//
+/* q quadrants:
+*
+*       \ 6 | 7 /
+*       0 \ | / 1
+*       - -   - -
+*       2 / | \ 3
+*       / 4 | 5 \
+*/
 
 double sparkSieve2::tanify( const Point2f& point, int q )
 {

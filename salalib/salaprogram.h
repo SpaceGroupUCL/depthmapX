@@ -240,7 +240,7 @@ public:
    friend bool operator <= (SalaObj& a, SalaObj& b);
    // operations for lists:
    SalaObj& list_at(int i);
-   SalaObj char_at(size_t i); // actually returns a string of the char -- note constant
+   SalaObj char_at(int i); // actually returns a string of the char -- note constant
    int length();
    // check for no parameters
    void ensureNone()
@@ -658,11 +658,11 @@ inline SalaObj& SalaObj::list_at(int i)
       throw SalaError("Index out of range");
    return data.list.list->at(i); 
 }
-inline SalaObj SalaObj::char_at(size_t i) // actually returns a string of the char
+inline SalaObj SalaObj::char_at(int i) // actually returns a string of the char
 {
    if (i < 0)
       i += data.str.length();
-   if (i < 0 || i >= data.str.length()) 
+   if (i < 0 || i >= static_cast<int>(data.str.length()))
       throw SalaError("String index out of range");
    return SalaObj(std::string(1,data.str.char_at(i)));
 }

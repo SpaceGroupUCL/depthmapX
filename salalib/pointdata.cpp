@@ -1652,9 +1652,8 @@ bool PointMap::unmergePixel(PixelRef a) {
 
 bool PointMap::mergePixels(PixelRef a, PixelRef b)
 {
-   bool altered = false;
    if (a == b && !getPoint(a).m_merge.empty()) {
-       altered = unmergePixel(a);
+       unmergePixel(a);
    }
    if (a != b && getPoint(a).m_merge != b) {
       if (!getPoint(a).m_merge.empty()) {
@@ -1678,12 +1677,11 @@ bool PointMap::mergePixels(PixelRef a, PixelRef b)
       getPoint(b).m_merge = a;
       getPoint(b).m_state |= Point::MERGED;
       m_merge_lines.push_back(PixelRefPair(a,b));
-      altered = true;
    }
 
    // actually this return now triggers redraw whatever
    // rather than passing back altered status (as a point must be deselected)
-   return true; // altered;
+   return true;
 }
 
 void PointMap::mergeFromShapeMap(const ShapeMap& shapemap)
