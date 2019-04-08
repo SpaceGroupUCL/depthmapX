@@ -284,12 +284,7 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset)
          try {
             SalaObj val = evaluate();
             float v = (float) val.toDouble();   // note, toDouble will type check and throw if there's a problem
-            // Quick mod - TV
-#if defined(_WIN32)            
-            if (!_finite(v)) {
-#else
-            if (!finite(v)) {
-#endif            
+            if (!isfinite(v)) {
                v = -1.0f;
             }
             table->getRow(AttributeKey(sel)).setValue(m_col,v);
@@ -307,12 +302,7 @@ bool SalaProgram::runupdate(int col, const std::set<int> &selset)
          try {
             SalaObj val = evaluate();
             float v = (float) val.toDouble();   // note, toDouble will type check and throw if there's a problem
-            // Quick mod - TV
-#if defined(_WIN32)            
-            if (!_finite(v)) {
-#else
-            if (!finite(v)) {
-#endif            
+            if (!isfinite(v)) {
                v = -1.0f;
             }
             iter->getRow().setValue(m_col,v);

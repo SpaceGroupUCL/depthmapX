@@ -317,7 +317,7 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) {
         }
         float x = iter.getRow().getValue(m_x_axis);
         float y = iter.getRow().getValue(m_y_axis);
-        if (!finite(x) || !finite(y) || x == -1.0f || y == -1.0f) {
+        if (!isfinite(x) || !isfinite(y) || x == -1.0f || y == -1.0f) {
             continue;
         }
         QRgb rgb;
@@ -533,7 +533,7 @@ void QPlotView::ResetRegression() {
             if (isObjectVisible(pDoc->m_meta_graph->getLayers(), iter->getRow())) {
                 float x = iter->getRow().getValue(m_x_axis);
                 float y = iter->getRow().getValue(m_y_axis);
-                if (finite(x) && finite(y) && x != -1.0f && y != -1.0f) {
+                if (isfinite(x) && isfinite(y) && x != -1.0f && y != -1.0f) {
                     m_regression.add(x, y);
                 }
             }
