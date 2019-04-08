@@ -600,11 +600,13 @@ inline int q_opposite(int bin)
 {
    int opposing_bin = (16 + bin) % 32;
 
-            //      \ 6 | 7 /
-            //      0 \ | / 1
-            //      - -   - -
-            //      2 / | \ 3
-            //      / 4 | 5 \
+   /*
+    *       \ 6 | 7 /
+    *      0 \ | / 1
+    *      - -   - -
+    *      2 / | \ 3
+    *      / 4 | 5 \
+    */
 
    return flagoctant(opposing_bin);
 }
