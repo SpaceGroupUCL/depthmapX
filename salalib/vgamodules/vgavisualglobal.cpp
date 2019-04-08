@@ -104,8 +104,8 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
                             total_nodes += 1;
                             distribution.back() += 1;
                             if ((int)options.radius == -1 ||
-                                level < (int)options.radius &&
-                                    (!p.contextfilled() || currLvlIter->iseven())) {
+                                (level < (int)options.radius &&
+                                    (!p.contextfilled() || currLvlIter->iseven()))) {
                                 extractUnseen(p.getNode(), search_tree[level + 1], miscs, extents);
                                 pmisc = ~0;
                                 if (!p.getMergePixel().empty()) {
