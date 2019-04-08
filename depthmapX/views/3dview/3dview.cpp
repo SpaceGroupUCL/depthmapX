@@ -33,6 +33,8 @@
 #include <GL/glu.h>
 #endif
 
+#include "glureimpl.h"
+
 #ifndef _WIN32 // Not working?
 #define LOBYTE(w)           ((unsigned char)((w) & 0xff))
 #define GetRValue(rgb)      (LOBYTE(rgb))
@@ -328,7 +330,9 @@ void Q3DView::Reshape(int x, int y)
 {
    glMatrixMode(GL_PROJECTION);
    glLoadIdentity();
-   gluPerspective(45.0f, (GLfloat) x / (GLfloat) y, 0.1f, 3.0f);
+
+   gluReimpl::gluPerspective(45.0f, (GLfloat) x / (GLfloat) y, 0.1f, 3.0f);
+
    // leave matrix mode in model view:
    glMatrixMode(GL_MODELVIEW);
 }
@@ -744,9 +748,10 @@ void Q3DView::CreateAgent(QPoint point)
    GLint realy = viewport[3] - point.y();
 
    GLdouble wx1, wy1, wz1, wx2, wy2, wz2;
-   gluUnProject((GLdouble) point.x(), (GLdouble) realy, 0.0,
+
+   gluReimpl::gluUnProject((GLdouble) point.x(), (GLdouble) realy, 0.0,
                 mvmatrix, projmatrix, viewport, &wx1, &wy1, &wz1);
-   gluUnProject((GLdouble) point.x(), (GLdouble) realy, 1.0,
+   gluReimpl::gluUnProject((GLdouble) point.x(), (GLdouble) realy, 1.0,
                 mvmatrix, projmatrix, viewport, &wx2, &wy2, &wz2);
 
    // 0 plane has to lie between wz1 and wz2:

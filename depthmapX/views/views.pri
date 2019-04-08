@@ -17,7 +17,8 @@ HEADERS += $$PWD/mapview.h \
     $$PWD/depthmapview/depthmapview.h \
     $$PWD/3dview/3dview.h \
     $$PWD/glview/glregularpolygons.h \
-    $$PWD/glview/gltriangles.h
+    $$PWD/glview/gltriangles.h \
+    $$PWD/3dview/glureimpl.h
 
 SOURCES += $$PWD/mapview.cpp \
     $$PWD/viewhelpers.cpp \
