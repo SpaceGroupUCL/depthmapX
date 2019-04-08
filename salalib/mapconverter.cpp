@@ -210,8 +210,6 @@ std::unique_ptr<ShapeGraph> MapConverter::convertDataToAxial(Communicator *comm,
 std::unique_ptr<ShapeGraph> MapConverter::convertDrawingToConvex(Communicator *, const std::string& name,
                                                                  const std::vector<SpacePixelFile> &drawingFiles)
 {
-   QtRegion region;
-
    std::unique_ptr<ShapeGraph> usermap(new ShapeGraph(name,ShapeMap::CONVEXMAP));
    int conn_col = usermap->getAttributeTable().insertOrResetLockedColumn("Connectivity");
 
