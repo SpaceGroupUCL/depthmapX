@@ -41,19 +41,21 @@ CColourScaleDlg::CColourScaleDlg(QWidget *parent) : QDialog(parent) {
     c_red_slider_ctrl->setTickInterval(10);
 
     // these are out of order...
-    c_color_type->addItem(QString(tr("Equal Ranges (3-Colour)")));      // 0
-    c_color_type->addItem(QString(tr("Equal Ranges (Blue-Red)")));      // 5
-    c_color_type->addItem(QString(tr("Equal Ranges (Purple-Orange)"))); // 4
-    c_color_type->addItem(QString(tr("depthmapX Classic")));            // 3
-    c_color_type->addItem(QString(tr("Equal Ranges (Greyscale)")));     // 1
-    c_color_type->addItem(QString(tr("Equal Ranges (Monochrome)")));    // 2
+    c_color_type->addItem(QString(tr("Equal Ranges (3-Colour)")));            // AXMANESQUE
+    c_color_type->addItem(QString(tr("Equal Ranges (Blue-Red)")));            // BLUERED
+    c_color_type->addItem(QString(tr("Equal Ranges (Purple-Orange)")));       // PURPLEORANGE
+    c_color_type->addItem(QString(tr("depthmapX Classic")));                  // DEPTHMAPCLASSIC
+    c_color_type->addItem(QString(tr("Equal Ranges (Greyscale)")));           // GREYSCALE
+    c_color_type->addItem(QString(tr("Equal Ranges (Monochrome)")));          // MONOCHROME
+    c_color_type->addItem(QString(tr("Equal Ranges (3-Colour Hue Only)")));   // HUEONLYAXMANESQUE
 
-    m_color_type_map.push_back(0);
-    m_color_type_map.push_back(5);
-    m_color_type_map.push_back(4);
-    m_color_type_map.push_back(3);
-    m_color_type_map.push_back(1);
-    m_color_type_map.push_back(2);
+    m_color_type_map.push_back(DisplayParams::AXMANESQUE);
+    m_color_type_map.push_back(DisplayParams::BLUERED);
+    m_color_type_map.push_back(DisplayParams::PURPLEORANGE);
+    m_color_type_map.push_back(DisplayParams::DEPTHMAPCLASSIC);
+    m_color_type_map.push_back(DisplayParams::GREYSCALE);
+    m_color_type_map.push_back(DisplayParams::MONOCHROME);
+    m_color_type_map.push_back(DisplayParams::HUEONLYAXMANESQUE);
 
     Clear();
 
@@ -100,7 +102,7 @@ void CColourScaleDlg::OnSelchangeColor(int value) {
 
     m_color = m_color_type_map[value];
 
-    if (m_color == 0 || m_color == 3 || m_color == 5) {
+    if (m_color == 0 || m_color == 3 || m_color == 5 || m_color == 6) {
         m_red = "Red";
         m_blue = "Blue";
     } else if (m_color == 4) {

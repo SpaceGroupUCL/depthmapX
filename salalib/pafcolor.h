@@ -76,6 +76,7 @@ struct PafColor
    friend bool operator == (const PafColor& a, const PafColor& b);
    friend bool operator != (const PafColor& a, const PafColor& b);
    PafColor& makeAxmanesque( double field);
+   PafColor& makeHueOnlyAxmanesque( double field);
    PafColor& makePurpleOrange( double field );
    PafColor& makeBlueRed( double field );
    PafColor& makeGreyScale( double field );
