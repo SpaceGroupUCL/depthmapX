@@ -1170,7 +1170,8 @@ int MetaGraph::loadMifMap(Communicator *comm, std::istream& miffile, std::istrea
 bool MetaGraph::makeAllLineMap( Communicator *communicator, const Point2f& seed )
 {
    int oldstate = m_state;
-   m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload) 
+   m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload)
+   m_view_class &= ~VIEWAXIAL;   // Also clear the view_class flag
 
    bool retvar = true;
 
