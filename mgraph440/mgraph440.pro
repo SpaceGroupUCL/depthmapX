@@ -11,7 +11,7 @@ TARGET = mgraph440
 TEMPLATE = lib
 
 # suppress warning about std::set<int> on MSVC 2015
-win32: QMAKE_CXXFLAGS += -wd4800
+msvc: QMAKE_CXXFLAGS += -wd4800
 
 DEFINES += MGRAPH440_LIBRARY
 

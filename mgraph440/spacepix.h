@@ -71,7 +71,7 @@ public:
 
    // Quick mod - TV
 #if 0
-#if !defined(_WIN32)
+#if !defined(_MSC_VER)
    size_t size() const
    { return pmemvec<T>::size(); }
 

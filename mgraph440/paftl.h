@@ -501,7 +501,7 @@ public:
    //
 
    // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
    friend pvector<T> intersect(const pvector<T>& a, const pvector<T>& b);
 #endif
 };
@@ -1465,7 +1465,7 @@ template <class T1, class T2>
 template <class T1, class T2> class keyvaluepairref
 {
    // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
 protected:
 #else
 public:
@@ -1496,7 +1496,7 @@ public:
    const T2& value() const { return *m_value; }
 
    // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
    friend bool operator == <T1,T2>(const keyvaluepairref<T1,T2>& a, const keyvaluepairref<T1,T2>& b);
    friend bool operator <  <T1,T2>(const keyvaluepairref<T1,T2>& a, const keyvaluepairref<T1,T2>& b);
    friend bool operator >  <T1,T2>(const keyvaluepairref<T1,T2>& a, const keyvaluepairref<T1,T2>& b);

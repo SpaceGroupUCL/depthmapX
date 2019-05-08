@@ -46,7 +46,6 @@ protected:
 	virtual void scrollContentsBy ( int dx, int dy );
 
 private:
-	int OnRedraw(int wParam, int lParam);
 	void RedoTable();
     void PrepareCache(int to);
 

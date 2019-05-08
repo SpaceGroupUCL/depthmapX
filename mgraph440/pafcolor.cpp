@@ -81,7 +81,7 @@ static unsigned int g_purpleorange[] = {
 unsigned char htmlByte440(double colorByte)
 {
    // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
    return (unsigned char((colorByte + 0.0333) * 15.0) * 0x11);
 #else
    return ((unsigned char)((colorByte + 0.0333) * 15.0) * 0x11);
@@ -186,7 +186,7 @@ PafColor& PafColor::makeDepthmapClassic( double field, double blue, double red )
    if (field >= 0.0 && field < blue) {
       setr(htmlByte440(0.5 * (blue - field)/blue * 1.0));
       // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
       setb(unsigned char(0xFF));
 #else
       setb((unsigned char)(0xFF));
@@ -194,7 +194,7 @@ PafColor& PafColor::makeDepthmapClassic( double field, double blue, double red )
    }
    else if (field >= blue && field < (green+blue)/2.0) {
       // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
       setb(unsigned char(0xFF));
 #else
       setb((unsigned char)(0xFF));
@@ -204,7 +204,7 @@ PafColor& PafColor::makeDepthmapClassic( double field, double blue, double red )
    else if (field >= (green+blue)/2.0 && field < green) {
       setb(htmlByte440((2.0*(green - field)/(green-blue)) * 1.0));
       // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
       setg(unsigned char(0xFF));
 #else
       setg((unsigned char)(0xFF));
@@ -212,7 +212,7 @@ PafColor& PafColor::makeDepthmapClassic( double field, double blue, double red )
    }
    else if (field >= green && field < (green+red)/2.0 ) {
       // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
       setg(unsigned char(0xFF));
 #else
       setg((unsigned char)(0xFF));
@@ -222,7 +222,7 @@ PafColor& PafColor::makeDepthmapClassic( double field, double blue, double red )
    else if (field >= (green+red)/2.0 && field < red) {
       setg(htmlByte440((2.0*(red - field)/(red-green)) * 1.0));
       // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
       setr(unsigned char(0xFF));
 #else
       setr((unsigned char)(0xFF));
@@ -230,7 +230,7 @@ PafColor& PafColor::makeDepthmapClassic( double field, double blue, double red )
    }
    else if (field >= red) {
       // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
       setr(unsigned char(0xFF));
 #else
       setr((unsigned char)(0xFF));

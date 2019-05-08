@@ -23,3 +23,6 @@ depthmapX uses [Qt5](http://www.qt.io) as UI toolkit and build system, [Catch](h
 
 Please join the depthmapX mail distribution list at www.jiscmail.ac.uk/lists/DEPTHMAP.html for updates.
 
+The developers and users of depthmapX can also be found on matrix/riot for more direct and extended discussions in the following channels:
+- [depthmapX-users](https://riot.im/app/#/room/#depthmapX-users:matrix.org) - for general discussion, and questions about using depthmapX
+- [depthmapX-devel](https://riot.im/app/#/room/#depthmapX-devel:matrix.org) - for development discussion

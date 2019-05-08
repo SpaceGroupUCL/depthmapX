@@ -264,6 +264,24 @@ class ShapeMap : public PixelBase {
     mutable int m_current;
     mutable bool m_invalidate;
     //
+private:
+    void moveData(ShapeMap& other) {
+        m_show = other.isShown();
+        m_shapes = std::move(other.m_shapes);
+        m_hasgraph = other.m_hasgraph;
+        m_connectors = std::move(other.m_connectors);
+        m_links = std::move(other.m_links);
+        m_unlinks = std::move(other.m_unlinks);
+        m_mapinfodata = std::move(other.m_mapinfodata);
+        m_hasMapInfoData = other.m_hasMapInfoData;
+        m_displayed_attribute = other.m_displayed_attribute;
+        m_display_shapes = std::move(other.m_display_shapes);
+        m_rows = other.m_rows;
+        m_cols = other.m_cols;
+        m_region = std::move(other.m_region);
+        m_map_type = other.m_map_type;
+    }
+
   public:
     ShapeMap(const std::string &name = std::string(), int type = EMPTYMAP);
     virtual ~ShapeMap();
@@ -273,9 +291,7 @@ class ShapeMap : public PixelBase {
         : m_name(std::move(other.m_name)), m_pixel_shapes(std::move(other.m_pixel_shapes)),
           m_attributes(std::move(other.m_attributes)), m_attribHandle(std::move(other.m_attribHandle)),
           m_layers(std::move(other.m_layers)) {
-        m_show = other.isShown();
-        copy(other);
-        m_displayed_attribute = other.m_displayed_attribute;
+        moveData(other);
     }
     ShapeMap &operator=(ShapeMap &&other) {
         m_name = std::move(other.m_name);
@@ -283,9 +299,7 @@ class ShapeMap : public PixelBase {
         m_attributes = std::move(other.m_attributes);
         m_attribHandle = std::move(other.m_attribHandle);
         m_layers = std::move(other.m_layers);
-        m_show = other.isShown();
-        copy(other);
-        m_displayed_attribute = other.m_displayed_attribute;
+        moveData(other);
         return *this;
     }
     ShapeMap(const ShapeMap &) = delete;
@@ -546,7 +560,7 @@ class ShapeMap : public PixelBase {
     double getLocationValue(const Point2f &point) const;
 
     // Quick mod - TV
-#if !defined(_WIN32)
+#if !defined(_MSC_VER)
 #define __max(x, y) ((x < y) ? y : x)
 #define __min(x, y) ((x < y) ? x : y)
 #endif

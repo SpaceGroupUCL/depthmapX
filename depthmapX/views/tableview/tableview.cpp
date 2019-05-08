@@ -19,7 +19,7 @@
 
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QLayout>
-#include <Qt3DInput/QKeyEvent>
+#include <QKeyEvent>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QTableWidgetItem>
@@ -204,38 +204,6 @@ void tableView::colum_Sort(int col_id)
 
 		RedoTable();
 	}
-}
-
-int tableView::OnRedraw(int wParam, int lParam)
-{
-   bool done = false;
-   if (pDoc->GetRemenuFlag(QGraphDoc::VIEW_TABLE)) {
-      pDoc->SetRemenuFlag(QGraphDoc::VIEW_TABLE,false);
-      // this is big: start from scratch...
-      RedoTable();
-      done = true;
-   }
-   int flag = pDoc->GetRedrawFlag(QGraphDoc::VIEW_TABLE);
-   if (flag != QGraphDoc::REDRAW_DONE) {
-      //
-      while (!pDoc->SetRedrawFlag(QGraphDoc::VIEW_TABLE,QGraphDoc::REDRAW_DONE)) {
-         // prefer waitformultipleobjects here
-      }
-      //
-      if (!done && lParam != (long) this) {
-         if (wParam == QGraphDoc::NEW_TABLE) {
-            // this is big start from scratch...
-            RedoTable();
-            done = true;
-         }
-         else {
-            // redo the cache and redisplay
-            PrepareCache(m_curr_row);
-         }
-      }
-   }
-
-   return 0;
 }
 
 void tableView::itemEditChanged(QTableWidgetItem* item)

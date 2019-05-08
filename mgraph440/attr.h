@@ -17,7 +17,7 @@
 #pragma once
 
 // Modifed by Dream
-#if defined(_WIN32)
+#if defined(_MSC_VER)
 #include <io.h>
 #else
 #include <unistd.h>

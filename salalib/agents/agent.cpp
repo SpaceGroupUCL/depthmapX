@@ -306,7 +306,7 @@ Point2f Agent::onWeightedLook(bool wholeisovist) {
         bin.first();
 
         // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
         int node = bin.is_tail() ? -1 : bin.cursor();
 #else
         int node = bin.is_tail() ? -1 : bin.cursor().x;
@@ -316,7 +316,7 @@ Point2f Agent::onWeightedLook(bool wholeisovist) {
             weightmap.push_back(wpair(weight, node));
             bin.next();
             // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
             node = bin.is_tail() ? -1 : bin.cursor();
 #else
             node = bin.is_tail() ? -1 : bin.cursor().x;

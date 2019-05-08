@@ -264,7 +264,7 @@ SalaObj SalaProgram::evaluate()
       AttributeTable *table = m_thisobj.getTable();
       for (int i = 0; i < table->getRowCount(); i++) {
      // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
          table->setMark(i,SalaObj());
 #else
      SalaObj objTmp = SalaObj();
@@ -1140,7 +1140,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
             switch (func) {
             case SalaObj::S_ADD:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) + evaluate(pointer,p_obj);
 #else
            {
@@ -1152,7 +1152,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_SUBTRACT:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) - evaluate(pointer,p_obj);
 #else
            {
@@ -1167,7 +1167,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_MINUS:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = -evaluate(pointer,p_obj);
 #else
            {
@@ -1178,7 +1178,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_MULTIPLY:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) * evaluate(pointer,p_obj);
 #else
            {
@@ -1190,7 +1190,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_DIVIDE:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) / evaluate(pointer,p_obj);
 #else
            {
@@ -1204,7 +1204,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                data = evaluate(pointer,p_obj);
 
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) % data;   // reverse order
 #else
            {
@@ -1220,7 +1220,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
             case SalaObj::S_ASSIGN:
                data = evaluate(pointer,p_obj);  // reverse order
                evaluate(pointer,p_obj);
-               if ((unsigned long)p_obj > 1) {
+               if (p_obj != nullptr) {
                   *p_obj = data;
                }
                else {
@@ -1279,7 +1279,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_EQ:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) == evaluate(pointer,p_obj);
 #else
            {
@@ -1291,7 +1291,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_IS:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = op_is(evaluate(pointer,p_obj),evaluate(pointer,p_obj));
 #else
            {
@@ -1303,7 +1303,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_NEQ:
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) != evaluate(pointer,p_obj);
 #else
            {
@@ -1316,7 +1316,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
             case SalaObj::S_GT:
                data = evaluate(pointer,p_obj);
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) > data;   // revese order
 #else
            {
@@ -1328,7 +1328,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
             case SalaObj::S_LT:
                data = evaluate(pointer,p_obj);
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) < data;   // revese order
 #else
            {
@@ -1341,7 +1341,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                data = evaluate(pointer,p_obj);
 
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) >= data;   // revese order
 #else
            {
@@ -1354,7 +1354,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                data = evaluate(pointer,p_obj);
 
                // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
                data = evaluate(pointer,p_obj) <= data;   // revese order
 #else
            {

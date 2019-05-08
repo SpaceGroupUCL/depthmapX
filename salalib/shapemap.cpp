@@ -113,7 +113,7 @@ double SalaShape::getAngDev() const {
         double ang = angle(m_points[i - 1], m_points[i], m_points[i + 1]);
 
         // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
         dev += abs(M_PI - ang);
 #else
         (M_PI - ang) < 0.0 ? dev += (ang - M_PI) : dev += (M_PI - ang);
@@ -3274,7 +3274,7 @@ int findwinner(double *bins, int bincount, int &difficult, int &impossible) {
 }
 
 // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
 #include <windows.h>
 #endif
 

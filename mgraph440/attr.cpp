@@ -323,7 +323,7 @@ void ArVertexList::remove()
    close();
    if (!m_filename.empty()) {
       // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
       _unlink(m_filename.c_str());
 #else
       unlink(m_filename.c_str());

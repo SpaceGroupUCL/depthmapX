@@ -216,14 +216,14 @@ PixelRefVector PixelBase::quickPixelateLine(PixelRef p, PixelRef q) {
     int polarity = -1;
     double t = 0;
     // Quick mod - TV
-#if defined(_WIN32)
+#if defined(_MSC_VER)
     if (abs(dx) == abs(dy)) {
 #else
     if (fabs(dx) == fabs(dy)) {
 #endif
         polarity = 0;
     }
-#if defined(_WIN32)
+#if defined(_MSC_VER)
     else if (abs(dx) > abs(dy)) {
         t = abs(dx);
 #else
@@ -232,7 +232,7 @@ PixelRefVector PixelBase::quickPixelateLine(PixelRef p, PixelRef q) {
 #endif
         polarity = 1;
     } else {
-#if defined(_WIN32)
+#if defined(_MSC_VER)
         t = abs(dy);
 #else
         t = fabs(dy);
