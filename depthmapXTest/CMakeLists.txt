@@ -36,5 +36,5 @@ add_executable(${depthmapXTest} ${depthmapXTest_SRCS})
 
 find_package(OpenGL REQUIRED)
 
-target_link_libraries(${depthmapXTest} Qt5::OpenGL salalib genlib OpenGL::GL)
+target_link_libraries(${depthmapXTest} Qt5::OpenGL salalib genlib OpenGL::GL OpenGL::GLU)
 
