@@ -79,11 +79,10 @@ if(UNIX)
         add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${UI_SRCS} ${DM_RSRC})
 endif(UNIX)
 
-find_package(OpenGL)
-find_package(GLUT)
+find_package(OpenGL REQUIRED)
 
 target_link_libraries(${depthmapX} salalib genlib mgraph440 Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL
-    ${OPENGL_gl_LIBRARY} ${GLUT_LIBRARIES})
+    OpenGL::GL)
 
 add_subdirectory(dialogs)
 add_subdirectory(views)

@@ -34,8 +34,7 @@ set(LINK_LIBS salalib genlib mgraph440)
 
 add_executable(${depthmapXTest} ${depthmapXTest_SRCS})
 
-find_package(OpenGL)
-find_package(GLUT)
+find_package(OpenGL REQUIRED)
 
-target_link_libraries(${depthmapXTest} Qt5::OpenGL salalib genlib ${OPENGL_gl_LIBRARY} ${GLUT_LIBRARIES})
+target_link_libraries(${depthmapXTest} Qt5::OpenGL salalib genlib OpenGL::GL)
 
