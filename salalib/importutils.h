@@ -32,4 +32,5 @@ namespace depthmapX {
     std::vector<Point2f> extractPoints(ColumnData &x, ColumnData &y);
     std::map<int, Point2f> extractPointsWithRefs(ColumnData &x, ColumnData &y, ColumnData &ref);
     bool importDxfLayer(const DxfLayer &dxfLayer, ShapeMap &shapeMap);
+    bool importAttributes(AttributeTable &attributes, std::istream &stream, char delimiter);
 } // namespace depthmapX

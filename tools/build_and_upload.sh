@@ -17,7 +17,7 @@ currentcommit=$(git rev-parse HEAD)
 cd depthmapX
 mkdir build
 cd build
-qmake ../
+cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j
 cd ../RegressionTest
 python3 RegressionTestRunner.py  performance_regression.json

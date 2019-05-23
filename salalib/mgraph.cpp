@@ -2105,6 +2105,19 @@ int MetaGraph::getDisplayedMapType()
    return ShapeMap::EMPTYMAP;
 }
 
+AttributeTable& MetaGraph::getDisplayedMapAttributes()
+{
+   switch (m_view_class & VIEWFRONT) {
+   case VIEWVGA:
+      return getDisplayedPointMap().getAttributeTable();
+   case VIEWAXIAL:
+      return getDisplayedShapeGraph().getAttributeTable();
+   case VIEWDATA:
+      return getDisplayedDataMap().getAttributeTable();
+   }
+   throw depthmapX::RuntimeException("No map displayed to get attribute table from");
+}
+
 bool MetaGraph::hasVisibleDrawingLayers() {
     if(!m_drawingFiles.empty()) {
         for (const auto& pixelGroup: m_drawingFiles) {

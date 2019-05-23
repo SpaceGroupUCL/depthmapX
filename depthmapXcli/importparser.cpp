@@ -31,11 +31,14 @@ void ImportParser::parse(int argc, char *argv[])
         {
             ENFORCE_ARGUMENT("-if", i)
             m_filesToImport.push_back(argv[i]);
+        } else if ( strcmp ("-iaa", argv[i]) == 0)
+        {
+            m_importAsAttributes = true;
         }
     }
 }
 
 void ImportParser::run(const CommandLineParser &clp, IPerformanceSink &perfWriter) const
 {
-    dm_runmethods::importFiles(clp, m_filesToImport, perfWriter);
+    dm_runmethods::importFiles(clp, *this, perfWriter);
 }

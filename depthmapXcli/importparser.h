@@ -33,7 +33,8 @@ public:
         return  "Mode options for IMPORT:\n"\
                 "   The file provided by -f here will be used as the base. If that file"\
                 "is not a graph, a new graph will be created and the file will be imported\n"\
-                "   -if <file(s) to import> one or more files to import\n";
+                "   -if <file(s) to import> one or more files to import\n"\
+                "   -iaa will import and attach attributes to an existing map\n";
     }
 
 public:
@@ -41,7 +42,9 @@ public:
     virtual void run(const CommandLineParser &clp, IPerformanceSink &perfWriter) const;
 
     const std::vector<std::string> & getFilesToImport() const { return m_filesToImport; }
+    const bool toImportAsAttrbiutes() const { return m_importAsAttributes; }
 
 private:
     std::vector<std::string> m_filesToImport;
+    bool m_importAsAttributes = false;
 };
