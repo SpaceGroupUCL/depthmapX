@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAVisualGlobalDepth::run(Communicator *, const Options &, PointMap &map, bool) {
+bool VGAVisualGlobalDepth::run(Communicator *, PointMap &map, bool) {
 
     AttributeTable &attributes = map.getAttributeTable();
 

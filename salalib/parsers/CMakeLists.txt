@@ -1,0 +1,11 @@
+target_sources(salalib
+    PRIVATE
+        ntfp.cpp
+        dxfp.cpp
+        mapinfodata.cpp
+        tigerp.cpp
+    PUBLIC
+        dxfp.h
+        ntfp.h
+        mapinfodata.h
+        tigerp.h)

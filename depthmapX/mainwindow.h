@@ -112,7 +112,6 @@ private slots:
     void OnFilePrint();
     void OnFilePrintPreview();
     void OnFilePrintSetup();
-    void OnFileExit();
     void OnEditUndo();
     void OnEditCopyData();
     void OnEditCopy();

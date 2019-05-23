@@ -19,7 +19,6 @@
 #pragma once
 
 #include "salalib/iaxial.h"
-#include "salalib/options.h"
 
 class AxialStepDepth : IAxial
 {
@@ -27,5 +26,5 @@ public:
     std::string getAnalysisName() const override {
         return "Angular Analysis";
     }
-    bool run(Communicator *comm, const Options &options, ShapeGraph &map, bool simple_version) override;
+    bool run(Communicator *comm, ShapeGraph &map, bool simple_version) override;
 };

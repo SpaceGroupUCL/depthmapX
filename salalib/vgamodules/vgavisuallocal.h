@@ -19,12 +19,15 @@
 #pragma once
 
 #include "salalib/ivga.h"
-#include "salalib/options.h"
 #include "salalib/pixelref.h"
 #include "salalib/pointdata.h"
 
 class VGAVisualLocal : IVGA {
+  private:
+    bool m_gates_only;
+
   public:
     std::string getAnalysisName() const override { return "Local Visibility Analysis"; }
-    bool run(Communicator *comm, const Options &options, PointMap &map, bool simple_version) override;
+    bool run(Communicator *comm, PointMap &map, bool simple_version) override;
+    VGAVisualLocal(bool gates_only) : m_gates_only(gates_only) {}
 };

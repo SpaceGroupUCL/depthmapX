@@ -21,10 +21,14 @@
 #include "salalib/segmmodules/segmhelpers.h"
 
 #include "salalib/isegment.h"
-#include "salalib/options.h"
 
 class SegmentMetric : ISegment {
+  private:
+    double m_radius;
+    bool m_sel_only;
+
   public:
     std::string getAnalysisName() const override { return "Metric Analysis"; }
-    bool run(Communicator *comm, const Options &options, ShapeGraph &map, bool) override;
+    bool run(Communicator *comm, ShapeGraph &map, bool) override;
+    SegmentMetric(double radius, bool sel_only) : m_radius(radius), m_sel_only(sel_only) {}
 };

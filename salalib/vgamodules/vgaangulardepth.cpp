@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAAngularDepth::run(Communicator *, const Options &, PointMap &map, bool) {
+bool VGAAngularDepth::run(Communicator *, PointMap &map, bool) {
 
     AttributeTable &attributes = map.getAttributeTable();
 

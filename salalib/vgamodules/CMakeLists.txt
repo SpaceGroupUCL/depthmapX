@@ -1,0 +1,21 @@
+target_sources(salalib
+    PRIVATE
+       vgaisovist.cpp 
+       vgaangular.cpp
+       vgametric.cpp
+       vgathroughvision.cpp
+       vgavisuallocal.cpp
+       vgavisualglobal.cpp
+       vgaangulardepth.cpp
+       vgametricdepth.cpp
+       vgavisualglobaldepth.cpp
+    PUBLIC
+       vgaangular.h
+       vgametric.h
+       vgavisualglobal.h
+       vgaangulardepth.h
+       vgametricdepth.h
+       vgavisualglobaldepth.h
+       vgaisovist.h
+       vgathroughvision.h
+       vgavisuallocal.h)

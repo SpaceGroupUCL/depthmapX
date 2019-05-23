@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &map, bool) {
+bool SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
 
     if (map.getMapType() != ShapeMap::SEGMENTMAP) {
         return false;
@@ -40,14 +40,14 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
     if (comm) {
         qtimer(atime, 0);
         comm->CommPostMessage(Communicator::NUM_RECORDS,
-                              (options.sel_only ? map.getSelSet().size() : map.getConnections().size()));
+                              (m_sel_only ? map.getSelSet().size() : map.getConnections().size()));
     }
 
     // note: radius must be sorted lowest to highest, but if -1 occurs ("radius n") it needs to be last...
     // ...to ensure no mess ups, we'll re-sort here:
     bool radius_n = false;
     std::vector<double> radius_unconverted;
-    for (int radius : options.radius_set) {
+    for (int radius : m_radius_set) {
         if (radius == -1.0) {
             radius_n = true;
         } else {
@@ -63,12 +63,12 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
     std::vector<float> routeweights; // EF
     std::string weighting_col_text;
 
-    int tulip_bins = options.tulip_bins;
+    int tulip_bins = m_tulip_bins;
 
-    if (options.weighted_measure_col != -1) {
-        weighting_col_text = attributes.getColumnName(options.weighted_measure_col);
+    if (m_weighted_measure_col != -1) {
+        weighting_col_text = attributes.getColumnName(m_weighted_measure_col);
         for (size_t i = 0; i < map.getConnections().size(); i++) {
-            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(options.weighted_measure_col));
+            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(m_weighted_measure_col));
         }
     } else { // Normal run // TV
         for (size_t i = 0; i < map.getConnections().size(); i++) {
@@ -114,14 +114,14 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
     // first enter the required attribute columns:
     size_t r;
     for (r = 0; r < radius_unconverted.size(); r++) {
-        std::string radius_text = makeRadiusText(options.radius_type, radius_unconverted[r]);
-        if (options.choice) {
+        std::string radius_text = makeRadiusText(m_radius_type, radius_unconverted[r]);
+        if (m_choice) {
             // EF routeweight *
             if (routeweight_col != -1) {
                 std::string choice_col_text =
                     tulip_text + " Choice [Route weight by " + routeweight_col_text + "]" + radius_text;
                 attributes.insertOrResetColumn(choice_col_text.c_str());
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     std::string w_choice_col_text = tulip_text + " Choice [[Route weight by " + routeweight_col_text +
                                                     "][" + weighting_col_text + " Wgt]]" + radius_text;
 
@@ -141,7 +141,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             else { // Normal run // TV
                 std::string choice_col_text = tulip_text + " Choice" + radius_text;
                 attributes.insertOrResetColumn(choice_col_text.c_str());
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     std::string w_choice_col_text =
                         tulip_text + " Choice [" + weighting_col_text + " Wgt]" + radius_text;
                     attributes.insertOrResetColumn(w_choice_col_text.c_str());
@@ -176,7 +176,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             attributes.insertOrResetColumn(integ_col_text.c_str());
             attributes.insertOrResetColumn(count_col_text.c_str());
             attributes.insertOrResetColumn(td_col_text.c_str());
-            if (options.weighted_measure_col != -1) {
+            if (m_weighted_measure_col != -1) {
                 attributes.insertOrResetColumn(w_integ_col_text.c_str());
                 attributes.insertOrResetColumn(w_td_text.c_str());
                 attributes.insertOrResetColumn(total_weight_text.c_str());
@@ -199,7 +199,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             attributes.insertOrResetColumn(integ_col_text.c_str());
             attributes.insertOrResetColumn(count_col_text.c_str());
             attributes.insertOrResetColumn(td_col_text.c_str());
-            if (options.weighted_measure_col != -1) {
+            if (m_weighted_measure_col != -1) {
                 attributes.insertOrResetColumn(w_integ_col_text.c_str());
                 attributes.insertOrResetColumn(w_td_text.c_str());
                 attributes.insertOrResetColumn(total_weight_text.c_str());
@@ -210,14 +210,14 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
         total_weight_col;
     // then look them up! eek....
     for (r = 0; r < radius_unconverted.size(); r++) {
-        std::string radius_text = makeRadiusText(options.radius_type, radius_unconverted[r]);
-        if (options.choice) {
+        std::string radius_text = makeRadiusText(m_radius_type, radius_unconverted[r]);
+        if (m_choice) {
             // EF routeweight *
             if (routeweight_col != -1) {
                 std::string choice_col_text =
                     tulip_text + " Choice [Route weight by " + routeweight_col_text + "]" + radius_text;
                 choice_col.push_back(attributes.getColumnIndex(choice_col_text.c_str()));
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     std::string w_choice_col_text = tulip_text + " Choice [[Route weight by " + routeweight_col_text +
                                                     "][" + weighting_col_text + " Wgt]]" + radius_text;
                     w_choice_col.push_back(attributes.getColumnIndex(w_choice_col_text.c_str()));
@@ -235,7 +235,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             else { // Normal run // TV
                 std::string choice_col_text = tulip_text + " Choice" + radius_text;
                 choice_col.push_back(attributes.getColumnIndex(choice_col_text.c_str()));
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     std::string w_choice_col_text =
                         tulip_text + " Choice [" + weighting_col_text + " Wgt]" + radius_text;
                     w_choice_col.push_back(attributes.getColumnIndex(w_choice_col_text.c_str()));
@@ -268,7 +268,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             integ_col.push_back(attributes.getColumnIndex(integ_col_text.c_str()));
             count_col.push_back(attributes.getColumnIndex(count_col_text.c_str()));
             td_col.push_back(attributes.getColumnIndex(td_col_text.c_str()));
-            if (options.weighted_measure_col != -1) {
+            if (m_weighted_measure_col != -1) {
                 // '[' comes after 'R' in ASCII, so this column will come after Mean Depth R...
                 w_integ_col.push_back(attributes.getColumnIndex(w_integ_col_text.c_str()));
                 w_td_col.push_back(attributes.getColumnIndex(w_td_text.c_str()));
@@ -291,7 +291,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             integ_col.push_back(attributes.getColumnIndex(integ_col_text.c_str()));
             count_col.push_back(attributes.getColumnIndex(count_col_text.c_str()));
             td_col.push_back(attributes.getColumnIndex(td_col_text.c_str()));
-            if (options.weighted_measure_col != -1) {
+            if (m_weighted_measure_col != -1) {
                 // '[' comes after 'R' in ASCII, so this column will come after Mean Depth R...
                 w_integ_col.push_back(attributes.getColumnIndex(w_integ_col_text.c_str()));
                 w_td_col.push_back(attributes.getColumnIndex(w_td_text.c_str()));
@@ -319,7 +319,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
     }
     std::vector<double> radius;
     for (r = 0; r < radius_unconverted.size(); r++) {
-        if (options.radius_type == Options::RADIUS_ANGULAR && radius_unconverted[r] != -1) {
+        if (m_radius_type == Options::RADIUS_ANGULAR && radius_unconverted[r] != -1) {
             radius.push_back(floor(radius_unconverted[r] * tulip_bins * 0.5));
         } else {
             radius.push_back(radius_unconverted[r]);
@@ -345,7 +345,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
         AttributeRow &row =
             map.getAttributeRowFromShapeIndex(cursor);
 
-        if (options.sel_only) {
+        if (m_sel_only) {
             // could use m_selection_set.searchindex(rowid) to find
             // if this row is selected as m_selection_set is ordered for axial and segment maps, etc
             // BUT, actually quicker to check the tag in the attributes that shows it's selected
@@ -367,7 +367,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
         }
 
         double rootseglength = row.getValue(length_col);
-        double rootweight = (options.weighted_measure_col != -1) ? weights[cursor] : 0.0;
+        double rootweight = (m_weighted_measure_col != -1) ? weights[cursor] : 0.0;
 
         // setup: direction 0 (both ways), segment i, previous -1, segdepth (step depth) 0, metricdepth 0.5 *
         // rootseglength, bin 0
@@ -441,7 +441,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
                                 extradepth = (int)floor(segconn.second * tulip_bins * 0.5);
                             }
                             seglength = lengths[conn.ref];
-                            switch (options.radius_type) {
+                            switch (m_radius_type) {
                             case Options::RADIUS_ANGULAR:
                                 while (rbin != radiussize && radius[rbin] != -1 &&
                                        depthlevel + extradepth > (int)radius[rbin]) {
@@ -489,7 +489,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
                                 extradepth = (int)floor(segconn.second * tulip_bins * 0.5);
                             }
                             seglength = lengths[conn.ref];
-                            switch (options.radius_type) {
+                            switch (m_radius_type) {
                             case Options::RADIUS_ANGULAR:
                                 while (rbin != radiussize && radius[rbin] != -1 &&
                                        depthlevel + extradepth > (int)radius[rbin]) {
@@ -548,7 +548,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
                     curs_total_weight += weights[j];
                     curs_total_weighted_depth += audittrail[j][k][dir].depth * weights[j];
                     //
-                    if (options.choice && audittrail[j][k][dir].leaf) {
+                    if (m_choice && audittrail[j][k][dir].leaf) {
                         // note, graph may be directed (e.g., for one way streets), so both ways must be included from
                         // now on:
                         SegmentRef here = SegmentRef(dir == 0 ? 1 : -1, j);
@@ -581,7 +581,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
 
                                     audittrail[here.ref][k][heredir].choicecovered = true;
                                     // note, for weighted choice, the start and end points have choice added to them:
-                                    if (options.weighted_measure_col != -1) {
+                                    if (m_weighted_measure_col != -1) {
                                         audittrail[here.ref][k][heredir].weighted_choice +=
                                             (weights[here.ref] * rootweight) / 2.0;
                                         // EFEF*
@@ -596,7 +596,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
                             }
                             // note, for weighted choice, the start and end points have choice added to them:
                             // (this is the summed weight for all starting nodes encountered in this path)
-                            if (options.weighted_measure_col != -1) {
+                            if (m_weighted_measure_col != -1) {
                                 audittrail[here.ref][k][(here.dir == 1) ? 0 : 1].weighted_choice += choiceweight / 2.0;
                                 // EFEF*
                                 if (weighting_col2 != -1) {
@@ -616,13 +616,13 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             if (curs_node_count > 1) {
                 // for dmap 8 and above, mean depth simply isn't calculated as for radius measures it is meaningless
                 row.setValue(td_col[k], total_depth_conv);
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     row.setValue(total_weight_col[k], float(curs_total_weight));
                     row.setValue(w_td_col[k], float(total_weighted_depth_conv));
                 }
             } else {
                 row.setValue(td_col[k], -1);
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     row.setValue(total_weight_col[k], -1.0f);
                     row.setValue(w_td_col[k], -1.0f);
                 }
@@ -630,13 +630,13 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             // for dmap 10 an above, integration is included!
             if (total_depth_conv > 1e-9) {
                 row.setValue(integ_col[k], (float)(curs_node_count * curs_node_count / total_depth_conv));
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     row.setValue(w_integ_col[k],
                                  (float)(curs_total_weight * curs_total_weight / total_weighted_depth_conv));
                 }
             } else {
                 row.setValue(integ_col[k], -1);
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     row.setValue(w_integ_col[k], -1.0f);
                 }
             }
@@ -668,7 +668,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
             }
         }
     }
-    if (options.choice) {
+    if (m_choice) {
         for (size_t cursor = 0; cursor < map.getConnections().size(); cursor++) {
             AttributeRow &row =
                 attributes.getRow(AttributeKey(depthmapX::getMapAtIndex(map.getAllShapes(), cursor)->first));
@@ -693,7 +693,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
                 //
                 //
                 row.setValue(choice_col[r], float(total_choice));
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     row.setValue(w_choice_col[r], float(total_weighted_choice));
                     // EFEF*
                     if (weighting_col2 != -1) {
@@ -715,7 +715,7 @@ bool SegmentTulip::run(Communicator *comm, const Options &options, ShapeGraph &m
     delete[] uncovered;
 
     map.setDisplayedAttribute(-2); // <- override if it's already showing
-    if (options.choice) {
+    if (m_choice) {
         map.setDisplayedAttribute(choice_col.back());
     } else {
         map.setDisplayedAttribute(td_col.back());

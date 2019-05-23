@@ -1,0 +1,18 @@
+target_sources(salalib
+    PRIVATE
+        segmangular.cpp
+        segmmetric.cpp
+        segmtopological.cpp
+        segmtulip.cpp
+        segmtopologicalpd.cpp
+        segmmetricpd.cpp
+        segmtulipdepth.cpp
+    PUBLIC
+        segmangular.h
+        segmmetric.h
+        segmtopological.h
+        segmtulip.h
+        segmhelpers.h
+        segmmetricpd.h
+        segmtopologicalpd.h
+        segmtulipdepth.h)

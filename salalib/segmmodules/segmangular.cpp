@@ -17,10 +17,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "salalib/segmmodules/segmangular.h"
+#include "salalib/options.h"
 
 #include "genlib/stringutils.h"
 
-bool SegmentAngular::run(Communicator * comm, const Options &options, ShapeGraph &map, bool) {
+bool SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
 
     if (map.getMapType() != ShapeMap::SEGMENTMAP) {
         return false;
@@ -38,7 +39,7 @@ bool SegmentAngular::run(Communicator * comm, const Options &options, ShapeGraph
     // ...to ensure no mess ups, we'll re-sort here:
     bool radius_n = false;
     std::vector<double> radii;
-    for (double radius : options.radius_set) {
+    for (double radius : m_radius_set) {
         if (radius < 0) {
             radius_n = true;
         } else {

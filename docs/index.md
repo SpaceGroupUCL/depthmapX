@@ -10,5 +10,5 @@ Architecture at UCL and volunteers.
 - [About](./about.md)
 - [Using the Graphical User Interface (GUI)](./gui.md)
 - [The command line interface](./commandline.md)
-
+- [Building depthmapX yourself](./building.md)
 

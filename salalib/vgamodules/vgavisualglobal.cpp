@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &map, bool simple_version) {
+bool VGAVisualGlobal::run(Communicator *comm, PointMap &map, bool simple_version) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
@@ -31,8 +31,8 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
     int entropy_col = -1, rel_entropy_col = -1, integ_dv_col = -1, integ_pv_col = -1, integ_tk_col = -1,
         depth_col = -1, count_col = -1;
     std::string radius_text;
-    if (options.radius != -1) {
-        radius_text = std::string(" R") + dXstring::formatString(int(options.radius), "%d");
+    if (m_radius != -1) {
+        radius_text = std::string(" R") + dXstring::formatString(int(m_radius), "%d");
     }
 
     // n.b. these must be entered in alphabetical order to preserve col indexing:
@@ -72,7 +72,7 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
             PixelRef curs = PixelRef(i, j);
             if (map.getPoint(curs).filled()) {
 
-                if ((map.getPoint(curs).contextfilled() && !curs.iseven()) || (options.gates_only)) {
+                if ((map.getPoint(curs).contextfilled() && !curs.iseven()) || (m_gates_only)) {
                     count++;
                     continue;
                 }
@@ -105,8 +105,9 @@ bool VGAVisualGlobal::run(Communicator *comm, const Options &options, PointMap &
                             total_depth += level;
                             total_nodes += 1;
                             distribution.back() += 1;
-                            if ((int)options.radius == -1 ||
-                                (level < (int)options.radius && (!p.contextfilled() || currLvlIter->iseven()))) {
+                            if ((int)m_radius == -1 ||
+                                (level < (int)m_radius &&
+                                    (!p.contextfilled() || currLvlIter->iseven()))) {
                                 extractUnseen(p.getNode(), search_tree[level + 1], miscs, extents);
                                 pmisc = ~0;
                                 if (!p.getMergePixel().empty()) {

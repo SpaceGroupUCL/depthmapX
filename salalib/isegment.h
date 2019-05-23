@@ -28,7 +28,7 @@ class ISegment
 {
 public:
     virtual std::string getAnalysisName() const = 0;
-    virtual bool run(Communicator *comm, const Options& options, ShapeGraph &map, bool simple_version) = 0;
+    virtual bool run(Communicator *comm, ShapeGraph &map, bool simple_version) = 0;
     virtual ~ISegment(){}
 
     // Axial map helper: convert a radius for angular analysis

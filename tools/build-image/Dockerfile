@@ -1,6 +1,9 @@
-FROM ubuntu:trusty
+FROM ubuntu:bionic
 RUN apt-get -y update && apt-get install -y software-properties-common
-RUN add-apt-repository --yes ppa:beineri/opt-qt571-trusty
+RUN add-apt-repository --yes ppa:beineri/opt-qt-5.11.0-bionic
 RUN add-apt-repository --yes ppa:deadsnakes/ppa
-RUN apt-get -y update && apt-get install -y gcc g++ make git qt57tools qt573d libgl1-mesa-dev libglu1-mesa-dev python3.5 clang vim
-RUN mkdir code && cd code && git clone https://github.com/SpaceGroupUCL/depthmapX
+RUN add-apt-repository ppa:andrew-fuller/cmake
+RUN apt-get -y update && apt-get install -y gcc g++ make git libgl1-mesa-dev libglu1-mesa-dev python3.5 clang vim wget qt5113d cmake build-essential qt511tools
+VOLUME /mnt/code
+WORKDIR /mnt/code
+

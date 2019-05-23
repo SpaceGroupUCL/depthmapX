@@ -24,7 +24,7 @@
 // This is a slow algorithm, but should give the correct answer
 // for demonstrative purposes
 
-bool VGAThroughVision::run(Communicator *comm, const Options &, PointMap &map, bool) {
+bool VGAThroughVision::run(Communicator *comm, PointMap &map, bool) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);

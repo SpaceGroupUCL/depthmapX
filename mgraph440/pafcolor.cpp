@@ -1,5 +1,3 @@
-#pragma once
-
 #include "mgraph440/pafcolor.h"
 
 namespace mgraph440 {

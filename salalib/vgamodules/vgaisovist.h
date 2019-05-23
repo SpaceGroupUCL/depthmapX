@@ -19,13 +19,12 @@
 #pragma once
 
 #include "salalib/ivga.h"
-#include "salalib/options.h"
 #include "salalib/pixelref.h"
 #include "salalib/pointdata.h"
 
 class VGAIsovist : IVGA {
   public:
     std::string getAnalysisName() const override { return "Isovist Analysis"; }
-    bool run(Communicator *comm, const Options &, PointMap &map, bool simple_version) override;
+    bool run(Communicator *comm, PointMap &map, bool simple_version) override;
     BSPNode makeBSPtree(Communicator *communicator, const std::vector<SpacePixelFile> &drawingFiles);
 };

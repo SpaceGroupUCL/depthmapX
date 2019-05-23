@@ -1,6 +1,9 @@
 sudo: required
-dist: trusty
+dist: xenial
 language: c++
+services:
+  - docker
+
 notifications:
     slack: depthmapx:B3CKNlNDLrNz1vSOU5yoQQqA
     webhooks:
@@ -11,18 +14,5 @@ notifications:
         on_start: never
 
 
-before_install:
-  - sudo add-apt-repository --yes ppa:beineri/opt-qt571-trusty
-  - sudo add-apt-repository --yes ppa:deadsnakes/ppa
-  - sudo apt-get update -qq
-
-install:
-  - sudo apt-get -y install qt573d qt57tools libgl1-mesa-dev libglu1-mesa-dev python3.5
-
 script:
-  - source /opt/qt57/bin/qt57-env.sh
-  - mkdir build && cd build
-  - /opt/qt57/bin/qmake ../depthmapX.pro
-  - make
-  - ./cliTest/cliTest && ./GuiUnitTest/GuiUnitTest && ./salaTest/salaTest && ./genlibTest/genlibTest && ./mgraph440Test/mgraph440Test
-  - cd ../RegressionTest/test && python3.5 test_main.py && cd .. && python3.5 RegressionTestRunner.py && python3.5 RegressionTestRunner.py regressionconfig_agents.json
+  - docker run --security-opt seccomp:unconfined --user $UID -v $PWD:/mnt/code blackseamonster/depthmapx-buildenv:0.3 bash -c ci/build.sh

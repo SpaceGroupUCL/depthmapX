@@ -23,7 +23,7 @@
 // This is a slow algorithm, but should give the correct answer
 // for demonstrative purposes
 
-bool VGAMetric::run(Communicator *comm, const Options &options, PointMap &map, bool) {
+bool VGAMetric::run(Communicator *comm, PointMap &map, bool) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
@@ -31,13 +31,13 @@ bool VGAMetric::run(Communicator *comm, const Options &options, PointMap &map, b
     }
 
     std::string radius_text;
-    if (options.radius != -1.0) {
-        if (options.radius > 100.0) {
-            radius_text = std::string(" R") + dXstring::formatString(options.radius, "%.f");
+    if (m_radius != -1.0) {
+        if (m_radius > 100.0) {
+            radius_text = std::string(" R") + dXstring::formatString(m_radius, "%.f");
         } else if (map.getRegion().width() < 1.0) {
-            radius_text = std::string(" R") + dXstring::formatString(options.radius, "%.4f");
+            radius_text = std::string(" R") + dXstring::formatString(m_radius, "%.4f");
         } else {
-            radius_text = std::string(" R") + dXstring::formatString(options.radius, "%.2f");
+            radius_text = std::string(" R") + dXstring::formatString(m_radius, "%.2f");
         }
     }
     AttributeTable &attributes = map.getAttributeTable();
@@ -60,7 +60,7 @@ bool VGAMetric::run(Communicator *comm, const Options &options, PointMap &map, b
 
             if (map.getPoint(curs).filled()) {
 
-                if (options.gates_only) {
+                if (m_gates_only) {
                     count++;
                     continue;
                 }
@@ -86,7 +86,7 @@ bool VGAMetric::run(Communicator *comm, const Options &options, PointMap &map, b
                     std::set<MetricTriple>::iterator it = search_list.begin();
                     MetricTriple here = *it;
                     search_list.erase(it);
-                    if (options.radius != -1.0 && (here.dist * map.getSpacing()) > options.radius) {
+                    if (m_radius != -1.0 && (here.dist * map.getSpacing()) > m_radius) {
                         break;
                     }
                     Point &p = map.getPoint(here.pixel);

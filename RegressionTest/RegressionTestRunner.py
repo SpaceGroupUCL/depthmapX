@@ -38,10 +38,13 @@ class RegressionTestRunner():
         return good        
 
 if __name__ == "__main__":
+    print("Starting up RegressionTestRunner")
     configFile = defaultConfigFile
     if len(sys.argv) == 2:
         configFile = sys.argv[1]
+    print("Config file in use is: " + configFile)
     r = RegressionTestRunner(configFile, runhelpers.runExecutable)
+    print("Setup complete, starting run")
     if not r.run():
         exit(-1)
 

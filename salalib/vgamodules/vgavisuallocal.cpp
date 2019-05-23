@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAVisualLocal::run(Communicator *comm, const Options &options, PointMap &map, bool simple_version) {
+bool VGAVisualLocal::run(Communicator *comm, PointMap &map, bool simple_version) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
@@ -40,7 +40,7 @@ bool VGAVisualLocal::run(Communicator *comm, const Options &options, PointMap &m
         for (size_t j = 0; j < map.getRows(); j++) {
             PixelRef curs = PixelRef(static_cast<short>(i), static_cast<short>(j));
             if (map.getPoint(curs).filled()) {
-                if ((map.getPoint(curs).contextfilled() && !curs.iseven()) || (options.gates_only)) {
+                if ((map.getPoint(curs).contextfilled() && !curs.iseven()) || (m_gates_only)) {
                     count++;
                     continue;
                 }

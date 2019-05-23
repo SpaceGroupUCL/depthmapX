@@ -21,7 +21,7 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAIsovist::run(Communicator *comm, const Options &, PointMap &map, bool simple_version) {
+bool VGAIsovist::run(Communicator *comm, PointMap &map, bool simple_version) {
     map.m_hasIsovistAnalysis = false;
     // note, BSP tree plays with comm counting...
     comm->CommPostMessage(Communicator::NUM_STEPS, 2);

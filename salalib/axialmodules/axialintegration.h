@@ -19,13 +19,19 @@
 #pragma once
 
 #include "salalib/iaxial.h"
-#include "salalib/options.h"
 
-class AxialIntegration : IAxial
-{
-public:
-    std::string getAnalysisName() const override {
-        return "Angular Analysis";
-    }
-    bool run(Communicator *, const Options &, ShapeGraph &map, bool) override;
+class AxialIntegration : IAxial {
+  private:
+    std::set<double> m_radius_set;
+    int m_weighted_measure_col;
+    bool m_choice;
+    bool m_fulloutput;
+    bool m_local;
+
+  public:
+    std::string getAnalysisName() const override { return "Angular Analysis"; }
+    bool run(Communicator *, ShapeGraph &map, bool) override;
+    AxialIntegration(std::set<double> radius_set, int weighted_measure_col, bool choice, bool fulloutput, bool local)
+        : m_radius_set(radius_set), m_weighted_measure_col(weighted_measure_col), m_choice(choice),
+          m_fulloutput(fulloutput), m_local(local) {}
 };

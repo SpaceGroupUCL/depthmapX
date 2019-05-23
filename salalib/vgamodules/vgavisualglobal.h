@@ -19,16 +19,20 @@
 #pragma once
 
 #include "salalib/ivga.h"
-#include "salalib/options.h"
 #include "salalib/pixelref.h"
 #include "salalib/pointdata.h"
 
 #include "genlib/simplematrix.h"
 
 class VGAVisualGlobal : IVGA {
+  private:
+    double m_radius;
+    bool m_gates_only;
+
   public:
     std::string getAnalysisName() const override { return "Global Visibility Analysis"; }
-    bool run(Communicator *comm, const Options &options, PointMap &map, bool simple_version) override;
+    bool run(Communicator *comm, PointMap &map, bool simple_version) override;
     void extractUnseen(Node &node, PixelRefVector &pixels, depthmapX::RowMatrix<int> &miscs,
                        depthmapX::RowMatrix<PixelRef> &extents);
+    VGAVisualGlobal(double radius, bool gates_only) : m_radius(radius), m_gates_only(gates_only) {}
 };

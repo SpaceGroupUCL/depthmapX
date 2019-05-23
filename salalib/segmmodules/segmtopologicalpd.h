@@ -21,10 +21,9 @@
 #include "salalib/segmmodules/segmhelpers.h"
 
 #include "salalib/isegment.h"
-#include "salalib/options.h"
 
 class SegmentTopologicalPD : ISegment {
   public:
     std::string getAnalysisName() const override { return "Topological Analysis"; }
-    bool run(Communicator *, const Options &, ShapeGraph &map, bool) override;
+    bool run(Communicator *, ShapeGraph &map, bool) override;
 };

@@ -538,8 +538,13 @@ bool GLView::eventFilter(QObject *object, QEvent *e)
                     float val = m_pDoc.m_meta_graph->getLocationValue(getWorldPoint(helpEvent->pos()));
                     if (val == -1.0f)
                         setToolTip("No value");
-                    else if (val != -2.0f)
-                        setToolTip(QString("%1").arg(val));
+                    else if (val != -2.0f) {
+                        QString s;
+                        QTextStream txt(&s);
+                        txt.setRealNumberNotation(QTextStream::FixedNotation);
+                        txt << val;
+                        setToolTip(s);
+                    }
                     else setToolTip("");
                 }
             }

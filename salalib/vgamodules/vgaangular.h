@@ -19,12 +19,16 @@
 #pragma once
 
 #include "salalib/ivga.h"
-#include "salalib/options.h"
 #include "salalib/pixelref.h"
 #include "salalib/pointdata.h"
 
 class VGAAngular : IVGA {
+  private:
+    double m_radius;
+    bool m_gates_only;
+
   public:
     std::string getAnalysisName() const override { return "Angular Analysis"; }
-    bool run(Communicator *, const Options &, PointMap &map, bool) override;
+    bool run(Communicator *, PointMap &map, bool) override;
+    VGAAngular(double radius, bool gates_only) : m_radius(radius), m_gates_only(gates_only) {}
 };

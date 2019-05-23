@@ -21,7 +21,7 @@
 #include "genlib/pflipper.h"
 #include "genlib/stringutils.h"
 
-bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGraph &map, bool simple_version) {
+bool AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simple_version) {
     // note, from 10.0, Depthmap no longer includes *self* connections on axial lines
     // self connections are stripped out on loading graph files, as well as no longer made
 
@@ -37,7 +37,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
     // ...to ensure no mess ups, we'll re-sort here:
     bool radius_n = false;
     std::vector<int> radii;
-    for (double radius : options.radius_set) {
+    for (double radius : m_radius_set) {
         if (radius < 0) {
             radius_n = true;
         } else {
@@ -51,10 +51,10 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
     // retrieve weighted col data, as this may well be overwritten in the new analysis:
     std::vector<double> weights;
     std::string weighting_col_text;
-    if (options.weighted_measure_col != -1) {
-        weighting_col_text = attributes.getColumnName(options.weighted_measure_col);
+    if (m_weighted_measure_col != -1) {
+        weighting_col_text = attributes.getColumnName(m_weighted_measure_col);
         for (size_t i = 0; i < map.getShapeCount(); i++) {
-            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(options.weighted_measure_col));
+            weights.push_back(map.getAttributeRowFromShapeIndex(i).getValue(m_weighted_measure_col));
         }
     }
 
@@ -64,12 +64,12 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         if (radius != -1) {
             radius_text = dXstring::formatString(radius, " R%d");
         }
-        if (options.choice) {
+        if (m_choice) {
             std::string choice_col_text = std::string("Choice") + radius_text;
             attributes.insertOrResetColumn(choice_col_text.c_str());
             std::string n_choice_col_text = std::string("Choice [Norm]") + radius_text;
             attributes.insertOrResetColumn(n_choice_col_text.c_str());
-            if (options.weighted_measure_col != -1) {
+            if (m_weighted_measure_col != -1) {
                 std::string w_choice_col_text = std::string("Choice [") + weighting_col_text + " Wgt]" + radius_text;
                 attributes.insertOrResetColumn(w_choice_col_text.c_str());
                 std::string nw_choice_col_text =
@@ -107,13 +107,13 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
             attributes.insertOrResetColumn(rel_entropy_col_text);
         }
 
-        if (options.weighted_measure_col != -1) {
+        if (m_weighted_measure_col != -1) {
             std::string w_md_col_text = std::string("Mean Depth [") + weighting_col_text + " Wgt]" + radius_text;
             attributes.insertOrResetColumn(w_md_col_text.c_str());
             std::string total_weight_text = std::string("Total ") + weighting_col_text + radius_text;
             attributes.insertOrResetColumn(total_weight_text.c_str());
         }
-        if (options.fulloutput) {
+        if (m_fulloutput) {
             if (!simple_version) {
                 std::string penn_norm_text = std::string("RA [Penn]") + radius_text;
                 attributes.insertOrResetColumn(penn_norm_text);
@@ -131,7 +131,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         }
         //
     }
-    if (options.local) {
+    if (m_local) {
         if (!simple_version) {
             attributes.insertOrResetColumn("Control");
             attributes.insertOrResetColumn("Controllability");
@@ -146,12 +146,12 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         if (radius != -1) {
             radius_text = std::string(" R") + dXstring::formatString(int(radius), "%d");
         }
-        if (options.choice) {
+        if (m_choice) {
             std::string choice_col_text = std::string("Choice") + radius_text;
             choice_col.push_back(attributes.getColumnIndex(choice_col_text.c_str()));
             std::string n_choice_col_text = std::string("Choice [Norm]") + radius_text;
             n_choice_col.push_back(attributes.getColumnIndex(n_choice_col_text.c_str()));
-            if (options.weighted_measure_col != -1) {
+            if (m_weighted_measure_col != -1) {
                 std::string w_choice_col_text = std::string("Choice [") + weighting_col_text + " Wgt]" + radius_text;
                 w_choice_col.push_back(attributes.getColumnIndex(w_choice_col_text.c_str()));
                 std::string nw_choice_col_text =
@@ -188,13 +188,13 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
             rel_entropy_col.push_back(attributes.getColumnIndex(rel_entropy_col_text.c_str()));
         }
 
-        if (options.weighted_measure_col != -1) {
+        if (m_weighted_measure_col != -1) {
             std::string w_md_col_text = std::string("Mean Depth [") + weighting_col_text + " Wgt]" + radius_text;
             w_depth_col.push_back(attributes.getColumnIndex(w_md_col_text.c_str()));
             std::string total_weight_col_text = std::string("Total ") + weighting_col_text + radius_text;
             total_weight_col.push_back(attributes.getColumnIndex(total_weight_col_text.c_str()));
         }
-        if (options.fulloutput) {
+        if (m_fulloutput) {
             std::string ra_col_text = std::string("RA") + radius_text;
             ra_col.push_back(attributes.getColumnIndex(ra_col_text.c_str()));
 
@@ -210,7 +210,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         }
     }
     int control_col = -1, controllability_col = -1;
-    if (options.local) {
+    if (m_local) {
         if (!simple_version) {
             control_col = attributes.getColumnIndex("Control");
             controllability_col = attributes.getColumnIndex("Controllability");
@@ -219,7 +219,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
 
     // for choice
     AnalysisInfo **audittrail;
-    if (options.choice) {
+    if (m_choice) {
         audittrail = new AnalysisInfo *[map.getShapeCount()];
         for (size_t i = 0; i < map.getShapeCount(); i++) {
             audittrail[i] = new AnalysisInfo[radii.size()];
@@ -239,14 +239,14 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         for (size_t j = 0; j < map.getShapeCount(); j++) {
             covered[j] = false;
         }
-        if (options.choice) {
+        if (m_choice) {
             for (size_t k = 0; k < map.getShapeCount(); k++) {
                 audittrail[k][0].previous.ref = -1; // note, 0th member used as radius doesn't matter
                 // note, choice columns are not cleared, but cummulative over all shortest path pairs
             }
         }
 
-        if (options.local) {
+        if (m_local) {
             double control = 0.0;
             const std::vector<int> &connections = map.getConnections()[i].m_connections;
             std::vector<int> totalneighbourhood;
@@ -284,7 +284,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         covered[i] = true;
         int total_depth = 0, depth = 1, node_count = 1, pos = -1, previous = -1; // node_count includes this 1
         double weight = 0.0, rootweight = 0.0, total_weight = 0.0, w_total_depth = 0.0;
-        if (options.weighted_measure_col != -1) {
+        if (m_weighted_measure_col != -1) {
             rootweight = weights[i];
             // include this line in total weights (as per nodecount)
             total_weight += rootweight;
@@ -293,7 +293,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         int r = 0;
         for (int radius : radii) {
             while (foundlist.a().size()) {
-                if (!options.choice) {
+                if (!m_choice) {
                     index = foundlist.a().back().first;
                 } else {
                     pos = pafrand() % foundlist.a().size();
@@ -307,13 +307,13 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                     if (!covered[line.m_connections[k]]) {
                         covered[line.m_connections[k]] = true;
                         foundlist.b().push_back(std::pair<int, int>(line.m_connections[k], index));
-                        if (options.weighted_measure_col != -1) {
+                        if (m_weighted_measure_col != -1) {
                             // the weight is taken from the discovered node:
                             weight = weights[line.m_connections[k]];
                             total_weight += weight;
                             w_total_depth += depth * weight;
                         }
-                        if (options.choice && previous != -1) {
+                        if (m_choice && previous != -1) {
                             // both directional paths are now recorded for choice
                             // (coincidentally fixes choice problem which was completely wrong)
                             size_t here = index;   // note: start counting from index as actually looking ahead here
@@ -324,7 +324,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                                     audittrail[here][0].previous.ref; // <- note, just using 0th position: radius for
                                                                       // the previous doesn't matter in this analysis
                             }
-                            if (options.weighted_measure_col != -1) {
+                            if (m_weighted_measure_col != -1) {
                                 // in weighted choice, root node and current node receive values:
                                 audittrail[i][r].weighted_choice += (weight * rootweight) * 0.5;
                                 audittrail[line.m_connections[k]][r].weighted_choice += (weight * rootweight) * 0.5;
@@ -335,7 +335,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                         depthcounts.back() += 1;
                     }
                 }
-                if (!options.choice)
+                if (!m_choice)
                     foundlist.a().pop_back();
                 else
                     foundlist.a().erase(foundlist.a().begin() + pos);
@@ -350,7 +350,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
             }
             // set the attributes for this node:
             row.setValue(count_col[r], float(node_count));
-            if (options.weighted_measure_col != -1) {
+            if (m_weighted_measure_col != -1) {
                 row.setValue(total_weight_col[r], float(total_weight));
             }
             // node count > 1 to avoid divide by zero (was > 2)
@@ -358,7 +358,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                 // note -- node_count includes this one -- mean depth as per p.108 Social Logic of Space
                 double mean_depth = double(total_depth) / double(node_count - 1);
                 row.setValue(depth_col[r], float(mean_depth));
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     // weighted mean depth:
                     row.setValue(w_depth_col[r], float(w_total_depth / total_weight));
                 }
@@ -380,7 +380,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                         }
                     }
 
-                    if (options.fulloutput) {
+                    if (m_fulloutput) {
                         row.setValue(ra_col[r], float(ra));
 
                         if (!simple_version) {
@@ -404,7 +404,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                         row.setValue(integ_pv_col[r], -1.0f);
                         row.setValue(integ_tk_col[r], -1.0f);
                     }
-                    if (options.fulloutput) {
+                    if (m_fulloutput) {
                         row.setValue(ra_col[r], -1.0f);
 
                         if (!simple_version) {
@@ -472,7 +472,7 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
         }
     }
     delete[] covered;
-    if (options.choice) {
+    if (m_choice) {
         i = -1;
         for (auto & iter: attributes) {
             i++;
@@ -484,20 +484,20 @@ bool AxialIntegration::run(Communicator *comm, const Options &options, ShapeGrap
                 // n.b., normalise choice according to (n-1)(n-2)/2 (maximum possible through routes)
                 double node_count = row.getValue(count_col[r]);
                 double total_weight = 0;
-                if (options.weighted_measure_col != -1) {
+                if (m_weighted_measure_col != -1) {
                     total_weight = row.getValue(total_weight_col[r]);
                 }
                 if (node_count > 2) {
                     row.setValue(choice_col[r], float(total_choice));
                     row.setValue(n_choice_col[r], float(2.0 * total_choice / ((node_count - 1) * (node_count - 2))));
-                    if (options.weighted_measure_col != -1) {
+                    if (m_weighted_measure_col != -1) {
                         row.setValue(w_choice_col[r], float(w_total_choice));
                         row.setValue(nw_choice_col[r], float(2.0 * w_total_choice / (total_weight * total_weight)));
                     }
                 } else {
                     row.setValue(choice_col[r], -1);
                     row.setValue(n_choice_col[r], -1);
-                    if (options.weighted_measure_col != -1) {
+                    if (m_weighted_measure_col != -1) {
                         row.setValue(w_choice_col[r], -1);
                         row.setValue(nw_choice_col[r], -1);
                     }

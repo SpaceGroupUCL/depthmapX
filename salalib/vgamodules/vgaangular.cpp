@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAAngular::run(Communicator *comm, const Options &options, PointMap &map, bool) {
+bool VGAAngular::run(Communicator *comm, PointMap &map, bool) {
     time_t atime = 0;
     if (comm) {
         qtimer(atime, 0);
@@ -28,13 +28,13 @@ bool VGAAngular::run(Communicator *comm, const Options &options, PointMap &map, 
     }
 
     std::string radius_text;
-    if (options.radius != -1.0) {
+    if (m_radius != -1.0) {
         if (map.getRegion().width() > 100.0) {
-            radius_text = std::string(" R") + dXstring::formatString(options.radius, "%.f");
+            radius_text = std::string(" R") + dXstring::formatString(m_radius, "%.f");
         } else if (map.getRegion().width() < 1.0) {
-            radius_text = std::string(" R") + dXstring::formatString(options.radius, "%.4f");
+            radius_text = std::string(" R") + dXstring::formatString(m_radius, "%.4f");
         } else {
-            radius_text = std::string(" R") + dXstring::formatString(options.radius, "%.2f");
+            radius_text = std::string(" R") + dXstring::formatString(m_radius, "%.2f");
         }
     }
 
@@ -59,7 +59,7 @@ bool VGAAngular::run(Communicator *comm, const Options &options, PointMap &map, 
 
             if (map.getPoint(curs).filled()) {
 
-                if (options.gates_only) {
+                if (m_gates_only) {
                     count++;
                     continue;
                 }
@@ -84,7 +84,7 @@ bool VGAAngular::run(Communicator *comm, const Options &options, PointMap &map, 
                     std::set<AngularTriple>::iterator it = search_list.begin();
                     AngularTriple here = *it;
                     search_list.erase(it);
-                    if (options.radius != -1.0 && here.angle > options.radius) {
+                    if (m_radius != -1.0 && here.angle > m_radius) {
                         break;
                     }
                     Point &p = map.getPoint(here.pixel);

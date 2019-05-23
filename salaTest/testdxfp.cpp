@@ -16,7 +16,6 @@
 #include "catch.hpp"
 #include "salalib/parsers/dxfp.h"
 
-#include "genlib/paftl.h"
 #include "genlib/comm.h"
 #include "genlib/p2dpoly.h"
 

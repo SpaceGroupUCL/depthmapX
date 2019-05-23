@@ -311,14 +311,14 @@ bool MetaGraph::analyseGraph( Communicator *communicator, Options options , bool
       retvar = true;
       if (options.point_depth_selection == 1) {
          if (m_view_class & VIEWVGA) {
-             retvar = VGAVisualGlobalDepth().run(communicator, Options(), getDisplayedPointMap(), false);
+             retvar = VGAVisualGlobalDepth().run(communicator, getDisplayedPointMap(), false);
          }
          else if (m_view_class & VIEWAXIAL) {
             if (!getDisplayedShapeGraph().isSegmentMap()) {
-                retvar = AxialStepDepth().run(communicator, options, getDisplayedShapeGraph(), false);
+                retvar = AxialStepDepth().run(communicator, getDisplayedShapeGraph(), false);
             }
             else {
-                retvar = SegmentTulipDepth().run(communicator, options, getDisplayedShapeGraph(), false);
+                retvar = SegmentTulipDepth().run(communicator, getDisplayedShapeGraph(), false);
             }
          }
          // REPLACES:
@@ -326,45 +326,45 @@ bool MetaGraph::analyseGraph( Communicator *communicator, Options options , bool
       }
       else if (options.point_depth_selection == 2) {
          if (m_view_class & VIEWVGA) {
-             retvar = VGAMetricDepth().run(communicator, Options(), getDisplayedPointMap(), false);
+             retvar = VGAMetricDepth().run(communicator, getDisplayedPointMap(), false);
          }
          else if (m_view_class & VIEWAXIAL && getDisplayedShapeGraph().isSegmentMap()) {
-             retvar = SegmentMetricPD().run(communicator, options, getDisplayedShapeGraph(), false);
+             retvar = SegmentMetricPD().run(communicator, getDisplayedShapeGraph(), false);
          }
       }
       else if (options.point_depth_selection == 3) {
-          retvar = VGAAngularDepth().run(communicator, Options(), getDisplayedPointMap(), false);
+          retvar = VGAAngularDepth().run(communicator, getDisplayedPointMap(), false);
       }
       else if (options.point_depth_selection == 4) {
          if (m_view_class & VIEWVGA) {
             getDisplayedPointMap().binDisplay( communicator );
          }
          else if (m_view_class & VIEWAXIAL && getDisplayedShapeGraph().isSegmentMap()) {
-             retvar = SegmentTopologicalPD().run(communicator, options, getDisplayedShapeGraph(), false);
+             retvar = SegmentTopologicalPD().run(communicator, getDisplayedShapeGraph(), false);
          }
       }
       else if (options.output_type == Options::OUTPUT_ISOVIST) {
-         retvar = VGAIsovist().run(communicator, options, getDisplayedPointMap(), simple_version);
+         retvar = VGAIsovist().run(communicator, getDisplayedPointMap(), simple_version);
       }
       else if (options.output_type == Options::OUTPUT_VISUAL) {
           bool localResult = true;
           bool globalResult = true;
           if (options.local) {
-              localResult = VGAVisualLocal().run(communicator, options, getDisplayedPointMap(), simple_version);
+              localResult = VGAVisualLocal(options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
           }
           if (options.global) {
-              globalResult = VGAVisualGlobal().run(communicator, options, getDisplayedPointMap(), simple_version);
+              globalResult = VGAVisualGlobal(options.radius, options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
           }
           retvar = globalResult & localResult;
       }
       else if (options.output_type == Options::OUTPUT_METRIC) {
-          retvar = VGAMetric().run(communicator, options, getDisplayedPointMap(), simple_version);
+          retvar = VGAMetric(options.radius, options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
       }
       else if (options.output_type == Options::OUTPUT_ANGULAR) {
-          retvar = VGAAngular().run(communicator, options, getDisplayedPointMap(), simple_version);
+          retvar = VGAAngular(options.radius, options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
       }
       else if (options.output_type == Options::OUTPUT_THRU_VISION) {
-          retvar = VGAThroughVision().run(communicator, options, getDisplayedPointMap(), simple_version);
+          retvar = VGAThroughVision().run(communicator, getDisplayedPointMap(), simple_version);
       }
    } 
    catch (Communicator::CancelledException) {
@@ -1278,7 +1278,9 @@ bool MetaGraph::analyseAxial( Communicator *communicator, Options options, bool 
    bool retvar = false;
 
    try {
-      AxialIntegration().run(communicator, options, getDisplayedShapeGraph(), false);
+       AxialIntegration(options.radius_set, options.weighted_measure_col, options.choice, options.fulloutput,
+                        options.local)
+           .run(communicator, getDisplayedShapeGraph(), false);
    } 
    catch (Communicator::CancelledException) {
       retvar = false;
@@ -1296,7 +1298,9 @@ bool MetaGraph::analyseSegmentsTulip( Communicator *communicator, Options option
    bool retvar = false;
 
    try {
-       SegmentTulip().run(communicator, options, getDisplayedShapeGraph(), false);
+       SegmentTulip(options.radius_set, options.sel_only, options.tulip_bins, options.weighted_measure_col,
+                    options.radius_type, options.choice)
+           .run(communicator, getDisplayedShapeGraph(), false);
    }
    catch (Communicator::CancelledException) {
       retvar = false;
@@ -1314,7 +1318,7 @@ bool MetaGraph::analyseSegmentsAngular( Communicator *communicator, Options opti
    bool retvar = false;
 
    try {
-       SegmentAngular().run(communicator, options, getDisplayedShapeGraph(), false);
+       SegmentAngular(options.radius_set).run(communicator, getDisplayedShapeGraph(), false);
    }
    catch (Communicator::CancelledException) {
       retvar = false;
@@ -1335,10 +1339,10 @@ bool MetaGraph::analyseTopoMetMultipleRadii( Communicator *communicator, Options
       // note: "output_type" reused for analysis type (either 0 = topological or 1 = metric)
       for(size_t r = 0; r < options.radius_set.size(); r++) {
           if(options.output_type == 0) {
-              if(!SegmentTopological().run(communicator, options, getDisplayedShapeGraph(), false))
+              if(!SegmentTopological(options.radius, options.sel_only).run(communicator, getDisplayedShapeGraph(), false))
                   retvar = false;
           } else {
-              if(!SegmentMetric().run(communicator, options, getDisplayedShapeGraph(), false))
+              if(!SegmentMetric(options.radius, options.sel_only).run(communicator, getDisplayedShapeGraph(), false))
                   retvar = false;
           }
       }
@@ -1361,9 +1365,9 @@ bool MetaGraph::analyseTopoMet( Communicator *communicator, Options options ) //
    try {
       // note: "output_type" reused for analysis type (either 0 = topological or 1 = metric)
        if(options.output_type == 0) {
-           retvar = SegmentTopological().run(communicator, options, getDisplayedShapeGraph(), false);
+           retvar = SegmentTopological(options.radius, options.sel_only).run(communicator, getDisplayedShapeGraph(), false);
        } else {
-           retvar = SegmentMetric().run(communicator, options, getDisplayedShapeGraph(), false);
+           retvar = SegmentMetric(options.radius, options.sel_only).run(communicator, getDisplayedShapeGraph(), false);
        }
    } 
    catch (Communicator::CancelledException) {
@@ -2041,8 +2045,7 @@ bool MetaGraph::analyseThruVision(Communicator *comm, int gatelayer)
    }
 
    try {
-       Options tempOptions;
-       retvar = VGAThroughVision().run(comm, tempOptions, getDisplayedPointMap(), false);
+       retvar = VGAThroughVision().run(comm, getDisplayedPointMap(), false);
    }
    catch (Communicator::CancelledException) {
       retvar = false;

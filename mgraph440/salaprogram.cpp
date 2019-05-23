@@ -1130,7 +1130,7 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
    if (pointer < 0) {
       throw SalaError("Missing argument",m_line);
    }
-   register SalaObj data = m_eval_stack[pointer];
+   SalaObj data = m_eval_stack[pointer];
    pointer--;
    if (data.type == SalaObj::S_FUNCTION) {
       SalaObj::Func func = data.data.func;
@@ -1245,6 +1245,8 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                   else
                      throw SalaError("Cannot be applied to " + data.getTypeIndefArt() + data.getTypeStr(),m_line);
                }
+               break;
+            default:
                break;
             }
          }
@@ -1363,6 +1365,8 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
            }
 #endif
                break;
+            default:
+               break;
             }
          }
          catch (SalaError e)
@@ -1446,6 +1450,8 @@ SalaObj SalaCommand::evaluate(int& pointer, SalaObj* &p_obj)
                break;
             case SalaObj::S_ATAN:
                data = atan(evaluate(pointer,p_obj).toDouble());
+               break;
+            default:
                break;
             }
          }

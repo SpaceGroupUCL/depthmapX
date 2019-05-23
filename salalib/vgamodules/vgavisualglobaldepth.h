@@ -19,7 +19,6 @@
 #pragma once
 
 #include "salalib/ivga.h"
-#include "salalib/options.h"
 #include "salalib/pixelref.h"
 #include "salalib/pointdata.h"
 
@@ -28,7 +27,7 @@
 class VGAVisualGlobalDepth : IVGA {
   public:
     std::string getAnalysisName() const override { return "Global Visibility Depth"; }
-    bool run(Communicator *comm, const Options &options, PointMap &map, bool simple_version) override;
+    bool run(Communicator *comm, PointMap &map, bool simple_version) override;
     void extractUnseen(Node &node, PixelRefVector &pixels, depthmapX::RowMatrix<int> &miscs,
                        depthmapX::RowMatrix<PixelRef> &extents);
 };

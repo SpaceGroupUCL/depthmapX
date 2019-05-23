@@ -20,7 +20,7 @@
 
 #include "genlib/stringutils.h"
 
-bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGraph &map, bool) {
+bool SegmentTopological::run(Communicator *comm, ShapeGraph &map, bool) {
 
     AttributeTable &attributes = map.getAttributeTable();
 
@@ -31,7 +31,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
     if (comm) {
         qtimer(atime, 0);
         comm->CommPostMessage(Communicator::NUM_RECORDS,
-                              (options.sel_only ? map.getSelSet().size() : map.getConnections().size()));
+                              (m_sel_only ? map.getSelSet().size() : map.getConnections().size()));
     }
     int reccount = 0;
 
@@ -53,8 +53,8 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
     int maxbin;
     prefix = "Topological ";
     maxbin = 2;
-    if (options.radius != -1.0) {
-        suffix = dXstring::formatString(options.radius, " R%.f metric");
+    if (m_radius != -1.0) {
+        suffix = dXstring::formatString(m_radius, " R%.f metric");
     }
     std::string choicecol = prefix + "Choice" + suffix;
     std::string wchoicecol = prefix + "Choice [SLW]" + suffix;
@@ -64,7 +64,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
     std::string totalcol = prefix + "Total Nodes" + suffix;
     std::string wtotalcol = prefix + "Total Length" + suffix;
     //
-    if (!options.sel_only) {
+    if (!m_sel_only) {
         attributes.insertOrResetColumn(choicecol.c_str());
         attributes.insertOrResetColumn(wchoicecol.c_str());
     }
@@ -79,7 +79,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
     std::vector<TopoMetSegmentChoice> choicevals(map.getShapeCount());
     for (size_t cursor = 0; cursor < map.getShapeCount(); cursor++) {
         AttributeRow& row = map.getAttributeRowFromShapeIndex(cursor);
-        if (options.sel_only && !row.isSelected()) {
+        if (m_sel_only && !row.isSelected()) {
             continue;
         }
         for (size_t i = 0; i < map.getShapeCount(); i++) {
@@ -144,7 +144,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
                     audittrail[connected_cursor] =
                         TopoMetSegmentRef(connected_cursor, here.dir, here.dist + length, here.ref);
                     seen[connected_cursor] = segdepth;
-                    if (options.radius == -1 || here.dist + length < options.radius) {
+                    if (m_radius == -1 || here.dist + length < m_radius) {
                         // puts in a suitable bin ahead of us...
                         open++;
                         //
@@ -163,7 +163,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
                     // (seenalready: need to check that we're not doing this twice, given the seen can go twice)
 
                     // Quick mod - TV
-                    if (!options.sel_only && connected_cursor > int(cursor) &&
+                    if (!m_sel_only && connected_cursor > int(cursor) &&
                         !seenalready) { // only one way paths, saves doing this twice
                         int subcur = connected_cursor;
                         while (subcur != -1) {
@@ -194,7 +194,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
         }
         reccount++;
     }
-    if (!options.sel_only) {
+    if (!m_sel_only) {
         // note, I've stopped sel only from calculating choice values:
         for (size_t cursor = 0; cursor < map.getShapeCount(); cursor++) {
             AttributeRow& row = map.getAttributeRowFromShapeIndex(cursor);
@@ -203,7 +203,7 @@ bool SegmentTopological::run(Communicator *comm, const Options &options, ShapeGr
         }
     }
 
-    if (!options.sel_only) {
+    if (!m_sel_only) {
         map.setDisplayedAttribute(attributes.getColumnIndex(choicecol.c_str()));
     } else {
         map.setDisplayedAttribute(attributes.getColumnIndex(meandepthcol.c_str()));
