@@ -67,20 +67,17 @@ qt5_wrap_ui(UI_HDRS
     UI/AboutDlg.ui
     UI/licenseagreement.ui)
 
-qt5_wrap_cpp(UI_SRCS
-	${UI_HDRS})	
-
 qt5_add_resources(DM_RSRC resource.qrc dialogs/settings/settingsdialog.qrc)
 
 if (MSVC)
-        add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${UI_SRCS} ${DM_RSRC} icons.rc)
+        add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC} icons.rc)
 endif(MSVC)
 if(UNIX AND NOT APPLE)
-        add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${UI_SRCS} ${DM_RSRC})
+        add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC})
 endif()
 if(APPLE)
         add_definitions(-DGL_SILENCE_DEPRECATION)
-        add_executable(${depthmapX} MACOSX_BUNDLE ${depthmapX_SRCS} ${UI_HDRS} ${UI_SRCS} ${DM_RSRC})
+        add_executable(${depthmapX} MACOSX_BUNDLE ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC})
         set_target_properties(${depthmapX} PROPERTIES
             MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist)
 endif(APPLE)
