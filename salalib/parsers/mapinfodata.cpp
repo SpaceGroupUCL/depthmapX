@@ -25,7 +25,7 @@
 
 int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& map)
 {
-   int retvar = MINFO_OK;
+   int mapLoaded = MINFO_OK;
 
    // read the header...
    if (!readheader(miffile)) {
@@ -128,7 +128,7 @@ int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& 
             }
             if (i != 0) {
                // warn about extraneous pline data
-               retvar = MINFO_MULTIPLE;
+               mapLoaded = MINFO_MULTIPLE;
                duplicates.push_back(pointsets.size() - 1);
             }
          }
@@ -209,7 +209,7 @@ int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& 
       return MINFO_TABLE;
    }
 
-   return retvar;
+   return mapLoaded;
 }
 /*
 bool MapInfoData::exportFile(std::ostream& miffile, std::ostream& midfile, const ShapeGraph& map)

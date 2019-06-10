@@ -22,10 +22,11 @@
 #include "depthmapX/GraphDoc.h"
 #include "depthmapX/compatibilitydefines.h"
 #include "depthmapX/settings.h"
-#include "depthmapX/version.h"
 
 #include "depthmapX/dialogs/ColourScaleDlg.h"
 #include "depthmapX/views/glview/glview.h"
+
+#include "version.h"
 
 #include <QMainWindow>
 #include <QButtonGroup>

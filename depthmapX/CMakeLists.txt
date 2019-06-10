@@ -24,8 +24,7 @@ set(depthmapX_SRCS
     settingsimpl.cpp
 	compatibilitydefines.h
 	mainwindow.h
-	settings.h
-	version.h
+        settings.h
 	GraphDoc.h
 	mainwindowfactory.h
 	settingsimpl.h
@@ -70,7 +69,7 @@ qt5_wrap_ui(UI_HDRS
 qt5_add_resources(DM_RSRC resource.qrc dialogs/settings/settingsdialog.qrc)
 
 if (MSVC)
-        add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC} icons.rc)
+        add_executable(${depthmapX} WIN32 ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC} icons.rc)
 endif(MSVC)
 if(UNIX AND NOT APPLE)
         add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC})
