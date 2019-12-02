@@ -177,6 +177,13 @@ PixelRefVector PixelBase::pixelateLineTouching(Line l, double tolerance) const {
                 if (bounds.encloses(PixelRef(i, j2))) {
                     pixel_list.push_back(PixelRef(i, j2));
                 }
+                if (abs(j2 - j1) == 2) {
+                    // this rare event happens if lines are exactly diagonal
+                    int j3 = (j1 + j2) / 2;
+                    if (bounds.encloses(PixelRef(i, j3))) {
+                        pixel_list.push_back(PixelRef(i, j3));
+                    }
+                }
             }
         }
     } else {
