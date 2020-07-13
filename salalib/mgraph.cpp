@@ -1842,7 +1842,8 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
                  m_dataMaps[sourcelayer].getAttributeRowFromShapeIndex(gate);
 
             if (isObjectVisible(m_dataMaps[sourcelayer].getLayers(), row_in)) {
-               double thisval = row_in.getValue(col_in);
+                double thisval = gate;
+                if(col_in != -1) thisval = row_in.getValue(col_in);
                pushValue(val,count,thisval,push_func);
             }
          }
@@ -1874,7 +1875,8 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             std::vector<int> gatelist;
             if (desttype == VIEWDATA) {
                 gatelist = m_dataMaps[size_t(destlayer)].pointInPolyList(m_pointMaps[size_t(sourcelayer)].getPoint(pix_in).m_location);
-                double thisval = iter_in->getRow().getValue(col_in);
+                double thisval = iter_in->getKey().value;
+                if(col_in != -1) thisval = iter_in->getRow().getValue(col_in);
                 for (int gate: gatelist) {
                     AttributeRow &row_out =
                         m_dataMaps[destlayer].getAttributeRowFromShapeIndex(gate);
@@ -1887,7 +1889,8 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             } else if (desttype == VIEWAXIAL) {
                // note, "axial" could be convex map, and hence this would be a valid operation
                gatelist = m_shapeGraphs[size_t(destlayer)]->pointInPolyList(m_pointMaps[size_t(sourcelayer)].getPoint(pix_in).m_location);
-               double thisval = iter_in->getRow().getValue(col_in);
+               double thisval = iter_in->getKey().value;
+               if(col_in != -1) thisval = iter_in->getRow().getValue(col_in);
                for (int gate: gatelist) {
                    int key_out = m_shapeGraphs[destlayer]->getShapeRefFromIndex(gate)->first;
                    AttributeRow &row_out =
@@ -1915,7 +1918,8 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             if (desttype == VIEWDATA) {
                auto dataMap = m_shapeGraphs[size_t(sourcelayer)]->getAllShapes();
                gatelist = m_dataMaps[size_t(destlayer)].shapeInPolyList(dataMap[key_in]);
-               double thisval = iter_in->getRow().getValue(col_in);
+               double thisval = iter_in->getKey().value;
+               if(col_in != -1) thisval = iter_in->getRow().getValue(col_in);
                for (int gate: gatelist) {
                    int key_out = m_dataMaps[destlayer].getShapeRefFromIndex(gate)->first;
                    AttributeRow &row_out =
@@ -1930,7 +1934,8 @@ bool MetaGraph::pushValuesToLayer(int sourcetype, int sourcelayer, int desttype,
             else if (desttype == VIEWAXIAL) {
                auto shapeMap = m_shapeGraphs[size_t(sourcelayer)]->getAllShapes();
                gatelist = m_shapeGraphs[size_t(destlayer)]->shapeInPolyList(shapeMap[key_in]);
-               double thisval = iter_in->getRow().getValue(col_in);
+               double thisval = iter_in->getKey().value;
+               if(col_in != -1) thisval = iter_in->getRow().getValue(col_in);
                for (int gate: gatelist) {
                    int key_out = m_shapeGraphs[destlayer]->getShapeRefFromIndex(gate)->first;
                    AttributeRow &row_out =  table_out.getRow(AttributeKey(key_out));
