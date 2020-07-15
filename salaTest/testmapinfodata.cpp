@@ -82,6 +82,55 @@ TEST_CASE("MapInfo failing column attribute columns", "")
     REQUIRE_FALSE(mapinfodata.readcolumnheaders(mifstream, columnheads));
 }
 
+TEST_CASE("MapInfo MID file with empty column", "")
+{
+    const float EPSILON = 0.001;
+
+    // A typical MIF
+
+    std::string mifdata =
+            "Version 300\n" \
+            "Charset \"WindowsLatin1\"\n" \
+            "Delimiter \",\"\n" \
+            "Index 1,2,3,4\n" \
+            "CoordSys Earth Projection 8, 79, \"m\", -2, 49, 0.9996012717, 400000, -100000\n";
+
+    mifdata +=
+            "Columns 4\n" \
+            "  ID Integer\n" \
+            "  Length_m Float\n" \
+            "  Height_m Float\n" \
+            "  Width_m Float\n" \
+            "Data\n" \
+            "\n" \
+            "Line 534014.29 182533.33 535008.52 182764.11\n" \
+            "    Pen (1,2,0)\n" \
+            "Line 533798.68 183094.69 534365.48 183159.01\n" \
+            "    Pen (1,2,0)\n" \
+            "Point 534014.29 182533.33\n" \
+            "    Symbol (34,0,12)";
+
+
+    // A MID with empty columns
+
+    std::string middata =
+            "1,1017.81,,\n" \
+            "2,568.795,,\n" \
+            "3,216.026,,";
+
+    ShapeMap shapeMap("MapInfoTest");
+    MapInfoData mapinfodata;
+
+    std::stringstream mifstream(mifdata);
+    std::stringstream midstream(middata);
+    REQUIRE(mapinfodata.import(mifstream, midstream, shapeMap) == MINFO_OK);
+    REQUIRE(shapeMap.getAttributeTable().getNumColumns() == 4);
+    REQUIRE(shapeMap.getAttributeTable().getColumn(0).getName() == "Id");
+    REQUIRE(shapeMap.getAttributeTable().getColumn(1).getName() == "Length_M");
+    REQUIRE(shapeMap.getAttributeTable().getColumn(2).getName() == "Height_M");
+    REQUIRE(shapeMap.getAttributeTable().getColumn(3).getName() == "Width_M");
+}
+
 TEST_CASE("Complete proper MapInfo file", "")
 {
     const float EPSILON = 0.001;
