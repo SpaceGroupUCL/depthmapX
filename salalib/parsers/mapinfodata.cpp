@@ -191,10 +191,17 @@ int MapInfoData::import(std::istream& miffile, std::istream& midfile, ShapeMap& 
                   int length = (here < line.length()) ? here-first-1 : here-first;
                   std::string field = line.substr(first,length);
                   first = here;
-                  if (reading == readable[nextreadable]) {
-                     float val = stof(field);
+                  if (length == 1 && field[0] == m_delimiter) {
+                     // field is empty
+                     row.setValue(colindexes[nextreadable], -1);
+                     nextreadable++; // go to next column
+                  } else if (reading == readable[nextreadable]) {
+                     float val = -1;
+                     if(!field.empty()) {
+                         val = stof(field);
+                     }
                      row.setValue(colindexes[nextreadable],val);
-                     nextreadable++;
+                     nextreadable++; // go to next column
                   }
                   reading++;
                }

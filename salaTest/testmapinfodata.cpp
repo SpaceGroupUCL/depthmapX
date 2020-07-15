@@ -124,11 +124,38 @@ TEST_CASE("MapInfo MID file with empty column", "")
     std::stringstream mifstream(mifdata);
     std::stringstream midstream(middata);
     REQUIRE(mapinfodata.import(mifstream, midstream, shapeMap) == MINFO_OK);
-    REQUIRE(shapeMap.getAttributeTable().getNumColumns() == 4);
-    REQUIRE(shapeMap.getAttributeTable().getColumn(0).getName() == "Id");
-    REQUIRE(shapeMap.getAttributeTable().getColumn(1).getName() == "Length_M");
-    REQUIRE(shapeMap.getAttributeTable().getColumn(2).getName() == "Height_M");
-    REQUIRE(shapeMap.getAttributeTable().getColumn(3).getName() == "Width_M");
+
+    AttributeTable& att = shapeMap.getAttributeTable();
+
+    REQUIRE(att.getNumColumns() == 4);
+    REQUIRE(att.getColumn(0).getName() == "Id");
+    REQUIRE(att.getColumn(1).getName() == "Length_M");
+    REQUIRE(att.getColumn(2).getName() == "Height_M");
+    REQUIRE(att.getColumn(3).getName() == "Width_M");
+
+    std::map<int, SalaShape> shapes = shapeMap.getAllShapes();
+    auto shapeRef0 = depthmapX::getMapAtIndex(shapes, 0);
+    auto shapeRef1 = depthmapX::getMapAtIndex(shapes, 1);
+    auto shapeRef2 = depthmapX::getMapAtIndex(shapes, 2);
+
+    REQUIRE(att.getNumRows() == 3);
+    auto &row0 = att.getRow(AttributeKey(shapeRef0->first));
+    auto &row1 = att.getRow(AttributeKey(shapeRef1->first));
+    auto &row2 = att.getRow(AttributeKey(shapeRef2->first));
+
+    REQUIRE(row0.getValue("Id") == 1);
+    REQUIRE(row1.getValue("Id") == 2);
+    REQUIRE(row2.getValue("Id") == 3);
+    REQUIRE(row0.getValue("Length_M") == Approx(1017.81).epsilon(EPSILON));
+    REQUIRE(row1.getValue("Length_M") == Approx(568.795).epsilon(EPSILON));
+    REQUIRE(row2.getValue("Length_M") == Approx(216.026).epsilon(EPSILON));
+    REQUIRE(row0.getValue("Height_M") == -1);
+    REQUIRE(row1.getValue("Height_M") == -1);
+    REQUIRE(row2.getValue("Height_M") == -1);
+    REQUIRE(row0.getValue("Width_M") == -1);
+    REQUIRE(row1.getValue("Width_M") == -1);
+    REQUIRE(row2.getValue("Width_M") == -1);
+
 }
 
 TEST_CASE("Complete proper MapInfo file", "")
