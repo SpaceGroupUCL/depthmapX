@@ -80,7 +80,31 @@ void TableView::RedoTable() {
 
         m_row_count = table.getNumRows();
         setRowCount(m_row_count);
-        PrepareCache(m_curr_row);
+        const AttributeTableHandle &tableHandle = pDoc->m_meta_graph->getAttributeTableHandle();
+        auto &index = tableHandle.getTableIndex();
+        int idx = 0;
+        int found = -1;
+        for(auto &indexItem: index) {
+            if(indexItem.row->isSelected()) {
+                if(idx >= m_curr_row && idx < m_curr_row + PG_COUNT) {
+                    found = -1;
+                    break;
+                }
+                found = idx;
+            }
+            idx++;
+        }
+        if(found != -1) {
+            if(found > m_row_count - PG_COUNT) {
+                PrepareCache(m_row_count - PG_COUNT);
+                QTableWidget::scrollToBottom();
+            } else {
+                PrepareCache(found);
+                QTableWidget::scrollToItem(item(found, 0));
+            }
+        } else {
+            PrepareCache(m_curr_row);
+        }
     }
 }
 
