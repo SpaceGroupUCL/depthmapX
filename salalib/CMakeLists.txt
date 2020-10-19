@@ -27,7 +27,8 @@ set(salalib_SRCS
     tidylines.cpp
     mapconverter.cpp
     importutils.cpp
-    attributetableindex.cpp)
+    attributetableindex.cpp
+    tracemap.cpp)
 
 add_compile_definitions(_DEPTHMAP SALALIB_LIBRARY)
 

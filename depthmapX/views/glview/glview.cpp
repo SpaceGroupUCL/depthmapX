@@ -65,6 +65,9 @@ GLView::GLView(QGraphDoc &pDoc,
         m_visibleDataMap.loadGLObjects(m_pDoc.m_meta_graph->getDisplayedDataMap());
     }
 
+    if(m_pDoc.m_meta_graph->getViewClass() & MetaGraph::VIEWTRACES) {
+        m_visibleTraceMap.loadGLObjects(m_pDoc.m_meta_graph->getDisplayedTraceMap());
+    }
     m_dragLine.setStrokeColour(m_foreground);
     m_selectionRect.setStrokeColour(m_background);
 
@@ -85,6 +88,7 @@ GLView::~GLView()
     m_visiblePointMap.cleanup();
     m_visibleShapeGraph.cleanup();
     m_visibleDataMap.cleanup();
+    m_visibleTraceMap.cleanup();
     m_hoveredShapes.cleanup();
     doneCurrent();
     m_settings.writeSetting(SettingTag::depthmapViewSize, size());
@@ -112,6 +116,7 @@ void GLView::initializeGL()
     m_visiblePointMap.initializeGL(m_core);
     m_visibleShapeGraph.initializeGL(m_core);
     m_visibleDataMap.initializeGL(m_core);
+    m_visibleTraceMap.initializeGL(m_core);
     m_hoveredShapes.initializeGL(m_core);
     m_hoveredPixels.initializeGL(m_core);
 
@@ -149,6 +154,11 @@ void GLView::paintGL()
             m_visibleDataMap.updateGL(m_core);
         }
 
+        if(m_pDoc.m_meta_graph->getViewClass() & MetaGraph::VIEWTRACES) {
+            m_visibleTraceMap.loadGLObjects(m_pDoc.m_meta_graph->getDisplayedTraceMap());
+            m_visibleTraceMap.updateGL(m_core);
+        }
+
         if(m_pDoc.m_meta_graph->getViewClass() & MetaGraph::VIEWVGA) {
             m_visiblePointMap.loadGLObjects(m_pDoc.m_meta_graph->getDisplayedPointMap());
             m_visiblePointMap.updateGL(m_core);
@@ -179,6 +189,10 @@ void GLView::paintGL()
         glLineWidth(10);
         m_hoveredShapes.paintGL(m_mProj, m_mView, m_mModel);
         glLineWidth(1);
+    }
+
+    if(m_pDoc.m_meta_graph->getViewClass() & MetaGraph::VIEWTRACES) {
+        m_visibleTraceMap.paintGL(m_mProj, m_mView, m_mModel);
     }
 
     m_visibleDrawingLines.paintGL(m_mProj, m_mView, m_mModel);

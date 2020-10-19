@@ -219,7 +219,8 @@ class ShapeMap : public PixelBase {
         AXIALMAP = 0x0020,
         SEGMENTMAP = 0x0040,
         PESHMAP = 0x0080,
-        LINEMAP = 0x0070
+        LINEMAP = 0x0070,
+        TRACEMAP = 0x0100
     };
     enum {
         COPY_NAME = 0x0001,

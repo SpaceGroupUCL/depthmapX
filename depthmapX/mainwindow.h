@@ -132,6 +132,7 @@ private slots:
     void OnFileExport();
     void OnFileExportMapGeometry();
     void OnFileExportLinks();
+    void OnFileExportTraces();
     void OnAxialConnectionsExportAsDot();
     void OnAxialConnectionsExportAsPairCSV();
     void OnSegmentConnectionsExportAsPairCSV();
@@ -349,6 +350,7 @@ private:
     QAction *exportAct;
     QAction *exportGeometryAct;
     QAction *exportLinksAct;
+    QAction *exportTracesAct;
     QAction *exportAxialConnectionsDotAct;
     QAction *exportAxialConnectionsPairAct;
     QAction *exportSegmentConnectionsPairAct;

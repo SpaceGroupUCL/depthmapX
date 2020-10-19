@@ -100,6 +100,7 @@ private:
     GLLinesUniform m_visibleDrawingLines;
     GLPointMap m_visiblePointMap;
     GLShapeMap m_visibleDataMap;
+    GLShapeMap m_visibleTraceMap;
 
     bool m_highlightOnHover = true;
     bool m_hoverHasShapes = false;

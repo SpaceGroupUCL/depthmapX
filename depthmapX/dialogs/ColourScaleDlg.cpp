@@ -278,10 +278,8 @@ void CColourScaleDlg::MyUpdateData(bool dir, bool apply_to_all) {
                     m_color = m_displayparams.colorscale;
                 } else if (graph->getViewClass() & MetaGraph::VIEWAXIAL) {
                     ShapeGraph &map = graph->getDisplayedShapeGraph();
-                    if (map.getShapeCount() > 0) {
-                        m_display_min = map.getDisplayMinValue();
-                        m_display_max = map.getDisplayMaxValue();
-                    }
+                    m_display_min = map.getDisplayMinValue();
+                    m_display_max = map.getDisplayMaxValue();
                     m_displayparams = map.getDisplayParams();
                     m_color = m_displayparams.colorscale;
                     bool show_lines = m_show_lines, show_fill = m_show_fill, show_centroids = m_show_centroids;
@@ -291,10 +289,19 @@ void CColourScaleDlg::MyUpdateData(bool dir, bool apply_to_all) {
                     m_show_centroids = show_centroids;
                 } else if (graph->getViewClass() & MetaGraph::VIEWDATA) {
                     ShapeMap &map = graph->getDisplayedDataMap();
-                    if (map.getShapeCount() > 0) {
-                        m_display_min = map.getDisplayMinValue();
-                        m_display_max = map.getDisplayMaxValue();
-                    }
+                    m_display_min = map.getDisplayMinValue();
+                    m_display_max = map.getDisplayMaxValue();
+                    m_displayparams = map.getDisplayParams();
+                    m_color = m_displayparams.colorscale;
+                    bool show_lines = m_show_lines, show_fill = m_show_fill, show_centroids = m_show_centroids;
+                    map.getPolygonDisplay(show_lines, show_fill, show_centroids);
+                    m_show_lines = show_lines;
+                    m_show_fill = show_fill;
+                    m_show_centroids = show_centroids;
+                } else if (graph->getViewClass() & MetaGraph::VIEWTRACES) {
+                    TraceMap &map = graph->getDisplayedTraceMap();
+                    m_display_min = map.getDisplayMinValue();
+                    m_display_max = map.getDisplayMaxValue();
                     m_displayparams = map.getDisplayParams();
                     m_color = m_displayparams.colorscale;
                     bool show_lines = m_show_lines, show_fill = m_show_fill, show_centroids = m_show_centroids;
@@ -330,6 +337,9 @@ void CColourScaleDlg::MyUpdateData(bool dir, bool apply_to_all) {
             } else if (graph->getViewClass() & MetaGraph::VIEWDATA) {
                 graph->getDisplayedDataMap().setDisplayParams(m_displayparams, apply_to_all);
                 graph->getDisplayedDataMap().setPolygonDisplay(m_show_lines, m_show_fill, m_show_centroids);
+            } else if (graph->getViewClass() & MetaGraph::VIEWTRACES) {
+                graph->getDisplayedTraceMap().setDisplayParams(m_displayparams, apply_to_all);
+                graph->getDisplayedTraceMap().setPolygonDisplay(m_show_lines, m_show_fill, m_show_centroids);
             }
         }
         m_viewDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DEPTHMAPVIEW_SETUP);

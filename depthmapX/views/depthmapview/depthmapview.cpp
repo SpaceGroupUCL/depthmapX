@@ -400,7 +400,7 @@ void QDepthmapView::paintEvent(QPaintEvent *)
 	  rect = QRect(0, 0, width(), height());
       m_redraw = true;
 
-      if (!m_viewport_set && state & (MetaGraph::LINEDATA | MetaGraph::SHAPEGRAPHS | MetaGraph::DATAMAPS)) {
+      if (!m_viewport_set && state & (MetaGraph::LINEDATA | MetaGraph::SHAPEGRAPHS | MetaGraph::DATAMAPS | MetaGraph::TRACEMAPS)) {
          InitViewport(rect, &m_pDoc);
       }
       if (m_redraw_all) {
@@ -421,7 +421,7 @@ void QDepthmapView::paintEvent(QPaintEvent *)
    m_internal_redraw = false;
 
    // if redraw signalled:
-   if (m_redraw && (state & (MetaGraph::LINEDATA | MetaGraph::SHAPEGRAPHS | MetaGraph::DATAMAPS)) && m_viewport_set) {
+   if (m_redraw && (state & (MetaGraph::LINEDATA | MetaGraph::SHAPEGRAPHS | MetaGraph::DATAMAPS | MetaGraph::TRACEMAPS)) && m_viewport_set) {
 
       // note that the redraw rect is dependent on the cleared portion above
       // note you *must* check *state* before drawing, you cannot rely on view_class as it can be set up before the layer is ready to draw:
@@ -438,6 +438,9 @@ void QDepthmapView::paintEvent(QPaintEvent *)
       if (state & MetaGraph::DATAMAPS && (m_pDoc.m_meta_graph->getViewClass() & (MetaGraph::VIEWBACKDATA | MetaGraph::VIEWDATA))) {
          m_pDoc.m_meta_graph->getDisplayedDataMap().makeViewportShapes( LogicalViewport(rect, &m_pDoc) );
       }
+      if (state & MetaGraph::TRACEMAPS && (m_pDoc.m_meta_graph->getViewClass() & (MetaGraph::VIEWBACKTRACES | MetaGraph::VIEWTRACES))) {
+         m_pDoc.m_meta_graph->getDisplayedTraceMap().makeViewportShapes( LogicalViewport(rect, &m_pDoc) );
+      }
       if (state & MetaGraph::LINEDATA) {
          m_pDoc.m_meta_graph->makeViewportShapes( LogicalViewport(rect, &m_pDoc) );
       }
@@ -453,7 +456,7 @@ void QDepthmapView::paintEvent(QPaintEvent *)
    }
 
    // If the meta graph (at least) contains a DXF, draw it:
-   if (m_continue_drawing && (state & (MetaGraph::LINEDATA | MetaGraph::SHAPEGRAPHS | MetaGraph::DATAMAPS)) && m_viewport_set) 
+   if (m_continue_drawing && (state & (MetaGraph::LINEDATA | MetaGraph::SHAPEGRAPHS | MetaGraph::DATAMAPS | MetaGraph::TRACEMAPS)) && m_viewport_set)
    {
       if (Output(&pDC, &m_pDoc, true))
 	  {
@@ -1744,6 +1747,9 @@ void QDepthmapView::OutputEPS( std::ofstream& stream, QGraphDoc *pDoc, bool incl
    if (state & MetaGraph::DATAMAPS) {
       pDoc->m_meta_graph->getDisplayedDataMap().makeViewportShapes( logicalviewport );
    }
+   if (state & MetaGraph::TRACEMAPS) {
+      pDoc->m_meta_graph->getDisplayedTraceMap().makeViewportShapes( logicalviewport );
+   }
    if (state & MetaGraph::LINEDATA) {
       pDoc->m_meta_graph->makeViewportShapes( logicalviewport );
    }
@@ -2378,6 +2384,9 @@ void QDepthmapView::OnEditCopy()
     }
     if (state & MetaGraph::DATAMAPS && (m_pDoc.m_meta_graph->getViewClass() & (MetaGraph::VIEWBACKDATA | MetaGraph::VIEWDATA))) {
         m_pDoc.m_meta_graph->getDisplayedDataMap().makeViewportShapes( LogicalViewport(rectin, &m_pDoc) );
+    }
+    if (state & MetaGraph::TRACEMAPS && (m_pDoc.m_meta_graph->getViewClass() & (MetaGraph::VIEWBACKTRACES | MetaGraph::VIEWTRACES))) {
+        m_pDoc.m_meta_graph->getDisplayedTraceMap().makeViewportShapes( LogicalViewport(rectin, &m_pDoc) );
     }
     if (state & MetaGraph::LINEDATA) {
         m_pDoc.m_meta_graph->makeViewportShapes( LogicalViewport(rectin, &m_pDoc) );

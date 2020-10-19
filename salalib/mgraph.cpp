@@ -95,6 +95,9 @@ QtRegion MetaGraph::getBoundingBox() const
    if (bounds.atZero() && ((getState() & MetaGraph::DATAMAPS) == MetaGraph::DATAMAPS)) {
       bounds = getDisplayedDataMap().getRegion();
    }
+   if (bounds.atZero() && ((getState() & MetaGraph::TRACEMAPS) == MetaGraph::TRACEMAPS)) {
+      bounds = getDisplayedTraceMap().getRegion();
+   }
    return bounds;
 }
 
@@ -109,6 +112,8 @@ bool MetaGraph::setViewClass(int command)
       return false; 
    if ((command & (SHOWHIDESHAPE | SHOWSHAPETOP)) && (~m_state & DATAMAPS)) 
       return false; 
+   if ((command & (SHOWHIDETRACES | SHOWTRACESTOP)) && (~m_state & TRACEMAPS))
+      return false;
    switch (command) {
    case SHOWHIDEVGA:
       if (m_view_class & (VIEWVGA | VIEWBACKVGA)) {
@@ -119,9 +124,12 @@ bool MetaGraph::setViewClass(int command)
          else if (m_view_class & VIEWBACKDATA) {
             m_view_class ^= (VIEWDATA | VIEWBACKDATA);
          }
+         else if (m_view_class & VIEWBACKTRACES) {
+            m_view_class ^= (VIEWTRACES | VIEWBACKTRACES);
+         }
       }
-      else if (m_view_class & (VIEWAXIAL | VIEWDATA)) {
-         m_view_class &= ~(VIEWBACKAXIAL | VIEWBACKDATA);
+      else if (m_view_class & (VIEWAXIAL | VIEWDATA | VIEWTRACES)) {
+         m_view_class &= ~(VIEWBACKAXIAL | VIEWBACKDATA | VIEWBACKTRACES);
          m_view_class |= VIEWBACKVGA;
       }
       else {
@@ -137,9 +145,12 @@ bool MetaGraph::setViewClass(int command)
          else if (m_view_class & VIEWBACKDATA) {
             m_view_class ^= (VIEWDATA | VIEWBACKDATA);
          }
+         else if (m_view_class & VIEWBACKTRACES) {
+            m_view_class ^= (VIEWTRACES | VIEWBACKTRACES);
+         }
       }
-      else if (m_view_class & (VIEWVGA | VIEWDATA)) {
-         m_view_class &= ~(VIEWBACKVGA | VIEWBACKDATA);
+      else if (m_view_class & (VIEWVGA | VIEWDATA | VIEWTRACES)) {
+         m_view_class &= ~(VIEWBACKVGA | VIEWBACKDATA | VIEWBACKTRACES);
          m_view_class |= VIEWBACKAXIAL;
       }
       else {
@@ -155,13 +166,37 @@ bool MetaGraph::setViewClass(int command)
          else if (m_view_class & VIEWBACKAXIAL) {
             m_view_class ^= (VIEWAXIAL | VIEWBACKAXIAL);
          }
+         else if (m_view_class & VIEWBACKTRACES) {
+            m_view_class ^= (VIEWTRACES | VIEWBACKTRACES);
+         }
       }
-      else if (m_view_class & (VIEWVGA | VIEWAXIAL)) {
-         m_view_class &= ~(VIEWBACKVGA | VIEWBACKAXIAL);
+      else if (m_view_class & (VIEWVGA | VIEWAXIAL | VIEWTRACES)) {
+         m_view_class &= ~(VIEWBACKVGA | VIEWBACKAXIAL | VIEWBACKTRACES);
          m_view_class |= VIEWBACKDATA;
       }
       else {
          m_view_class |= VIEWDATA;
+      }
+      break;
+   case SHOWHIDETRACES:
+      if (m_view_class & (VIEWTRACES | VIEWBACKTRACES)) {
+         m_view_class &= ~(VIEWTRACES | VIEWBACKTRACES);
+         if (m_view_class & VIEWBACKVGA) {
+            m_view_class ^= (VIEWVGA | VIEWBACKVGA);
+         }
+         else if (m_view_class & VIEWBACKAXIAL) {
+            m_view_class ^= (VIEWAXIAL | VIEWBACKAXIAL);
+         }
+         else if (m_view_class & VIEWBACKDATA) {
+            m_view_class ^= (VIEWDATA | VIEWBACKDATA);
+         }
+      }
+      else if (m_view_class & (VIEWVGA | VIEWAXIAL | VIEWDATA)) {
+         m_view_class &= ~(VIEWBACKVGA | VIEWBACKAXIAL | VIEWBACKDATA);
+         m_view_class |= VIEWBACKTRACES;
+      }
+      else {
+         m_view_class |= VIEWTRACES;
       }
       break;
    case SHOWVGATOP:
@@ -171,8 +206,11 @@ bool MetaGraph::setViewClass(int command)
       else if (m_view_class & VIEWDATA) {
          m_view_class = VIEWBACKDATA | VIEWVGA;
       }
+      else if (m_view_class & VIEWTRACES) {
+         m_view_class = VIEWBACKTRACES | VIEWVGA;
+      }
       else {
-         m_view_class = VIEWVGA | (m_view_class & (VIEWBACKAXIAL | VIEWBACKDATA));
+         m_view_class = VIEWVGA | (m_view_class & (VIEWBACKAXIAL | VIEWBACKDATA | VIEWBACKTRACES));
       }
       break;
    case SHOWAXIALTOP:
@@ -182,8 +220,11 @@ bool MetaGraph::setViewClass(int command)
       else if (m_view_class & VIEWDATA) {
          m_view_class = VIEWBACKDATA | VIEWAXIAL;
       }
+      else if (m_view_class & VIEWTRACES) {
+         m_view_class = VIEWBACKTRACES | VIEWAXIAL;
+      }
       else {
-         m_view_class = VIEWAXIAL | (m_view_class & (VIEWBACKVGA | VIEWBACKDATA));
+         m_view_class = VIEWAXIAL | (m_view_class & (VIEWBACKVGA | VIEWBACKDATA | VIEWBACKTRACES));
       }
       break;
    case SHOWSHAPETOP:
@@ -193,8 +234,25 @@ bool MetaGraph::setViewClass(int command)
       else if (m_view_class & VIEWAXIAL) {
          m_view_class = VIEWBACKAXIAL | VIEWDATA;
       }
+      else if (m_view_class & VIEWTRACES) {
+         m_view_class = VIEWBACKTRACES | VIEWDATA;
+      }
       else {
-         m_view_class = VIEWDATA | (m_view_class & (VIEWBACKVGA | VIEWBACKAXIAL));
+         m_view_class = VIEWDATA | (m_view_class & (VIEWBACKVGA | VIEWBACKAXIAL | VIEWBACKTRACES));
+      }
+      break;
+   case SHOWTRACESTOP:
+      if (m_view_class & VIEWVGA) {
+         m_view_class = VIEWBACKVGA | VIEWTRACES;
+      }
+      else if (m_view_class & VIEWAXIAL) {
+         m_view_class = VIEWBACKAXIAL | VIEWTRACES;
+      }
+      else if (m_view_class & VIEWDATA) {
+         m_view_class = VIEWBACKDATA | VIEWTRACES;
+      }
+      else {
+         m_view_class = VIEWTRACES | (m_view_class & (VIEWBACKVGA | VIEWBACKAXIAL | VIEWBACKDATA));
       }
       break;
    }
@@ -214,6 +272,9 @@ double MetaGraph::getLocationValue(const Point2f& point)
    }
    else if (viewingProcessedShapes()) {
       val = getDisplayedDataMap().getLocationValue(point);
+   }
+   else if (viewingProcessedTraces()) {
+      val = getDisplayedTraceMap().getLocationValue(point);
    }
 
    return val;
@@ -384,6 +445,9 @@ bool MetaGraph::isEditableMap()
    else if (m_view_class & VIEWDATA) {
       return getDisplayedDataMap().isEditable();
    }
+   else if (m_view_class & VIEWTRACES) {
+      return getDisplayedDataMap().isEditable();
+   }
    // still to do: allow editing of drawing layers
    return false;
 }
@@ -395,6 +459,9 @@ ShapeMap& MetaGraph::getEditableMap()
       map = &(getDisplayedShapeGraph());
    }
    else if (m_view_class & VIEWDATA) {
+      map = &(getDisplayedDataMap());
+   }
+   else if (m_view_class & VIEWTRACES) {
       map = &(getDisplayedDataMap());
    }
    else {
@@ -482,6 +549,21 @@ bool MetaGraph::moveSelShape(const Line& line)
          map.clearSel();
       }
    }
+   else if (m_view_class & VIEWTRACES) {
+      TraceMap& map = getDisplayedTraceMap();
+      if (!map.isEditable()) {
+         return false;
+      }
+      if (map.getSelCount() > 1) {
+         return false;
+      }
+      // note, selection sets currently store rowids not uids, but moveShape sensibly works off uid:
+      int rowid = *map.getSelSet().begin();
+      shapeMoved = map.moveShape(map.getIndex(rowid),line);
+      if (shapeMoved) {
+         map.clearSel();
+      }
+   }
    return shapeMoved;
 }
 
@@ -546,6 +628,9 @@ int MetaGraph::makeIsovistPath(Communicator *communicator, double fov, bool simp
       map = &getDisplayedShapeGraph();
    }
    else if (viewclass == VIEWDATA) {
+      map = &getDisplayedDataMap();
+   }
+   else if (viewclass == VIEWTRACES) {
       map = &getDisplayedDataMap();
    }
    else {
@@ -747,6 +832,13 @@ void MetaGraph::removeDisplayedMap()
       if (m_dataMaps.empty()) {
          setViewClass(SHOWHIDESHAPE);
          m_state &= ~DATAMAPS;
+      }
+      break;
+   case VIEWTRACES:
+      removeTraceMap(ref);
+      if (m_traceMaps.empty()) {
+         setViewClass(SHOWHIDETRACES);
+         m_state &= ~TRACEMAPS;
       }
       break;
    }
@@ -2005,15 +2097,14 @@ void MetaGraph::runAgentEngine(Communicator *comm)
    if(m_agent_engine.m_record_trails) {
        std::string mapName = "Agent Trails";
        int count = 1;
-       while(std::find_if(std::begin(m_dataMaps), std::end(m_dataMaps),
-                          [&] (ShapeMap const& m) {return m.getName() == mapName; }) != m_dataMaps.end()) {
+       while(std::find_if(std::begin(m_traceMaps), std::end(m_traceMaps),
+                          [&] (ShapeMap const& m) {return m.getName() == mapName; }) != m_traceMaps.end()) {
            mapName = "Agent Trails " + std::to_string(count);
            count++;
        }
-       m_dataMaps.emplace_back(mapName);
-       m_agent_engine.insertTrailsInMap(m_dataMaps.back());
-
-       m_state |= DATAMAPS;
+       m_traceMaps.push_back(mapName);
+       m_agent_engine.insertTrailsInMap(m_traceMaps.back());
+       m_state |= TRACEMAPS;
    }
 
    if (m_agent_engine.m_gatelayer != -1) {
@@ -2091,6 +2182,9 @@ int MetaGraph::getDisplayedMapRef() const
    case VIEWDATA:
       ref = getDisplayedDataMapRef();
       break;
+   case VIEWTRACES:
+      ref = getDisplayedTraceMapRef();
+      break;
    }
    return ref;
 }
@@ -2107,6 +2201,8 @@ int MetaGraph::getDisplayedMapType()
       return getDisplayedShapeGraph().getMapType();
    case VIEWDATA:
       return getDisplayedDataMap().getMapType();
+   case VIEWTRACES:
+      return getDisplayedTraceMap().getMapType();
    }
    return ShapeMap::EMPTYMAP;
 }
@@ -2162,6 +2258,9 @@ int MetaGraph::isEditable() const
    case VIEWDATA:
       editable = getDisplayedDataMap().isEditable() ? EDITABLE_ON : EDITABLE_OFF;
       break;
+   case VIEWTRACES:
+      editable = getDisplayedTraceMap().isEditable() ? EDITABLE_ON : EDITABLE_OFF;
+      break;
    }
    return editable;
 }
@@ -2179,6 +2278,9 @@ bool MetaGraph::canUndo() const
    case VIEWDATA:
       canundo = getDisplayedDataMap().canUndo();
       break;
+   case VIEWTRACES:
+      canundo = getDisplayedTraceMap().canUndo();
+      break;
    }
    return canundo;
 }
@@ -2194,6 +2296,9 @@ void MetaGraph::undo()
       break;
    case VIEWDATA:
       getDisplayedDataMap().undo();
+      break;
+   case VIEWTRACES:
+      getDisplayedTraceMap().undo();
       break;
    }
 }
@@ -2213,6 +2318,9 @@ int MetaGraph::addAttribute(const std::string& name)
    case VIEWDATA:
       col = getDisplayedDataMap().addAttribute(name);
       break;
+   case VIEWTRACES:
+      col = getDisplayedTraceMap().addAttribute(name);
+      break;
    }
    return col;
 }
@@ -2228,6 +2336,9 @@ void MetaGraph::removeAttribute(int col)
       break;
    case VIEWDATA:
       getDisplayedDataMap().removeAttribute(col);
+      break;
+   case VIEWTRACES:
+      getDisplayedTraceMap().removeAttribute(col);
       break;
    }
 }
@@ -2250,6 +2361,9 @@ int MetaGraph::getDisplayedAttribute() const
    case VIEWDATA:
       col = getDisplayedDataMap().getDisplayedAttribute();
       break;
+   case VIEWTRACES:
+      col = getDisplayedTraceMap().getDisplayedAttribute();
+      break;
    }
    return col;
 }
@@ -2269,6 +2383,10 @@ void MetaGraph::setDisplayedAttribute(int col)
    case VIEWDATA:
       getDisplayedDataMap().overrideDisplayedAttribute(-2);
       getDisplayedDataMap().setDisplayedAttribute(col);
+      break;
+   case VIEWTRACES:
+      getDisplayedTraceMap().overrideDisplayedAttribute(-2);
+      getDisplayedTraceMap().setDisplayedAttribute(col);
       break;
    }
 }
@@ -2291,6 +2409,9 @@ AttributeTable& MetaGraph::getAttributeTable(int type, int layer)
    case VIEWDATA:
       tab = (layer == -1) ? &(getDisplayedDataMap().getAttributeTable()) : &(m_dataMaps[layer].getAttributeTable());
       break;
+   case VIEWTRACES:
+      tab = (layer == -1) ? &(getDisplayedTraceMap().getAttributeTable()) : &(m_traceMaps[layer].getAttributeTable());
+      break;
    }
    return *tab;
 }
@@ -2310,6 +2431,9 @@ const AttributeTable& MetaGraph::getAttributeTable(int type, int layer) const
       break;
    case VIEWDATA:
       tab = layer == -1 ? &(getDisplayedDataMap().getAttributeTable()) : &(m_dataMaps[layer].getAttributeTable());
+      break;
+   case VIEWTRACES:
+      tab = layer == -1 ? &(getDisplayedTraceMap().getAttributeTable()) : &(m_traceMaps[layer].getAttributeTable());
       break;
    }
    return *tab;
@@ -2812,6 +2936,53 @@ bool MetaGraph::writeDataMaps( std::ofstream& stream, bool displayedmaponly )
    return true;
 }
 
+
+bool MetaGraph::readTraceMaps(std::istream& stream)
+{
+    m_traceMaps.clear(); // empty existing data
+    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+    unsigned int displayed_map;
+    stream.read((char *)&displayed_map,sizeof(displayed_map));
+    m_displayed_tracemap = size_t(displayed_map);
+    // read maps
+    // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+    unsigned int count = 0;
+    stream.read((char *) &count, sizeof(count));
+
+    for (size_t j = 0; j < size_t(count); j++) {
+        m_traceMaps.emplace_back();
+        m_traceMaps.back().read(stream);
+    }
+    return true;
+}
+
+bool MetaGraph::writeTraceMaps( std::ofstream& stream, bool displayedmaponly )
+{
+   if (!displayedmaponly) {
+      // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+      unsigned int displayed_map = (unsigned int)(m_displayed_tracemap);
+      stream.write((char *)&displayed_map,sizeof(displayed_map));
+      // write maps
+      // n.b. -- do not change to size_t as will cause 32-bit to 64-bit conversion problems
+      unsigned int count = (unsigned int) m_traceMaps.size();
+      stream.write((char *) &count, sizeof(count));
+      for (size_t j = 0; j < count; j++) {
+         m_traceMaps[j].write(stream);
+      }
+   }
+   else {
+      unsigned int dummy;
+      // displayed map is 0
+      dummy = 0;
+      stream.write((char *)&dummy,sizeof(dummy));
+      // count is 1
+      dummy = 1;
+      stream.write((char *)&dummy,sizeof(dummy));
+      // write map:
+      m_traceMaps[m_displayed_tracemap].write(stream);
+   }
+   return true;
+}
 
 bool MetaGraph::readShapeGraphs(std::istream& stream)
 {

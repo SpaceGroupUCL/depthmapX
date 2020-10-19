@@ -167,6 +167,9 @@ void QGraphDoc::UpdateMainframestatus()
        else if ((state & MetaGraph::DATAMAPS) && m_meta_graph->getViewClass() & MetaGraph::VIEWDATA) {
           n = (int) m_meta_graph->getDisplayedDataMap().getShapeCount();
        }
+       else if ((state & MetaGraph::TRACEMAPS) && m_meta_graph->getViewClass() & MetaGraph::VIEWTRACES) {
+          n = (int) m_meta_graph->getDisplayedTraceMap().getShapeCount();
+       }
        // either showing or constructing the VGA graph
        else if ((state & MetaGraph::POINTMAPS) && m_meta_graph->getViewClass() & MetaGraph::VIEWVGA) {
           n = (int) m_meta_graph->getDisplayedPointMap().getFilledPointCount();
@@ -885,6 +888,53 @@ void QGraphDoc::OnFileExportLinks()
     stream.close();
 }
 
+void QGraphDoc::OnFileExportTraces()
+{
+    if (m_communicator) {
+        QMessageBox::warning(this, tr("Notice"), tr("Sorry, cannot export as another process is running"), QMessageBox::Ok, QMessageBox::Ok);
+        return;  // Locked
+    }
+    if (!m_meta_graph->viewingProcessedTraces()) {
+        QMessageBox::warning(this, tr("Notice"), tr("Sorry, can only export traces maps"), QMessageBox::Ok, QMessageBox::Ok);
+        return;  // No graph to export
+    }
+
+    QFilePath path(m_opened_name);
+    QString defaultname = path.m_path + (path.m_name.isEmpty() ? windowTitle() : path.m_name);
+
+    QString template_string = tr("Traceset XML file (*.xml)\n");
+
+    QFileDialog::Options options = 0;
+    QString selectedFilter;
+    QString outfile = QFileDialog::getSaveFileName(
+                0, tr("Save Output As"),
+                defaultname,
+                template_string,
+                &selectedFilter,
+                options);
+    if(outfile.isEmpty())
+    {
+        return;
+    }
+
+    FILE* fp = fopen(outfile.toLatin1(), "wb");
+    fclose(fp);
+
+    QFilePath filepath(outfile);
+    QString ext = filepath.m_ext;
+
+    std::ofstream stream(outfile.toLatin1());
+    if (stream.fail() || stream.bad()) {
+      QMessageBox::warning(this, tr("Notice"), tr("Sorry, unable to open file for export"), QMessageBox::Ok, QMessageBox::Ok);
+      stream.close();
+      return;
+    }
+
+    m_meta_graph->getDisplayedTraceMap().writeTracesToXMLFile(stream);
+
+    stream.close();
+}
+
 void QGraphDoc::OnAxialConnectionsExportAsDot()
 {
     if (m_communicator) {
@@ -925,6 +975,7 @@ void QGraphDoc::OnAxialConnectionsExportAsDot()
 
     if (stream.fail() || stream.bad()) {
        QMessageBox::warning(this, tr("Notice"), tr("Sorry, unable to open file for export"), QMessageBox::Ok, QMessageBox::Ok);
+       stream.close();
        return;
     }
     shapeGraph.writeAxialConnectionsAsDotGraph(stream);
@@ -972,6 +1023,7 @@ void QGraphDoc::OnAxialConnectionsExportAsPairCSV()
 
     if (stream.fail() || stream.bad()) {
        QMessageBox::warning(this, tr("Notice"), tr("Sorry, unable to open file for export"), QMessageBox::Ok, QMessageBox::Ok);
+       stream.close();
        return;
     }
     shapeGraph.writeAxialConnectionsAsPairsCSV(stream);
@@ -1019,6 +1071,7 @@ void QGraphDoc::OnSegmentConnectionsExportAsPairCSV()
 
     if (stream.fail() || stream.bad()) {
        QMessageBox::warning(this, tr("Notice"), tr("Sorry, unable to open file for export"), QMessageBox::Ok, QMessageBox::Ok);
+       stream.close();
        return;
     }
     shapeGraph.writeSegmentConnectionsAsPairsCSV(stream);
@@ -1076,6 +1129,7 @@ void QGraphDoc::OnPointmapExportConnectionsAsCSV()
 
     if (stream.fail() || stream.bad()) {
        QMessageBox::warning(this, tr("Notice"), tr("Sorry, unable to open file for export"), QMessageBox::Ok, QMessageBox::Ok);
+       stream.close();
        return;
     }
     pointMap.outputConnectionsAsCSV(stream, ",");
@@ -1612,6 +1666,9 @@ void QGraphDoc::OnEditClear()
    }
    else if (m_meta_graph->viewingProcessedShapes()) {
       modified = m_meta_graph->getDisplayedDataMap().removeSelected();
+   }
+   else if (m_meta_graph->viewingProcessedShapes()) {
+      modified = m_meta_graph->getDisplayedTraceMap().removeSelected();
    }
 
    if(modified) {
@@ -2185,6 +2242,9 @@ void QGraphDoc::OnUpdateColumn()
    else if (vc & MetaGraph::VIEWDATA) {
       shapemap = &(m_meta_graph->getDisplayedDataMap());
    }
+   else if (vc & MetaGraph::VIEWTRACES) {
+      shapemap = &(m_meta_graph->getDisplayedTraceMap());
+   }
 
    if (ReplaceColumnContents(pointmap,shapemap,col)) {
       m_meta_graph->setDisplayedAttribute(col);
@@ -2275,6 +2335,9 @@ void QGraphDoc::OnEditQuery()
    else if (vc & MetaGraph::VIEWDATA) {
       shapemap = &(m_meta_graph->getDisplayedDataMap());
    }
+   else if (vc & MetaGraph::VIEWTRACES) {
+      shapemap = &(m_meta_graph->getDisplayedTraceMap());
+   }
 
    if (SelectByQuery(pointmap,shapemap)) {
       SetRedrawFlag(VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
@@ -2354,7 +2417,7 @@ bool QGraphDoc::SelectByQuery(PointMap *pointmap, ShapeMap *shapemap)
 
 void QGraphDoc::OnEditSelectToLayer()
 {
-   if ((m_meta_graph->getViewClass() & (MetaGraph::VIEWAXIAL|MetaGraph::VIEWDATA))
+   if ((m_meta_graph->getViewClass() & (MetaGraph::VIEWAXIAL|MetaGraph::VIEWDATA|MetaGraph::VIEWTRACES))
       && m_meta_graph->isSelected()) {
 
       CRenameObjectDlg dlg("Layer"); // note, without specifying existing layer name, this defaults to "New layer" behaviour
