@@ -948,6 +948,16 @@
                "-pu": "",
                "-pl": ""
             }
+        }],
+      "visibility_global_n_two_floors": [{
+            "infile": "../../../testdata/test_twofloors_connected.graph",
+            "outfile": "out.graph",
+            "mode": "VGA",
+            "extraArgs": {
+                "-vm": "visibility",
+                "-vg": "",
+                "-vr": "n"
+            }
         }]
     }
 }
