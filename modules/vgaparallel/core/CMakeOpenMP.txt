@@ -1,0 +1,62 @@
+# Copyright (C) 2020 Petros Koutsolampros
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+option(USE_OPENMP "Enable OpenMP" ON)
+
+if(USE_OPENMP)
+    find_package(OpenMP)
+
+    # If OpenMP wasn't found, try if we can find it in the default Macports location
+    if((NOT OPENMP_FOUND) AND (NOT OPENMP_CXX_FOUND) AND EXISTS "/opt/local/lib/libomp/libomp.dylib")
+        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/opt/local/include/libomp/")
+        set(OpenMP_C_LIB_NAMES omp)
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/opt/local/include/libomp/")
+        set(OpenMP_CXX_LIB_NAMES omp)
+        set(OpenMP_omp_LIBRARY "/opt/local/lib/libomp/libomp.dylib")
+
+        find_package(OpenMP)
+        if (OPENMP_FOUND OR OPENMP_CXX_FOUND)
+            message(STATUS "Found libomp in macports default location.")
+        else()
+            message(FATAL_ERROR "Didn't find libomp. Tried macports default location but also didn't find it.")
+        endif()
+    endif()
+
+    # If OpenMP wasn't found, try if we can find it in the default Homebrew location
+    if((NOT OPENMP_FOUND) AND (NOT OPENMP_CXX_FOUND) AND EXISTS "/usr/local/opt/libomp/lib/libomp.dylib")
+        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+        set(OpenMP_C_LIB_NAMES omp)
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/usr/local/opt/libomp/include")
+        set(OpenMP_CXX_LIB_NAMES omp)
+        set(OpenMP_omp_LIBRARY "/usr/local/opt/libomp/lib/libomp.dylib")
+
+        find_package(OpenMP)
+        if (OPENMP_FOUND OR OPENMP_CXX_FOUND)
+            message(STATUS "Found libomp in homebrew default location.")
+        else()
+            message(FATAL_ERROR "Didn't find libomp. Tried homebrew default location but also didn't find it.")
+        endif()
+    endif()
+
+    if((NOT OPENMP_FOUND) AND (NOT OPENMP_CXX_FOUND))
+        message(FATAL_ERROR "Did not find OpenMP.")
+    endif()
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+else()
+    if( (CMAKE_CXX_COMPILER_ID MATCHES "[cC][lL][aA][nN][gG]")
+            OR (CMAKE_CXX_COMPILER_ID MATCHES "[gG][nN][uU]"))
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
+    endif()
+endif(USE_OPENMP)

@@ -1,5 +1,4 @@
-// Copyright (C) 2017, Christian Sailer
-// Copyright (C) 2020, Petros Koutsolampros
+// Copyright (C) 2020 Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,13 +13,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "mainwindowmoduleregistry.hpp"
-#include "modules/segmentshortestpaths/gui/segmentpathsmainwindow.h"
-#include "modules/vgaparallel/gui/vgaparallelmainwindow.h"
+#include "catch.hpp"
+#include "salalib/axialmap.h"
+#include "salalib/mapconverter.h"
 
-void MainWindowModuleRegistry::populateModules() {
-    // Register any main window modules here
-    REGISTER_MAIN_WINDOW_MODULE(SegmentPathsMainWindow);
-    REGISTER_MAIN_WINDOW_MODULE(VGAParallelMainWindow)
-    // *********
-}
+TEST_CASE("Dummy VGA Parallel test", "") {}
