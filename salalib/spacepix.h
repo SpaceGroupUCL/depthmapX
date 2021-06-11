@@ -131,8 +131,8 @@ class SpacePixel : public PixelBase {
     virtual bool findNextLine(bool &) const;
     virtual const Line &getNextLine() const;
     //
-    bool intersect(const Line &l, double tolerance = 0.0);
-    bool intersect_exclude(const Line &l, double tolerance = 0.0);
+    bool intersect(const Line &l, double tolerance = 1e-9);
+    bool intersect_exclude(const Line &l, double tolerance = 1e-9);
 
     void cutLine(Line &l, short dir);
 
