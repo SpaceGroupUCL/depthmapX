@@ -179,7 +179,6 @@ private slots:
     void OnWindow3dView();
     void OnWindowGLView();
     void OnViewScatterplot();
-    void OnToolsRun();
     void OnToolsAgentRun();
 // MapView message
     void zoomModeTriggered();
@@ -215,7 +214,6 @@ private slots:
     void updateEditMenu();
     void updateFileMenu();
     void updateVisibilitySubMenu();
-    void updateStepDepthSubMenu();
     void updateSegmentStepDepthSubMenu();
     void updateAgentToolsSubMenu();
     void updateSegmentSubMenu();
@@ -294,7 +292,6 @@ private:
     QMenu *attributesMenu;
     QMenu *toolsMenu;
     QMenu *visibilitySubMenu;
-    QMenu *stepDepthSubMenu;
     QMenu *agentToolsSubMenu;
     QMenu *axialSubMenu;
     QMenu *segmentSubMenu;
@@ -369,10 +366,6 @@ private:
     QAction *importVGALinksAct;
     QAction *generateIsovistsAct;
     QAction *makeIsovistPathAct;
-    QAction *runVisibilityGraphAnalysisAct;
-    QAction *visibilityStepAct;
-    QAction *metricStepAct;
-    QAction *angularStepAct;
     QAction *convertDataMapLinesAct;
     QAction *runAgentAnalysisAct;
     QAction *loadAgentProgramAct;

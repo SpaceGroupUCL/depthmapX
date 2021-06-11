@@ -1,5 +1,7 @@
-// Copyright (C) 2017, Christian Sailer
-// Copyright (C) 2020, Petros Koutsolampros
+// sala - a component of the depthmapX - spatial network analysis platform
+// Copyright (C) 2000-2010, University College London, Alasdair Turner
+// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,13 +16,18 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "mainwindowmoduleregistry.hpp"
-#include "modules/segmentshortestpaths/gui/segmentpathsmainwindow.h"
-#include "modules/vga/gui/vgamainwindow.h"
+#pragma once
 
-void MainWindowModuleRegistry::populateModules() {
-    // Register any main window modules here
-    REGISTER_MAIN_WINDOW_MODULE(SegmentPathsMainWindow);
-    REGISTER_MAIN_WINDOW_MODULE(VGAMainWindow)
-    // *********
-}
+#include "salalib/ianalysis.h"
+#include "salalib/pixelref.h"
+#include "salalib/pointdata.h"
+
+class VGAAngularDepth : public IAnalysis {
+  private:
+    PointMap &m_map;
+
+  public:
+    std::string getAnalysisName() const override { return "Angular Depth"; }
+    bool run(Communicator *comm) override;
+    VGAAngularDepth(PointMap &map) : m_map(map) {}
+};

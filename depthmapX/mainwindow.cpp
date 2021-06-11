@@ -511,15 +511,6 @@ void MainWindow::OnToolsGenerateIsovistsFromFile()
     }
 }
 
-void MainWindow::OnToolsRun()
-{
-    QGraphDoc* m_p = activeMapDoc();
-    if(m_p)
-    {
-        m_p->OnToolsRun();
-    }
-}
-
 void MainWindow::OnToolsAgentRun()
 {
     QGraphDoc* m_p = activeMapDoc();
@@ -2347,7 +2338,6 @@ void MainWindow::updateVisibilitySubMenu()
         unmakeVisibilityGraphAct->setEnabled(0);
         importVGALinksAct->setEnabled(0);
         makeIsovistPathAct->setEnabled(0);
-        runVisibilityGraphAnalysisAct->setEnabled(0);
         convertDataMapLinesAct->setEnabled(0);
         return;
     }
@@ -2370,12 +2360,10 @@ void MainWindow::updateVisibilitySubMenu()
 
     if (m_p->m_meta_graph->viewingProcessedPoints()) {
         importVGALinksAct->setEnabled(true);
-        runVisibilityGraphAnalysisAct->setEnabled(true);
     }
     else
     {
         importVGALinksAct->setEnabled(0);
-        runVisibilityGraphAnalysisAct->setEnabled(0);
     }
 
     if ( !m_p->m_communicator &&
@@ -2384,29 +2372,6 @@ void MainWindow::updateVisibilitySubMenu()
          m_p->m_meta_graph->getDisplayedPointMap().isProcessed())
         convertDataMapLinesAct->setEnabled(true);
     else convertDataMapLinesAct->setEnabled(0);
-}
-
-void MainWindow::updateStepDepthSubMenu()
-{
-    QGraphDoc* m_p = activeMapDoc();
-    if(!m_p)
-    {
-        visibilityStepAct->setEnabled(0);
-        metricStepAct->setEnabled(0);
-        angularStepAct->setEnabled(0);
-        return;
-    }
-    if (m_p->m_meta_graph->viewingProcessed() && m_p->m_meta_graph->isSelected())
-        visibilityStepAct->setEnabled(true);
-    else visibilityStepAct->setEnabled(0);
-
-    if ((m_p->m_meta_graph->viewingProcessedPoints() || (m_p->m_meta_graph->viewingProcessedLines() && m_p->m_meta_graph->getDisplayedShapeGraph().isSegmentMap())) && m_p->m_meta_graph->isSelected())
-        metricStepAct->setEnabled(true);
-    else metricStepAct->setEnabled(0);
-
-    if (m_p->m_meta_graph->viewingProcessedPoints() && m_p->m_meta_graph->isSelected())
-        angularStepAct->setEnabled(true);
-    else angularStepAct->setEnabled(0);
 }
 
 void MainWindow::updateAgentToolsSubMenu()
@@ -3084,21 +3049,6 @@ void MainWindow::createActions()
     makeIsovistPathAct = new QAction(tr("Make &Isovist Path..."), this);
     connect(makeIsovistPathAct, SIGNAL(triggered()), this, SLOT(OnToolsIsovistpath()));
 
-    runVisibilityGraphAnalysisAct = new QAction(tr("&Run Visibility Graph Analysis..."), this);
-    connect(runVisibilityGraphAnalysisAct, SIGNAL(triggered()), this, SLOT(OnToolsRun()));
-
-    visibilityStepAct = new QAction(tr("&Visibility Step"), this);
-    visibilityStepAct->setStatusTip(tr("Step depth from current selection\nStep Depth"));
-    connect(visibilityStepAct, SIGNAL(triggered()), this, SLOT(OnToolsPD()));
-
-    metricStepAct = new QAction(tr("&Metric Step"), this);
-    metricStepAct->setStatusTip(tr("Distance from current selection\nMetric Depth"));
-    connect(metricStepAct, SIGNAL(triggered()), this, SLOT(OnToolsMPD()));
-
-    angularStepAct = new QAction(tr("&Angular Step"), this);
-    angularStepAct->setStatusTip(tr("Angular distance from current selection\nAngular Depth"));
-    connect(angularStepAct, SIGNAL(triggered()), this, SLOT(OnToolsAPD()));
-
     convertDataMapLinesAct = new QAction(tr("Convert Data Map Lines to Merge Points"), this);
     convertDataMapLinesAct->setStatusTip(tr("Convert displayed data map lines to merge points for current visibility graph"));
     connect(convertDataMapLinesAct, SIGNAL(triggered()), this, SLOT(OnToolsPointConvShapeMap()));
@@ -3594,11 +3544,6 @@ void MainWindow::createMenus()
     visibilitySubMenu->addAction(generateIsovistsAct);
     visibilitySubMenu->addAction(makeIsovistPathAct);
     visibilitySubMenu->addSeparator();
-    visibilitySubMenu->addAction(runVisibilityGraphAnalysisAct);
-    stepDepthSubMenu = visibilitySubMenu->addMenu(tr("Step &Depth"));
-    stepDepthSubMenu->addAction(visibilityStepAct);
-    stepDepthSubMenu->addAction(metricStepAct);
-    stepDepthSubMenu->addAction(angularStepAct);
     visibilitySubMenu->addSeparator();
     visibilitySubMenu->addAction(convertDataMapLinesAct);
     agentToolsSubMenu = toolsMenu->addMenu(tr("&Agent Tools"));
@@ -3657,7 +3602,6 @@ void MainWindow::createMenus()
 
     connect(viewMenu, SIGNAL(aboutToShow()), this, SLOT(updateViewMenu()));
     connect(visibilitySubMenu, SIGNAL(aboutToShow()), this, SLOT(updateVisibilitySubMenu()));
-    connect(stepDepthSubMenu, SIGNAL(aboutToShow()), this, SLOT(updateStepDepthSubMenu()));
     connect(agentToolsSubMenu, SIGNAL(aboutToShow()), this, SLOT(updateAgentToolsSubMenu()));
     connect(segmentSubMenu, SIGNAL(aboutToShow()), this, SLOT(updateSegmentSubMenu()));
     connect(segmentStepDepthSubMenu, SIGNAL(aboutToShow()), this, SLOT(updateSegmentStepDepthSubMenu()));

@@ -224,48 +224,6 @@ namespace dm_runmethods
         DO_TIMED("Writing graph", mgraph->write(cmdP.getOuputFile().c_str(),METAGRAPH_VERSION, false);)
     }
 
-    void runVga(const CommandLineParser &cmdP, const VgaParser &vgaP, const IRadiusConverter &converter, IPerformanceSink &perfWriter)
-    {
-        auto mgraph = loadGraph(cmdP.getFileName().c_str(), perfWriter);
-
-        std::unique_ptr<Options> options(new Options());
-
-        std::cout << "Getting options..." << std::flush;
-        switch(vgaP.getVgaMode())
-        {
-            case VgaParser::VgaMode::VISBILITY:
-                options->output_type = Options::OUTPUT_VISUAL;
-                options->local = vgaP.localMeasures();
-                options->global = vgaP.globalMeasures();
-                if (options->global )
-                {
-                    options->radius = converter.ConvertForVisibility(vgaP.getRadius());
-                }
-                break;
-            case VgaParser::VgaMode::METRIC:
-                options->output_type = Options::OUTPUT_METRIC;
-                options->radius = converter.ConvertForMetric(vgaP.getRadius());
-                break;
-            case VgaParser::VgaMode::ANGULAR:
-                options->output_type = Options::OUTPUT_ANGULAR;
-                break;
-            case VgaParser::VgaMode::ISOVIST:
-                options->output_type = Options::OUTPUT_ISOVIST;
-                break;
-            case VgaParser::VgaMode::THRU_VISION:
-                options->output_type = Options::OUTPUT_THRU_VISION;
-                break;
-            default:
-                throw depthmapX::SetupCheckException("Unsupported VGA mode");
-        }
-        std::cout << " ok\nAnalysing graph..." << std::flush;
-
-        DO_TIMED("Run VGA", mgraph->analyseGraph(getCommunicator(cmdP).get(), *options, cmdP.simpleMode() ))
-        std::cout << " ok\nWriting out result..." << std::flush;
-        DO_TIMED("Writing graph", mgraph->write(cmdP.getOuputFile().c_str(),METAGRAPH_VERSION, false))
-        std::cout << " ok" << std::endl;
-    }
-
     void fillGraph(MetaGraph& graph, const Point2f& point)
     {
         auto r = graph.getRegion();
@@ -730,51 +688,6 @@ namespace dm_runmethods
                 throw depthmapX::SetupCheckException("Error, unsupported export mode");
             }
         }
-    }
-
-    void runStepDepth(
-            const CommandLineParser &clp,
-            const StepDepthParser::StepType &stepType,
-            const std::vector<Point2f> &stepDepthPoints,
-            IPerformanceSink &perfWriter)
-    {
-        auto mGraph = loadGraph(clp.getFileName().c_str(),perfWriter);
-
-        std::cout << "ok\nSelecting cells... " << std::flush;
-
-        for( auto & point : stepDepthPoints ) {
-            auto graphRegion = mGraph->getRegion();
-            if (!graphRegion.contains(point))
-            {
-                throw depthmapX::RuntimeException("Point outside of target region");
-            }
-            QtRegion r(point, point);
-            mGraph->setCurSel(r, true);
-        }
-
-        std::cout << "ok\nCalculating step-depth... " << std::flush;
-
-        Options options;
-        options.global = 0;
-
-        switch (stepType) {
-            case StepDepthParser::StepType::ANGULAR:
-                options.point_depth_selection = 3;
-                break;
-            case StepDepthParser::StepType::METRIC:
-                options.point_depth_selection = 2;
-                break;
-            case StepDepthParser::StepType::VISUAL:
-                options.point_depth_selection = 1;
-                break;
-            default: { throw depthmapX::SetupCheckException("Error, unsupported step type"); }
-        }
-
-        DO_TIMED("Calculating step-depth", mGraph->analyseGraph( getCommunicator(clp).get(), options, false))
-
-        std::cout << " ok\nWriting out result..." << std::flush;
-        DO_TIMED("Writing graph", mGraph->write(clp.getOuputFile().c_str(),METAGRAPH_VERSION, false))
-                std::cout << " ok" << std::endl;
     }
 
     void runMapConversion(const CommandLineParser &clp, const MapConvertParser &mcp, IPerformanceSink &perfWriter)

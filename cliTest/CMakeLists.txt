@@ -7,8 +7,6 @@ set(cliTest_SRCS
     testradiusconverter.cpp
     ../depthmapXcli/radiusconverter.cpp
     testsimpletimer.cpp
-    testvgaparser.cpp
-    ../depthmapXcli/vgaparser.cpp
     testlinkparser.cpp
     ../depthmapXcli/linkparser.cpp
     testagentparser.cpp
@@ -31,8 +29,6 @@ set(cliTest_SRCS
     ../depthmapXcli/exportparser.cpp
     ../depthmapXcli/importparser.cpp
     testimportparser.cpp
-    ../depthmapXcli/stepdepthparser.cpp
-    teststepdepthparser.cpp
     ../depthmapXcli/segmentparser.cpp
     testsegmentparser.cpp
     ../depthmapXcli/mapconvertparser.cpp

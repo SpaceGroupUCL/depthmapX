@@ -5,7 +5,6 @@ target_sources(depthmapX
         RenameObjectDlg.h
         PushDialog.h
         PromptReplace.h
-        OptionsDlg.h
         NewLayerDlg.h
         MakeOptionsDlg.h
         MakeLayerDlg.h
@@ -37,7 +36,6 @@ target_sources(depthmapX
         RenameObjectDlg.cpp
         PushDialog.cpp
         PromptReplace.cpp
-        OptionsDlg.cpp
         NewLayerDlg.cpp
         MakeOptionsDlg.cpp
         MakeLayerDlg.cpp

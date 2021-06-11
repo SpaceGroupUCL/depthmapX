@@ -26,7 +26,6 @@
 #include "mainwindow.h"
 
 #include "dialogs/MakeLayerDlg.h"
-#include "dialogs/OptionsDlg.h"
 #include "dialogs/AxialAnalysisOptionsDlg.h"
 #include "dialogs/SegmentAnalysisDlg.h"
 #include "dialogs/GridDialog.h"
@@ -1728,35 +1727,6 @@ void QGraphDoc::OnToolsUnmakeGraph()
        SetUpdateFlag(QGraphDoc::NEW_DATA);
     }
     SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
-}
-
-/////////////////////////////////////////////////////////////////////////////
-
-void QGraphDoc::OnToolsRun() 
-{
-   if (m_communicator) {
-	   QMessageBox::warning(this, tr("Warning"), tr("Please wait, another task is running"), QMessageBox::Ok, QMessageBox::Ok);
-      return;
-   }
-
-   // This is easy!
-   COptionsDlg dlg;
-
-   dlg.m_layer_names.push_back("<None>");
-   for (auto& dataMap: m_meta_graph->getDataMaps()) {
-       dlg.m_layer_names.push_back(dataMap.getName());
-   }
-
-   if (QDialog::Accepted != dlg.exec()) {
-      return;
-   }
-
-   // This is easy too... too easy... hmm... crossed-fingers, here goes:
-   m_communicator = new CMSCommunicator();
-   CreateWaitDialog(tr("Analysing graph..."));
-   m_communicator->SetFunction( CMSCommunicator::ANALYSEGRAPH );
-
-   m_thread.render(this);
 }
 
 void QGraphDoc::OnToolsPD() 

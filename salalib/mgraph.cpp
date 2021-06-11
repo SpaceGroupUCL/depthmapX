@@ -37,15 +37,6 @@
 #include "salalib/segmmodules/segmtopologicalpd.h"
 #include "salalib/axialmodules/axialintegration.h"
 #include "salalib/axialmodules/axialstepdepth.h"
-#include "salalib/vgamodules/vgaisovist.h"
-#include "salalib/vgamodules/vgavisualglobal.h"
-#include "salalib/vgamodules/vgavisualglobaldepth.h"
-#include "salalib/vgamodules/vgavisuallocal.h"
-#include "salalib/vgamodules/vgametric.h"
-#include "salalib/vgamodules/vgametricdepth.h"
-#include "salalib/vgamodules/vgaangular.h"
-#include "salalib/vgamodules/vgaangulardepth.h"
-#include "salalib/vgamodules/vgathroughvision.h"
 #include "salalib/agents/agenthelpers.h"
 
 #include "mgraph440/mgraph.h"
@@ -310,10 +301,7 @@ bool MetaGraph::analyseGraph( Communicator *communicator, Options options , bool
    try {
       analysisCompleted = true;
       if (options.point_depth_selection == 1) {
-         if (m_view_class & VIEWVGA) {
-             analysisCompleted = VGAVisualGlobalDepth().run(communicator, getDisplayedPointMap(), false);
-         }
-         else if (m_view_class & VIEWAXIAL) {
+         if (m_view_class & VIEWAXIAL) {
             if (!getDisplayedShapeGraph().isSegmentMap()) {
                 analysisCompleted = AxialStepDepth().run(communicator, getDisplayedShapeGraph(), false);
             }
@@ -325,15 +313,9 @@ bool MetaGraph::analyseGraph( Communicator *communicator, Options options , bool
          // Graph::calculate_point_depth_matrix( communicator );
       }
       else if (options.point_depth_selection == 2) {
-         if (m_view_class & VIEWVGA) {
-             analysisCompleted = VGAMetricDepth().run(communicator, getDisplayedPointMap(), false);
-         }
-         else if (m_view_class & VIEWAXIAL && getDisplayedShapeGraph().isSegmentMap()) {
+         if (m_view_class & VIEWAXIAL && getDisplayedShapeGraph().isSegmentMap()) {
              analysisCompleted = SegmentMetricPD().run(communicator, getDisplayedShapeGraph(), false);
          }
-      }
-      else if (options.point_depth_selection == 3) {
-          analysisCompleted = VGAAngularDepth().run(communicator, getDisplayedPointMap(), false);
       }
       else if (options.point_depth_selection == 4) {
          if (m_view_class & VIEWVGA) {
@@ -342,29 +324,6 @@ bool MetaGraph::analyseGraph( Communicator *communicator, Options options , bool
          else if (m_view_class & VIEWAXIAL && getDisplayedShapeGraph().isSegmentMap()) {
              analysisCompleted = SegmentTopologicalPD().run(communicator, getDisplayedShapeGraph(), false);
          }
-      }
-      else if (options.output_type == Options::OUTPUT_ISOVIST) {
-         analysisCompleted = VGAIsovist().run(communicator, getDisplayedPointMap(), simple_version);
-      }
-      else if (options.output_type == Options::OUTPUT_VISUAL) {
-          bool localResult = true;
-          bool globalResult = true;
-          if (options.local) {
-              localResult = VGAVisualLocal(options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
-          }
-          if (options.global) {
-              globalResult = VGAVisualGlobal(options.radius, options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
-          }
-          analysisCompleted = globalResult & localResult;
-      }
-      else if (options.output_type == Options::OUTPUT_METRIC) {
-          analysisCompleted = VGAMetric(options.radius, options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
-      }
-      else if (options.output_type == Options::OUTPUT_ANGULAR) {
-          analysisCompleted = VGAAngular(options.radius, options.gates_only).run(communicator, getDisplayedPointMap(), simple_version);
-      }
-      else if (options.output_type == Options::OUTPUT_THRU_VISION) {
-          analysisCompleted = VGAThroughVision().run(communicator, getDisplayedPointMap(), simple_version);
       }
    } 
    catch (Communicator::CancelledException) {
@@ -2129,12 +2088,12 @@ bool MetaGraph::analyseThruVision(Communicator *comm, int gatelayer)
                         -1,colgates,PUSH_FUNC_TOT);
    }
 
-   try {
-       analysisCompleted = VGAThroughVision().run(comm, getDisplayedPointMap(), false);
-   }
-   catch (Communicator::CancelledException) {
+//   try {
+//       analysisCompleted = VGAThroughVision().run(comm, getDisplayedPointMap(), false);
+//   }
+//   catch (Communicator::CancelledException) {
       analysisCompleted = false;
-   }
+//   }
 
    // note after the analysis, the column order might have changed... retrieve:
    colgates = table.getColumnIndex(g_col_gate);

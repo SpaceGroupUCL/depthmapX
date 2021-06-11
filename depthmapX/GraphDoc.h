@@ -301,7 +301,6 @@ public:
 	void OnToolsMakeGraph();
     void OnToolsUnmakeGraph();
     void OnEditClear();
-	void OnToolsRun();
 	void OnEditUndo();
     void OnToolsPD();
 	void OnPushToLayer();

@@ -16,15 +16,15 @@
 #include "modeparserregistry.h"
 #include "importparser.h"
 #include "linkparser.h"
-#include "vgaparser.h"
 #include "visprepparser.h"
 #include "axialparser.h"
 #include "segmentparser.h"
 #include "agentparser.h"
 #include "isovistparser.h"
 #include "exportparser.h"
-#include "stepdepthparser.h"
 #include "mapconvertparser.h"
+#include "modules/vga/cli/vgaparser.h"
+#include "modules/vga/cli/stepdepthparser.h"
 #include "modules/segmentshortestpaths/cli/segmentshortestpathparser.h"
 
 

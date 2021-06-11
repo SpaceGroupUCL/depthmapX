@@ -44,7 +44,6 @@ qt5_wrap_ui(UI_HDRS
     UI/RenameObjectDlg.ui
     UI/PushDialog.ui
     UI/PromptReplace.ui
-    UI/OptionsDlg.ui
     UI/NewLayerDlg.ui
     UI/MakeOptionsDlg.ui
     UI/MakeLayerDlg.ui

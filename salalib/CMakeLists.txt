@@ -32,9 +32,8 @@ set(salalib_SRCS
 
 add_compile_definitions(_DEPTHMAP SALALIB_LIBRARY)
 
-add_library(${salalib} STATIC ${salalib_SRCS} ${vgamodules_SRCS} ${axialmodules_SRCS} ${segmmodules_SRCS} ${parsers_SRCS})
+add_library(${salalib} STATIC ${salalib_SRCS} ${axialmodules_SRCS} ${segmmodules_SRCS} ${parsers_SRCS})
 
-add_subdirectory(vgamodules)
 add_subdirectory(axialmodules)
 add_subdirectory(segmmodules)
 add_subdirectory(parsers)

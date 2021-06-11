@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>VGAOptionsDlg</class>
+ <widget class="QDialog" name="VGAOptionsDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>577</width>
+    <height>338</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Analysis Options</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Analysis Type</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <widget class="QRadioButton" name="c_output_type">
+        <property name="text">
+         <string>Calculate isovist properties</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="c_radio1">
+        <property name="text">
+         <string>Calculate visibility relationships</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QCheckBox" name="c_global">
+          <property name="text">
+           <string>Include &amp;global measures |    Select radius (n or number)-&gt;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="c_radius"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="c_local">
+        <property name="text">
+         <string>Include &amp;local measures</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="c_radio2">
+        <property name="text">
+         <string>Calculate metric relationships</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Radius</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="c_radius2"/>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="c_radio3">
+        <property name="text">
+         <string>Calculate angular relationships</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="c_radio4">
+        <property name="text">
+         <string>Calculate through vision</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Record gate counts in data map</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="c_layer_selector"/>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>40</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QPushButton" name="c_ok">
+       <property name="text">
+        <string>OK</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="c_cancel">
+       <property name="text">
+        <string>Cancel</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>c_output_type</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnOutputType(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>92</x>
+     <y>35</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>246</x>
+     <y>1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_radio1</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnOutputType(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>148</x>
+     <y>72</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>330</x>
+     <y>52</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_radio2</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnOutputType(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>141</x>
+     <y>156</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>329</x>
+     <y>164</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_radio3</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnOutputType(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>132</x>
+     <y>231</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>328</x>
+     <y>231</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_radio4</sender>
+   <signal>clicked(bool)</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnOutputType(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>122</x>
+     <y>256</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>324</x>
+     <y>315</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_radius</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnUpdateRadius(QString)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>248</x>
+     <y>106</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>331</x>
+     <y>93</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_radius2</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnUpdateRadius2(QString)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>110</x>
+     <y>188</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>331</x>
+     <y>192</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_ok</sender>
+   <signal>clicked()</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnOK()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>115</x>
+     <y>337</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>29</x>
+     <y>324</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>c_cancel</sender>
+   <signal>clicked()</signal>
+   <receiver>VGAOptionsDlg</receiver>
+   <slot>OnCancel()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>249</x>
+     <y>330</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>301</x>
+     <y>328</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>OnOutputType(bool)</slot>
+  <slot>OnUpdateRadius(QString)</slot>
+  <slot>OnUpdateRadius2(QString)</slot>
+  <slot>OnOK()</slot>
+  <slot>OnCancel()</slot>
+ </slots>
+</ui>

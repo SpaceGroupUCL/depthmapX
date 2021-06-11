@@ -21,8 +21,6 @@
 
 #include "salalib/pointdata.h"
 #include "salalib/parsers/mapinfodata.h" // for mapinfo interface
-#include "salalib/vgamodules/vgavisuallocal.h"
-#include "salalib/vgamodules/vgavisualglobal.h"
 #include "salalib/isovist.h"
 #include "salalib/mgraph.h" // Metagraphs are used...
 #include "salalib/ngraph.h"

@@ -6,7 +6,6 @@ set(depthmapXcli_SRCS
     commandlineparser.cpp
     runmethods.cpp
     radiusconverter.cpp
-    vgaparser.cpp
     linkparser.cpp
     performancewriter.cpp
     modeparserregistry.cpp
@@ -17,7 +16,6 @@ set(depthmapXcli_SRCS
     isovistparser.cpp
     exportparser.cpp
     importparser.cpp
-    stepdepthparser.cpp
     segmentparser.cpp
     mapconvertparser.cpp)
 
