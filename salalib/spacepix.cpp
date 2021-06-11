@@ -128,10 +128,14 @@ PixelRefVector PixelBase::pixelateLine(Line l, int scalefactor) const {
             } else {
                 // Special case: exactly diagonal step (should only require one step):
                 // (Should actually never happen) (Doesn't: checked with RFH)
-                a.x += 1;
-                pixel_list.push_back(PixelRef(a.x, parity * a.y));
-                a.y += 1;
-                pixel_list.push_back(PixelRef(a.x, parity * a.y));
+                if (a.x < b.x) {
+                    a.x += 1;
+                    pixel_list.push_back(PixelRef(a.x, parity * a.y));
+                }
+                if (a.y < b.y) {
+                    a.y += 1;
+                    pixel_list.push_back(PixelRef(a.x, parity * a.y));
+                }
             }
         }
     }
