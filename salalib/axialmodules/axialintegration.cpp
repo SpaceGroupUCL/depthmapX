@@ -21,6 +21,8 @@
 #include "genlib/pflipper.h"
 #include "genlib/stringutils.h"
 
+#include <cmath>
+
 bool AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simple_version) {
     // note, from 10.0, Depthmap no longer includes *self* connections on axial lines
     // self connections are stripped out on loading graph files, as well as no longer made
@@ -426,11 +428,11 @@ bool AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simple_vers
                             // some debate over whether or not this should be node count - 1
                             // (i.e., including or not including the node itself)
                             double prob = double(depthcounts[k]) / double(node_count);
-                            entropy -= prob * log2(prob);
+                            entropy -= prob * std::log2(prob);
                             // Formula from Turner 2001, "Depthmap"
                             factorial *= double(k + 1);
                             double q = (pow(mean_depth, double(k)) / double(factorial)) * exp(-mean_depth);
-                            rel_entropy += (double)prob * log2(prob / q);
+                            rel_entropy += (double)prob * std::log2(prob / q);
                             //
                             harmonic += 1.0 / double(depthcounts[k]);
                         }

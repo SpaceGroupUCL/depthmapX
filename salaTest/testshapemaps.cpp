@@ -20,6 +20,7 @@
 #include "catch.hpp"
 #include <sstream>
 #include <iostream>
+#include <cmath>
 
 TEST_CASE("Testing ShapeMap::getAllShapes variants")
 {
@@ -120,4 +121,38 @@ TEST_CASE("Testing ShapeMap::getAllShapes variants")
         REQUIRE(colour.greenf() == Approx(0.2f).epsilon(EPSILON));
         REQUIRE(colour.bluef() == Approx(0.2f).epsilon(EPSILON));
     }
+}
+
+TEST_CASE("SalaShape handles empty and degenerate polylines") {
+    SECTION("Empty shape") {
+        SalaShape shape(SalaShape::SHAPE_POLY);
+        shape.setCentroidAreaPerim();
+        REQUIRE(shape.getArea() == Approx(0.0));
+        REQUIRE(shape.getPerimeter() == Approx(0.0));
+        REQUIRE(std::isfinite(shape.getCentroid().x));
+        REQUIRE(std::isfinite(shape.getCentroid().y));
+        REQUIRE(shape.getAngDev() == Approx(0.0));
+    }
+
+    SECTION("Collinear points") {
+        SalaShape shape(SalaShape::SHAPE_POLY);
+        shape.m_points = {Point2f(0.0, 0.0), Point2f(2.0, 0.0), Point2f(4.0, 0.0)};
+        shape.setCentroidAreaPerim();
+        REQUIRE(shape.getArea() == Approx(0.0));
+        REQUIRE(shape.getCentroid().x == Approx(2.0));
+        REQUIRE(shape.getCentroid().y == Approx(0.0));
+    }
+}
+
+TEST_CASE("ShapeMap rejects stale polygon edit references") {
+    ShapeMap shapeMap("Test ShapeMap");
+    const int shapeRef = shapeMap.polyBegin(Line(Point2f(0.0, 0.0), Point2f(1.0, 0.0)));
+
+    REQUIRE_FALSE(shapeMap.polyAppend(shapeRef + 1000, Point2f(2.0, 0.0)));
+    REQUIRE_FALSE(shapeMap.polyClose(shapeRef + 1000));
+    REQUIRE_FALSE(shapeMap.polyCancel(shapeRef + 1000));
+    REQUIRE(shapeMap.getAllShapes().size() == 1);
+
+    shapeMap.removeShape(shapeRef + 1000, false);
+    REQUIRE(shapeMap.getAllShapes().size() == 1);
 }

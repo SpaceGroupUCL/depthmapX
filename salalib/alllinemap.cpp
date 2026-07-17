@@ -4,6 +4,7 @@
 #include "genlib/exceptions.h"
 #include <time.h>
 #include <iomanip>
+#include <unordered_set>
 
 AllLineMap::AllLineMap(Communicator *comm,
                        std::vector<SpacePixelFile> &drawingLayers,
@@ -104,21 +105,37 @@ AllLineMap::AllLineMap(Communicator *comm,
       comm->CommPostMessage( Communicator::CURRENT_RECORD, 0 );
    }
 
-   // cut out duplicates:
-   int removed = 0;  // for testing purposes
+   // Mark duplicates first and compact once. Repeated vector erases added an
+   // O(n) shift to every duplicate and size() - 1 underflowed when empty.
+   std::vector<bool> duplicate(axiallines.size(), false);
+   const double maxdim = __max(region.width(), region.height());
    for (size_t j = 0; j < axiallines.size(); j++) {
-      for (size_t k = axiallines.size() - 1; k > j; k--) {
-         double maxdim = __max(region.width(),region.height());
-         if (approxeq(axiallines[j].start(), axiallines[k].start(), maxdim * TOLERANCE_B) && approxeq(axiallines[j].end(), axiallines[k].end(), maxdim * TOLERANCE_B)) {
-            for (int preaxiali: preaxialdata[k]) {
-                preaxialdata[j].insert(preaxiali);
-            }
-            preaxialdata.erase(preaxialdata.begin() + int(k));
-            axiallines.erase(axiallines.begin() + int(k));
-            removed++;
+      if (duplicate[j]) {
+         continue;
+      }
+      for (size_t k = j + 1; k < axiallines.size(); k++) {
+         if (!duplicate[k] &&
+             approxeq(axiallines[j].start(), axiallines[k].start(), maxdim * TOLERANCE_B) &&
+             approxeq(axiallines[j].end(), axiallines[k].end(), maxdim * TOLERANCE_B)) {
+            preaxialdata[j].insert(preaxialdata[k].begin(), preaxialdata[k].end());
+            duplicate[k] = true;
          }
       }
    }
+
+   size_t writeIndex = 0;
+   for (size_t readIndex = 0; readIndex < axiallines.size(); readIndex++) {
+      if (duplicate[readIndex]) {
+         continue;
+      }
+      if (writeIndex != readIndex) {
+         axiallines[writeIndex] = std::move(axiallines[readIndex]);
+         preaxialdata[writeIndex] = std::move(preaxialdata[readIndex]);
+      }
+      ++writeIndex;
+   }
+   axiallines.resize(writeIndex);
+   preaxialdata.resize(writeIndex);
 
    region.grow(0.99); // <- this paired with crop code below to prevent error
    init(axiallines.size(), m_polygons.getRegion());  // used to be double density here
@@ -296,23 +313,41 @@ void AllLineMap::makeDivisions(const std::vector<PolyConnector>& polyconnections
       comm->CommPostMessage( Communicator::NUM_RECORDS, polyconnections.size() );
    }
 
+   // std::distance on a std::map is linear. Cache its stable map-order index
+   // once rather than walking from begin() for every polygon connector.
+   std::map<RadialKey, size_t> radialIndices;
+   size_t radialIndex = 0;
+   for (const auto &entry : radialdivisions) {
+      radialIndices.emplace(entry.first, radialIndex++);
+   }
+
    for (size_t i = 0; i < polyconnections.size(); i++) {
       PixelRefVector pixels = pixelateLine(polyconnections[i].line);
-      std::vector<size_t> testedshapes;
+      std::unordered_set<unsigned int> testedshapes;
       auto connIter = radialdivisions.find(polyconnections[i].key);
-      size_t connindex = std::distance(radialdivisions.begin(), connIter);
+      auto connIndexIter = radialIndices.find(polyconnections[i].key);
+      if (connIter == radialdivisions.end() || connIndexIter == radialIndices.end()) {
+         continue;
+      }
+      const size_t connindex = connIndexIter->second;
+      if (connindex >= radiallines.size()) {
+         continue;
+      }
       double tolerance = sqrt(TOLERANCE_A);// * polyconnections[i].line.length();
       for (size_t j = 0; j < pixels.size(); j++) {
          PixelRef pix = pixels[j];
          auto& shapes = m_pixel_shapes(static_cast<size_t>(pix.y),
                                        static_cast<size_t>(pix.x));
          for (const ShapeRef& shape: shapes) {
-            auto iter = depthmapX::findBinary( testedshapes, shape.m_shape_ref );
-            if (iter != testedshapes.end()) {
+            if (!testedshapes.insert(shape.m_shape_ref).second) {
                continue;
             }
-            testedshapes.insert(iter, int(shape.m_shape_ref));
-            const Line& line = m_shapes.find(shape.m_shape_ref)->second.getLine();
+            auto shapeIter = m_shapes.find(shape.m_shape_ref);
+            auto axialDividerIter = axialdividers.find(static_cast<int>(shape.m_shape_ref));
+            if (shapeIter == m_shapes.end() || axialDividerIter == axialdividers.end()) {
+               continue;
+            }
+            const Line& line = shapeIter->second.getLine();
             //
             if (intersect_region(line, polyconnections[i].line, tolerance * line.length()) ) {
                switch ( intersect_line_distinguish(line, polyconnections[i].line, tolerance * line.length()) ) {
@@ -320,24 +355,15 @@ void AllLineMap::makeDivisions(const std::vector<PolyConnector>& polyconnections
                   break;
                case 2:
                   {
-                     size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
-                     if (index != shape.m_shape_ref) {
-                        throw 1; // for the code to work later this can't be true!
-                     }
-                     axialdividers[index].insert(connindex);
+                     axialDividerIter->second.insert(static_cast<int>(connindex));
                      connIter->second.insert(shape.m_shape_ref);
                   }
                   break;
                case 1:
                   {
-                     size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
-                     if (index != shape.m_shape_ref) {
-                        throw 1; // for the code to work later this can't be true!
-                     }
-                     //
                      // this makes sure actually crosses between the line and the openspace properly
                      if (radiallines[connindex].cuts(line)) {
-                        axialdividers[index].insert(connindex);
+                        axialDividerIter->second.insert(static_cast<int>(connindex));
                         connIter->second.insert(shape.m_shape_ref);
                      }
                   }

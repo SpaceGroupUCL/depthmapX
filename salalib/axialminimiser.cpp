@@ -91,6 +91,9 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int> >& axsegcuts, std
          bool subset = false;
          for (size_t j = 0; j < axa.m_connections.size(); j++) {
             int indextob = axa.m_connections[j];
+            if (indextob < 0 || static_cast<size_t>(indextob) >= m_axialconns.size()) {
+               continue;
+            }
             if (indextob == ii || m_removed[indextob]) { // <- removed[indextob] should never happen as it should have been removed below
                continue;
             }
@@ -101,22 +104,27 @@ void AxialMinimiser::removeSubsets(std::map<int, std::set<int> >& axsegcuts, std
                // first check it's a connection subset
                // note that changes in 10.08 mean that lines no longer connect to themselves
                // this means that the subset 1 connects {2,3} and 2 connects {1,3} are equivalent
-               for (size_t axai = 0, axbi = 0; axai < axa.m_connections.size() && axbi < axb.m_connections.size(); axai++, axbi++) {
-                  // extra 10.08 -> step over connection to b
+               size_t axai = 0;
+               size_t axbi = 0;
+               while (axai < axa.m_connections.size() && axbi < axb.m_connections.size()) {
+                  // Step over the implicit a<->b connection on each side before comparing.
                   if (axa.m_connections[axai] == indextob) {
-                     axai++;
+                     ++axai;
+                     continue;
                   }
-                  // extra 10.08 add axb.m_connections[axbi] == ii -> step over connection to a
-                  while (axbi < axb.m_connections.size() && (axb.m_connections[axbi] == ii || axa.m_connections[axai] > axb.m_connections[axbi])) {
-                     axbi++;
+                  if (axb.m_connections[axbi] == static_cast<int>(ii)) {
+                     ++axbi;
+                     continue;
                   }
-                  if (axbi >= axb.m_connections.size()) {
-                     break;
+                  if (axa.m_connections[axai] == axb.m_connections[axbi]) {
+                     ++coconnecting;
+                     ++axai;
+                     ++axbi;
                   }
-                  else if (axa.m_connections[axai] == axb.m_connections[axbi]) {
-                     coconnecting++;
+                  else if (axa.m_connections[axai] > axb.m_connections[axbi]) {
+                     ++axbi;
                   }
-                  else if (axa.m_connections[axai] < axb.m_connections[axbi]) {
+                  else {
                      break;
                   }
                }
