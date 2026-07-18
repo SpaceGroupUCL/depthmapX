@@ -30,10 +30,12 @@
 #include "genlib/containerutils.h"
 #include "genlib/readwritehelpers.h"
 #include "genlib/pflipper.h"
+#include "genlib/parallel.h"
 
 #include <math.h>
 #include <float.h>
 #include <time.h>
+#include <unordered_map>
 
 #ifndef _WIN32
 #define _finite finite
@@ -66,23 +68,45 @@ void ShapeGraph::makeConnections(const KeyVertices &keyvertices)
    m_keyvertices.clear();
 
    // note, expects these to be numbered 0, 1...
-   int conn_col = m_attributes->getColumnIndex("Connectivity");
-   int leng_col = m_attributes->getColumnIndex("Line Length");
+   const int conn_col = m_attributes->getColumnIndex("Connectivity");
+   const int leng_col = m_attributes->getColumnIndex("Line Length");
+   const size_t shapeCount = m_shapes.size();
+   const double tolerance = TOLERANCE_B * __max(m_region.height(), m_region.width());
 
-   int i = -1;
-   for (auto shape: m_shapes) {
-      i++;
-      int key = shape.first;
-      AttributeRow &row =
-          m_attributes->getRow(AttributeKey(key));
-      // all indices should match...
-      m_connectors.push_back( Connector() );
-      m_connectors[i].m_connections = getLineConnections( key, TOLERANCE_B*__max(m_region.height(),m_region.width()));
-      row.setValue(conn_col, float(m_connectors[i].m_connections.size()) );
-      row.setValue(leng_col, float(shape.second.getLine().length()) );
-      if (keyvertices.size()) {
+   std::vector<int> shapeKeys;
+   std::vector<float> lineLengths;
+   shapeKeys.reserve(shapeCount);
+   lineLengths.reserve(shapeCount);
+
+   std::unordered_map<int, int> shapeIndexLookup;
+   shapeIndexLookup.reserve(shapeCount);
+   int shapeIndex = 0;
+   for (const auto &shape : m_shapes) {
+      shapeKeys.push_back(shape.first);
+      lineLengths.push_back(static_cast<float>(shape.second.getLine().length()));
+      shapeIndexLookup.emplace(shape.first, shapeIndex++);
+   }
+
+   // Connection discovery only reads the completed geometry and spatial index.
+   // Store each line's result in its own connector, then update attributes serially.
+   m_connectors.resize(shapeCount);
+   const size_t workerCount = depthmapX::configuredAnalysisThreadCount(shapeCount);
+   depthmapX::parallelFor(shapeCount, workerCount, nullptr, [&](size_t index, size_t) {
+      m_connectors[index].m_connections =
+          getLineConnections(shapeKeys[index], tolerance, &shapeIndexLookup);
+   });
+
+   if (!keyvertices.empty()) {
+      m_keyvertices.resize(shapeCount);
+   }
+
+   for (size_t index = 0; index < shapeCount; ++index) {
+      AttributeRow &row = m_attributes->getRow(AttributeKey(shapeKeys[index]));
+      row.setValue(conn_col, static_cast<float>(m_connectors[index].m_connections.size()));
+      row.setValue(leng_col, lineLengths[index]);
+      if (!keyvertices.empty()) {
          // note: depends on lines being recorded in same order as keyvertices...
-         m_keyvertices.push_back( keyvertices[i] );
+         m_keyvertices[index] = keyvertices[index];
       }
    }
 
@@ -440,114 +464,111 @@ void ShapeGraph::unlinkFromShapeMap(const ShapeMap& shapemap)
 // Method 1: direct linkage of endpoints where they touch
 
 void ShapeGraph::makeNewSegMap(Communicator *comm) {
-    // now make a connection set from the ends of lines:
-    struct LineConnector {
-        const Line &m_line;
-        Connector &m_connector;
-        int m_index;
-        LineConnector(const Line &line, Connector &connector, int index)
-            : m_line(line), m_connector(connector), m_index(index) {}
+    struct EndpointConnection {
+        size_t m_a;
+        size_t m_b;
+        bool m_aForward;
+        bool m_bForward;
+        int m_aDirection;
+        int m_bDirection;
+        float m_angle;
     };
 
-    std::vector<Connector> connectionset;
-    for (auto &shape : m_shapes) {
+    std::vector<const Line *> segmentLines;
+    segmentLines.reserve(m_shapes.size());
+    std::unordered_map<unsigned int, size_t> lineIndexLookup;
+    lineIndexLookup.reserve(m_shapes.size());
+
+    for (const auto &shape : m_shapes) {
         if (shape.second.isLine()) {
-            connectionset.emplace_back();
-        }
-    }
-    std::map<size_t, LineConnector> lineConnectors;
-    auto connectionIter = connectionset.begin();
-    int connectionIdx = 0;
-    for (auto &shape : m_shapes) {
-        if (shape.second.isLine()) {
-            lineConnectors.insert(std::make_pair(
-                shape.first, LineConnector(shape.second.getLine(), *connectionIter, connectionIdx)));
-            connectionIter++;
-            connectionIdx++;
+            const size_t index = segmentLines.size();
+            segmentLines.push_back(&shape.second.getLine());
+            lineIndexLookup.emplace(static_cast<unsigned int>(shape.first), index);
         }
     }
 
-    time_t atime = 0;
+    std::vector<Connector> connectionset(segmentLines.size());
+    std::vector<std::vector<EndpointConnection>> pendingConnections(segmentLines.size());
+
     if (comm) {
-        qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, lineConnectors.size());
+        comm->CommPostMessage(Communicator::NUM_RECORDS, segmentLines.size());
     }
 
-    double maxdim = __max(m_region.width(), m_region.height());
+    const double maxdim = __max(m_region.width(), m_region.height());
+    const auto &pixelShapes = static_cast<const decltype(m_pixel_shapes) &>(m_pixel_shapes);
+    const size_t workerCount = depthmapX::configuredAnalysisThreadCount(segmentLines.size());
 
-    int count = 0;
-    for (auto &lineConnector_a : lineConnectors) {
-        Connector &connectionset_a = lineConnector_a.second.m_connector;
-        const Line &line_a = lineConnector_a.second.m_line;
-        int idx_a = lineConnector_a.second.m_index;
-        // n.b., vector() is based on t_start and t_end, so we must use t_start and t_end here and throughout
-        PixelRef pix1 = pixelate(line_a.t_start());
-        std::vector<ShapeRef> &shapes1 = m_pixel_shapes(static_cast<size_t>(pix1.y), static_cast<size_t>(pix1.x));
-        for (auto &shape : shapes1) {
-            auto lineConnector_b = lineConnectors.find(shape.m_shape_ref);
-            if (lineConnector_b != lineConnectors.end() && idx_a < lineConnector_b->second.m_index) {
+    // Endpoint discovery is read-only. Each line records private updates,
+    // which are committed below in the original line and pixel order.
+    depthmapX::parallelFor(segmentLines.size(), workerCount, comm, [&](size_t idx_a, size_t) {
+        const Line &line_a = *segmentLines[idx_a];
+        std::vector<EndpointConnection> &updates = pendingConnections[idx_a];
 
-                Connector &connectionset_b = lineConnector_b->second.m_connector;
-                const Line &line_b = lineConnector_b->second.m_line;
-                int idx_b = lineConnector_b->second.m_index;
+        auto inspectEndpoint = [&](const Point2f &endpoint, bool aForward) {
+            const PixelRef pixel = pixelate(endpoint);
+            const std::vector<ShapeRef> &nearbyShapes =
+                pixelShapes(static_cast<size_t>(pixel.y), static_cast<size_t>(pixel.x));
 
+            for (const ShapeRef &shapeRef : nearbyShapes) {
+                const auto lookup = lineIndexLookup.find(shapeRef.m_shape_ref);
+                if (lookup == lineIndexLookup.end() || idx_a >= lookup->second) {
+                    continue;
+                }
+
+                const size_t idx_b = lookup->second;
+                const Line &line_b = *segmentLines[idx_b];
                 Point2f alpha = line_a.vector();
                 Point2f beta = line_b.vector();
                 alpha.normalise();
                 beta.normalise();
-                if (approxeq(line_a.t_start(), line_b.t_start(), (maxdim * TOLERANCE_B))) {
-                    float x = float(2.0 * acos(__min(__max(-dot(alpha, beta), -1.0), 1.0)) / M_PI);
-                    depthmapX::addIfNotExists(connectionset_a.m_back_segconns, SegmentRef(1, idx_b), x);
-                    depthmapX::addIfNotExists(connectionset_b.m_back_segconns, SegmentRef(1, idx_a), x);
-                }
-                if (approxeq(line_a.t_start(), line_b.t_end(), (maxdim * TOLERANCE_B))) {
-                    float x = float(2.0 * acos(__min(__max(-dot(alpha, -beta), -1.0), 1.0)) / M_PI);
-                    depthmapX::addIfNotExists(connectionset_a.m_back_segconns, SegmentRef(-1, idx_b), x);
-                    depthmapX::addIfNotExists(connectionset_b.m_forward_segconns, SegmentRef(1, idx_a), x);
-                }
-            }
-        }
 
-        PixelRef pix2 = pixelate(line_a.t_end());
-        std::vector<ShapeRef> &shapes2 = m_pixel_shapes(static_cast<size_t>(pix2.y), static_cast<size_t>(pix2.x));
-        for (auto &shape : shapes2) {
-            auto lineConnector_b = lineConnectors.find(shape.m_shape_ref);
-            if (lineConnector_b != lineConnectors.end() && idx_a < lineConnector_b->second.m_index) {
-
-                Connector &connectionset_b = lineConnector_b->second.m_connector;
-                const Line &line_b = lineConnector_b->second.m_line;
-                int idx_b = lineConnector_b->second.m_index;
-
-                Point2f alpha = line_a.vector();
-                Point2f beta = line_b.vector();
-
-                alpha.normalise();
-                beta.normalise();
-                if (approxeq(line_a.t_end(), line_b.t_start(), (maxdim * TOLERANCE_B))) {
-                    float x = float(2.0 * acos(__min(__max(-dot(-alpha, beta), -1.0), 1.0)) / M_PI);
-                    depthmapX::addIfNotExists(connectionset_a.m_forward_segconns, SegmentRef(1, idx_b), x);
-                    depthmapX::addIfNotExists(connectionset_b.m_back_segconns, SegmentRef(-1, idx_a), x);
-                }
-                if (approxeq(line_a.t_end(), line_b.t_end(), (maxdim * TOLERANCE_B))) {
-                    float x = float(2.0 * acos(__min(__max(-dot(-alpha, -beta), -1.0), 1.0)) / M_PI);
-                    depthmapX::addIfNotExists(connectionset_a.m_forward_segconns, SegmentRef(-1, idx_b), x);
-                    depthmapX::addIfNotExists(connectionset_b.m_forward_segconns, SegmentRef(-1, idx_a), x);
+                if (!aForward) {
+                    if (approxeq(line_a.t_start(), line_b.t_start(), maxdim * TOLERANCE_B)) {
+                        const float angle =
+                            float(2.0 * acos(__min(__max(-dot(alpha, beta), -1.0), 1.0)) / M_PI);
+                        updates.push_back({idx_a, idx_b, false, false, 1, 1, angle});
+                    }
+                    if (approxeq(line_a.t_start(), line_b.t_end(), maxdim * TOLERANCE_B)) {
+                        const float angle =
+                            float(2.0 * acos(__min(__max(-dot(alpha, -beta), -1.0), 1.0)) / M_PI);
+                        updates.push_back({idx_a, idx_b, false, true, -1, 1, angle});
+                    }
+                } else {
+                    if (approxeq(line_a.t_end(), line_b.t_start(), maxdim * TOLERANCE_B)) {
+                        const float angle =
+                            float(2.0 * acos(__min(__max(-dot(-alpha, beta), -1.0), 1.0)) / M_PI);
+                        updates.push_back({idx_a, idx_b, true, false, 1, -1, angle});
+                    }
+                    if (approxeq(line_a.t_end(), line_b.t_end(), maxdim * TOLERANCE_B)) {
+                        const float angle =
+                            float(2.0 * acos(__min(__max(-dot(-alpha, -beta), -1.0), 1.0)) / M_PI);
+                        updates.push_back({idx_a, idx_b, true, true, -1, -1, angle});
+                    }
                 }
             }
-        }
+        };
 
-        if (comm) {
-            if (qtimer(atime, 500)) {
-                if (comm->IsCancelled()) {
-                    throw Communicator::CancelledException();
-                }
-                comm->CommPostMessage(Communicator::CURRENT_RECORD, count);
-            }
+        inspectEndpoint(line_a.t_start(), false);
+        inspectEndpoint(line_a.t_end(), true);
+    });
+
+    for (size_t idx_a = 0; idx_a < pendingConnections.size(); ++idx_a) {
+        for (const EndpointConnection &update : pendingConnections[idx_a]) {
+            auto &connectionsA = update.m_aForward
+                                     ? connectionset[update.m_a].m_forward_segconns
+                                     : connectionset[update.m_a].m_back_segconns;
+            auto &connectionsB = update.m_bForward
+                                     ? connectionset[update.m_b].m_forward_segconns
+                                     : connectionset[update.m_b].m_back_segconns;
+            depthmapX::addIfNotExists(connectionsA,
+                                      SegmentRef(update.m_aDirection, static_cast<int>(update.m_b)),
+                                      update.m_angle);
+            depthmapX::addIfNotExists(connectionsB,
+                                      SegmentRef(update.m_bDirection, static_cast<int>(update.m_a)),
+                                      update.m_angle);
         }
-        count++;
     }
 
-    // initialise attributes now separated from making the connections
     makeSegmentConnections(connectionset);
 }
 
@@ -565,39 +586,77 @@ void ShapeGraph::makeNewSegMap(Communicator *comm) {
 
 void ShapeGraph::makeSegmentMap(std::vector<Line>& lines, std::vector<Connector>& connectors, double stubremoval)
 {
-   // the first (key) pair is the line / line intersection, second is the pair of associated segments for the first line
+   struct SegmentBreakData {
+      int m_axis = XAXIS;
+      int m_parity = 1;
+      std::vector<std::pair<double, int>> m_breaks;
+   };
+
+   // The first pair identifies a line intersection. The second pair stores
+   // the adjacent segments for the line that was processed first.
    std::map<OrderedIntPair, std::pair<int, int>> segmentlist;
 
-   // this code relies on the polygon order being the same as the connections
+   // Shape order and connector order are positional throughout this routine.
+   const size_t axialCount = m_connectors.size();
+   std::vector<const SalaShape *> axialShapes;
+   std::vector<int> axialRefs;
+   axialShapes.reserve(axialCount);
+   axialRefs.reserve(axialCount);
+   auto shapeIter = m_shapes.begin();
+   for (size_t i = 0; i < axialCount; ++i) {
+      if (shapeIter == m_shapes.end()) {
+         throw depthmapX::RuntimeException("Axial shapes and connectors are inconsistent");
+      }
+      axialRefs.push_back(shapeIter->first);
+      axialShapes.push_back(&shapeIter->second);
+      ++shapeIter;
+   }
 
-   auto iter = m_shapes.begin();
-   for (size_t i = 0; i < m_connectors.size(); i++) {
-      auto shape = iter->second;
-      int axialRef = iter->first;
-      iter++;
+   std::vector<SegmentBreakData> breakData(axialCount);
+   const size_t workerCount = depthmapX::configuredAnalysisThreadCount(axialCount);
+
+   // Intersection calculation and sorting are independent for each axial line.
+   // The actual segment numbering and graph mutation remain serial below.
+   depthmapX::parallelFor(axialCount, workerCount, nullptr, [&](size_t i, size_t) {
+      const SalaShape &shape = *axialShapes[i];
+      if (!shape.isLine()) {
+         return;
+      }
+
+      const Line &line = shape.getLine();
+      SegmentBreakData &data = breakData[i];
+      data.m_axis = line.width() >= line.height() ? XAXIS : YAXIS;
+      data.m_parity = data.m_axis == XAXIS ? 1 : line.sign();
+      const std::vector<int> &connections = m_connectors[i].m_connections;
+      data.m_breaks.reserve(connections.size());
+
+      for (int connection : connections) {
+         if (connection < 0 || static_cast<size_t>(connection) >= axialShapes.size() ||
+             static_cast<int>(i) == connection) {
+            continue;
+         }
+         const SalaShape &connectedShape = *axialShapes[static_cast<size_t>(connection)];
+         if (connectedShape.isLine()) {
+            data.m_breaks.emplace_back(
+                data.m_parity * line.intersection_point(connectedShape.getLine(), data.m_axis, TOLERANCE_A),
+                connection);
+         }
+      }
+      std::sort(data.m_breaks.begin(), data.m_breaks.end());
+   });
+
+   const double effectiveStubRemoval = stubremoval == 0.0 ? TOLERANCE_C : stubremoval;
+
+   for (size_t i = 0; i < axialCount; ++i) {
+      const SalaShape &shape = *axialShapes[i];
+      const int axialRef = axialRefs[i];
       if (!shape.isLine()) {
          continue;
       }
-      const Line& line = shape.getLine();
-      std::vector<std::pair<double,int> > breaks; // this is a vector instead of a map because the
-                                                  // original code allowed for duplicate keys
-      int axis = line.width() >= line.height() ? XAXIS : YAXIS;
-      // we need the breaks ordered from start to end of the line
-      // this is automatic for XAXIS, but on YAXIS, need to know
-      // if the line is ascending or decending
-      int parity = (axis == XAXIS) ? 1 : line.sign();
-
-      auto& connections = m_connectors[i].m_connections;
-      for (size_t j = 0; j < connections.size(); j++) {
-         // find the intersection point and add...
-         // note: more than one break at the same place allowed
-         auto shapeJ = depthmapX::getMapAtIndex(m_shapes, connections[j])->second;
-         if (static_cast<int>(i) != connections[j] && shapeJ.isLine()) {
-            breaks.push_back(std::make_pair(parity * line.intersection_point( shapeJ.getLine(), axis, TOLERANCE_A ),
-                                         connections[j]));
-         }
-      }
-      std::sort(breaks.begin(), breaks.end());
+      const Line &line = shape.getLine();
+      const std::vector<std::pair<double, int>> &breaks = breakData[i].m_breaks;
+      const int axis = breakData[i].m_axis;
+      const int parity = breakData[i].m_parity;
       // okay, now we have a list from one end of the other of lines this line connects with
       Point2f lastpoint = line.start();
       int seg_a = -1, seg_b = -1;
@@ -606,11 +665,8 @@ void ShapeGraph::makeSegmentMap(std::vector<Line>& lines, std::vector<Connector>
       // found in July 2006.  It has been set "high" deliberately (1e-6 = a millionth of the line height / width)
       // in order to catch small errors made by operators or floating point errors in other systems
       // when drawing, for example, three axial lines intersecting
-      if  (stubremoval == 0.0) {
-         // if 0, convert to tolerance
-         stubremoval = TOLERANCE_C;
-      }
-      neardist = (axis == XAXIS) ? (line.width() * stubremoval) : (line.height() * stubremoval);
+      neardist = (axis == XAXIS) ? (line.width() * effectiveStubRemoval)
+                                   : (line.height() * effectiveStubRemoval);
       double overlapdist = (axis == XAXIS) ? (line.width() * TOLERANCE_C) : (line.height() * TOLERANCE_C);
       //
       for (auto breaksIter = breaks.begin(); breaksIter != breaks.end();) {

@@ -33,6 +33,7 @@ set(salalib_SRCS
 add_compile_definitions(_DEPTHMAP SALALIB_LIBRARY)
 
 add_library(${salalib} STATIC ${salalib_SRCS} ${vgamodules_SRCS} ${axialmodules_SRCS} ${segmmodules_SRCS} ${parsers_SRCS})
+target_link_libraries(${salalib} PUBLIC Threads::Threads)
 
 add_subdirectory(vgamodules)
 add_subdirectory(axialmodules)

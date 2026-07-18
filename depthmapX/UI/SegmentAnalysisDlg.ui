@@ -23,7 +23,7 @@
       <item>
        <widget class="QRadioButton" name="c_analysis_type">
         <property name="text">
-         <string>Tulip Analysis (Faster)</string>
+         <string>Tulip Analysis</string>
         </property>
        </widget>
       </item>
@@ -65,7 +65,7 @@
       <item>
        <widget class="QRadioButton" name="c_radio2">
         <property name="text">
-         <string>Full Angular (Slower)</string>
+         <string>Full Angular (Multi-Threaded)</string>
         </property>
        </widget>
       </item>

@@ -17,6 +17,7 @@
 #pragma once
 
 //#include <io.h>
+#include <atomic>
 #include <fstream>
 #include <string>
 #include <chrono>
@@ -66,7 +67,7 @@ class Communicator {
     enum { NUM_STEPS, CURRENT_STEP, NUM_RECORDS, CURRENT_RECORD };
 
   protected:
-    bool m_cancelled;
+    std::atomic_bool m_cancelled;
     bool m_delete_flag;
     // nb. converted to Win32 UTF-16 Unicode path (AT 31.01.11) Linux, MacOS use UTF-8 (AT 29.04.11)
     std::string m_infilename;
@@ -80,7 +81,7 @@ class Communicator {
         m_infile = NULL;
         m_infile2 = NULL;
         m_outfile = NULL;
-        m_cancelled = false;
+        m_cancelled.store(false, std::memory_order_relaxed);
         m_delete_flag = false;
     }
     //
@@ -130,8 +131,8 @@ class Communicator {
     }
     void SetOutfile(const char *filename) { m_outfile = new std::ofstream(filename); }
     //
-    bool IsCancelled() const { return m_cancelled; }
-    void Cancel() { m_cancelled = true; }
+    bool IsCancelled() const { return m_cancelled.load(std::memory_order_acquire); }
+    void Cancel() { m_cancelled.store(true, std::memory_order_release); }
     //
     std::ifstream &getInFileStream() { return *m_infile; }
     std::ifstream &GetInfile2() { return *m_infile2; }

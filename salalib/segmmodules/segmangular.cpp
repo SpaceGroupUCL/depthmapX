@@ -19,7 +19,11 @@
 #include "salalib/segmmodules/segmangular.h"
 #include "salalib/options.h"
 
+#include "genlib/parallel.h"
 #include "genlib/stringutils.h"
+
+#include <algorithm>
+#include <cstdint>
 
 bool SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
 
@@ -28,12 +32,7 @@ bool SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
     }
 
     AttributeTable &attributes = map.getAttributeTable();
-
-    time_t atime = 0;
-    if (comm) {
-        qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, map.getConnections().size());
-    }
+    const size_t shapeCount = map.getShapeCount();
 
     // note: radius must be sorted lowest to highest, but if -1 occurs ("radius n") it needs to be last...
     // ...to ensure no mess ups, we'll re-sort here:
@@ -50,121 +49,128 @@ bool SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
         radii.push_back(-1.0);
     }
 
-    std::vector<int> depth_col, count_col, total_col;
-    // first enter table values
-    for (int radius : radii) {
+    std::vector<int> depth_col, count_col, total_col, integration_col;
+    for (double radius : radii) {
         std::string radius_text = makeRadiusText(Options::RADIUS_ANGULAR, radius);
-        std::string depth_col_text = std::string("Angular Mean Depth") + radius_text;
-        attributes.insertOrResetColumn(depth_col_text.c_str());
-        std::string count_col_text = std::string("Angular Node Count") + radius_text;
-        attributes.insertOrResetColumn(count_col_text.c_str());
-        std::string total_col_text = std::string("Angular Total Depth") + radius_text;
-        attributes.insertOrResetColumn(total_col_text.c_str());
+        depth_col.push_back(attributes.insertOrResetColumn(std::string("Angular Mean Depth") + radius_text));
+        count_col.push_back(attributes.insertOrResetColumn(std::string("Angular Node Count") + radius_text));
+        total_col.push_back(attributes.insertOrResetColumn(std::string("Angular Total Depth") + radius_text));
+        integration_col.push_back(attributes.insertOrResetColumn(std::string("Angular Integration") + radius_text));
     }
 
-    for (int radius : radii) {
-        std::string radius_text = makeRadiusText(Options::RADIUS_ANGULAR, radius);
-        std::string depth_col_text = std::string("Angular Mean Depth") + radius_text;
-        depth_col.push_back(attributes.getColumnIndex(depth_col_text.c_str()));
-        std::string count_col_text = std::string("Angular Node Count") + radius_text;
-        count_col.push_back(attributes.getColumnIndex(count_col_text.c_str()));
-        std::string total_col_text = std::string("Angular Total Depth") + radius_text;
-        total_col.push_back(attributes.getColumnIndex(total_col_text.c_str()));
+    if (comm) {
+        comm->CommPostMessage(Communicator::NUM_RECORDS, static_cast<int>(shapeCount));
     }
 
-    std::vector<bool> covered(map.getShapeCount());
-    size_t i = 0;
-    for (auto & iter : attributes){
-        for (size_t j = 0; j < map.getShapeCount(); j++) {
-            covered[j] = false;
-        }
+    const size_t radiusCount = radii.size();
+    std::vector<double> resultDepth(shapeCount * radiusCount, -1.0);
+    std::vector<int> resultCount(shapeCount * radiusCount, 0);
+
+    const size_t bytesPerWorker = shapeCount * sizeof(std::uint8_t);
+    const size_t workerCount = depthmapX::configuredAnalysisThreadCount(shapeCount, bytesPerWorker);
+    std::vector<std::vector<std::uint8_t>> covered(workerCount, std::vector<std::uint8_t>(shapeCount));
+
+    depthmapX::parallelFor(shapeCount, workerCount, comm, [&](size_t root, size_t worker) {
+        std::vector<std::uint8_t> &workerCovered = covered[worker];
+        std::fill(workerCovered.begin(), workerCovered.end(), std::uint8_t(0));
+
         std::vector<std::pair<float, SegmentData>> anglebins;
-        anglebins.push_back(std::make_pair(0.0f, SegmentData(0, i, SegmentRef(), 0, 0.0, 0)));
+        anglebins.push_back(std::make_pair(0.0f, SegmentData(0, root, SegmentRef(), 0, 0.0, 0)));
 
-        std::vector<double> total_depth;
-        std::vector<int> node_count;
-        for (size_t r = 0; r < radii.size(); r++) {
-            total_depth.push_back(0.0);
-            node_count.push_back(0);
-        }
-        // node_count includes this one, but will be added in next algo:
-        while (anglebins.size()) {
-            auto iter = anglebins.begin();
-            SegmentData lineindex = iter->second;
-            if (!covered[lineindex.ref]) {
-                covered[lineindex.ref] = true;
-                double depth_to_line = iter->first;
-                total_depth[lineindex.coverage] += depth_to_line;
-                node_count[lineindex.coverage] += 1;
-                anglebins.erase(iter);
-                Connector &line = map.getConnections()[lineindex.ref];
+        std::vector<double> totalDepth(radiusCount, 0.0);
+        std::vector<int> nodeCount(radiusCount, 0);
+        size_t processed = 0;
+
+        while (!anglebins.empty()) {
+            if (comm && ((processed++ & 0x3ff) == 0) && comm->IsCancelled()) {
+                throw Communicator::CancelledException();
+            }
+
+            auto angleIter = anglebins.begin();
+            SegmentData lineindex = angleIter->second;
+            if (!workerCovered[lineindex.ref]) {
+                workerCovered[lineindex.ref] = 1;
+                const double depthToLine = angleIter->first;
+                totalDepth[lineindex.coverage] += depthToLine;
+                nodeCount[lineindex.coverage] += 1;
+                anglebins.erase(angleIter);
+
+                const Connector &line = map.getConnections()[lineindex.ref];
                 if (lineindex.dir != -1) {
-                    for (auto &segconn : line.m_forward_segconns) {
-                        if (!covered[segconn.first.ref]) {
-                            double angle = depth_to_line + segconn.second;
+                    for (const auto &segconn : line.m_forward_segconns) {
+                        if (!workerCovered[segconn.first.ref]) {
+                            const double angle = depthToLine + segconn.second;
                             size_t rbin = lineindex.coverage;
-                            while (rbin != radii.size() && radii[rbin] != -1 && angle > radii[rbin]) {
-                                rbin++;
+                            while (rbin != radiusCount && radii[rbin] != -1 && angle > radii[rbin]) {
+                                ++rbin;
                             }
-                            if (rbin != radii.size()) {
+                            if (rbin != radiusCount) {
                                 depthmapX::insert_sorted(
-                                    anglebins, std::make_pair(float(angle),
-                                                              SegmentData(segconn.first, SegmentRef(), 0, 0.0, rbin)));
+                                    anglebins,
+                                    std::make_pair(float(angle), SegmentData(segconn.first, SegmentRef(), 0, 0.0, rbin)));
                             }
                         }
                     }
                 }
                 if (lineindex.dir != 1) {
-                    for (auto &segconn : line.m_back_segconns) {
-                        if (!covered[segconn.first.ref]) {
-                            double angle = depth_to_line + segconn.second;
+                    for (const auto &segconn : line.m_back_segconns) {
+                        if (!workerCovered[segconn.first.ref]) {
+                            const double angle = depthToLine + segconn.second;
                             size_t rbin = lineindex.coverage;
-                            while (rbin != radii.size() && radii[rbin] != -1 && angle > radii[rbin]) {
-                                rbin++;
+                            while (rbin != radiusCount && radii[rbin] != -1 && angle > radii[rbin]) {
+                                ++rbin;
                             }
-                            if (rbin != radii.size()) {
+                            if (rbin != radiusCount) {
                                 depthmapX::insert_sorted(
-                                    anglebins, std::make_pair(float(angle),
-                                                              SegmentData(segconn.first, SegmentRef(), 0, 0.0, rbin)));
+                                    anglebins,
+                                    std::make_pair(float(angle), SegmentData(segconn.first, SegmentRef(), 0, 0.0, rbin)));
                             }
                         }
                     }
                 }
             } else {
-                anglebins.erase(iter);
+                anglebins.erase(angleIter);
             }
         }
-        AttributeRow &row = iter.getRow();
-        // set the attributes for this node:
-        int curs_node_count = 0;
-        double curs_total_depth = 0.0;
-        for (size_t r = 0; r < radii.size(); r++) {
-            curs_node_count += node_count[r];
-            curs_total_depth += total_depth[r];
-            row.setValue(count_col[r], float(curs_node_count));
-            if (curs_node_count > 1) {
-                // note -- node_count includes this one -- mean depth as per p.108 Social Logic of Space
-                double mean_depth = curs_total_depth / double(curs_node_count - 1);
-                row.setValue(depth_col[r], float(mean_depth));
-                row.setValue(total_col[r], float(curs_total_depth));
+
+        int cumulativeCount = 0;
+        double cumulativeDepth = 0.0;
+        for (size_t radiusIndex = 0; radiusIndex < radiusCount; ++radiusIndex) {
+            cumulativeCount += nodeCount[radiusIndex];
+            cumulativeDepth += totalDepth[radiusIndex];
+            const size_t resultIndex = root * radiusCount + radiusIndex;
+            resultCount[resultIndex] = cumulativeCount;
+            resultDepth[resultIndex] = cumulativeDepth;
+        }
+    });
+
+    size_t root = 0;
+    for (auto &attributeIter : attributes) {
+        if (comm && ((root & 0x3ff) == 0) && comm->IsCancelled()) {
+            throw Communicator::CancelledException();
+        }
+        AttributeRow &row = attributeIter.getRow();
+        for (size_t radiusIndex = 0; radiusIndex < radiusCount; ++radiusIndex) {
+            const size_t resultIndex = root * radiusCount + radiusIndex;
+            const int nodeCount = resultCount[resultIndex];
+            const double totalDepth = resultDepth[resultIndex];
+            row.setValue(count_col[radiusIndex], float(nodeCount));
+            if (nodeCount > 1) {
+                row.setValue(depth_col[radiusIndex], float(totalDepth / double(nodeCount - 1)));
+                row.setValue(total_col[radiusIndex], float(totalDepth));
+                row.setValue(integration_col[radiusIndex],
+                             totalDepth > 1e-9 ? float(double(nodeCount) * double(nodeCount) / totalDepth)
+                                                : -1.0f);
             } else {
-                row.setValue(depth_col[r], -1);
-                row.setValue(total_col[r], -1);
+                row.setValue(depth_col[radiusIndex], -1.0f);
+                row.setValue(total_col[radiusIndex], -1.0f);
+                row.setValue(integration_col[radiusIndex], -1.0f);
             }
         }
-        //
-        if (comm) {
-            if (qtimer(atime, 500)) {
-                if (comm->IsCancelled()) {
-                    throw Communicator::CancelledException();
-                }
-                comm->CommPostMessage(Communicator::CURRENT_RECORD, i);
-            }
-        }
-        i++;
+        ++root;
     }
 
-    map.setDisplayedAttribute(-2); // <- override if it's already showing
+    map.setDisplayedAttribute(-2);
     map.setDisplayedAttribute(depth_col.back());
 
     return true;

@@ -37,6 +37,7 @@ include_directories(".")
 set(APP_BRANCH "unknown")
 set(APP_COMMIT "unknown")
 find_package(Git QUIET)
+find_package(Threads REQUIRED)
 if (GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     execute_process(
         COMMAND "${GIT_EXECUTABLE}" rev-parse --abbrev-ref HEAD

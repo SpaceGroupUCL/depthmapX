@@ -2061,14 +2061,15 @@ int ShapeMap::connectIntersected(int rowid, bool linegraph) {
 // use the other version, getShapeConnections for arbitrary shape-shape connections
 // note, connections are listed by rowid in list, *not* reference number
 // (so they may vary: must be checked carefully when shapes are removed / added)
-std::vector<int> ShapeMap::getLineConnections(int lineref, double tolerance) {
+std::vector<int> ShapeMap::getLineConnections(
+    int lineref, double tolerance, const std::unordered_map<int, int> *shapeIndexLookup) const {
     std::vector<int> connections;
 
-    SalaShape &poly = m_shapes.find(lineref)->second;
-    if (!poly.isLine()) {
-        return std::vector<int>();
+    const auto polyIter = m_shapes.find(lineref);
+    if (polyIter == m_shapes.end() || !polyIter->second.isLine()) {
+        return connections;
     }
-    const Line &l = poly.getLine();
+    const Line &l = polyIter->second.getLine();
 
     std::unordered_set<ShapeRef, ShapeRefHash> shapesToTest;
 
@@ -2091,13 +2092,27 @@ std::vector<int> ShapeMap::getLineConnections(int lineref, double tolerance) {
     }
     for (ShapeRef shape : shapesToTest) {
         if ((shape.m_tags & ShapeRef::SHAPE_OPEN) == ShapeRef::SHAPE_OPEN) {
-            const Line &line = m_shapes.find(int(shape.m_shape_ref))->second.getLine();
+            const auto shapeIter = m_shapes.find(static_cast<int>(shape.m_shape_ref));
+            if (shapeIter == m_shapes.end()) {
+                continue;
+            }
+            const Line &line = shapeIter->second.getLine();
             if (intersect_region(line, l, line.length() * tolerance)) {
                 // n.b. originally this followed the logic that we must normalise intersect_line properly: tolerance *
                 // line length one * line length two in fact, works better if it's just line.length() * tolerance...
                 if (intersect_line(line, l, line.length() * tolerance)) {
-                    depthmapX::insert_sorted(connections,
-                                             depthmapX::findIndexFromKey(m_shapes, int(shape.m_shape_ref)));
+                    int shapeIndex = -1;
+                    if (shapeIndexLookup) {
+                        const auto indexIter = shapeIndexLookup->find(static_cast<int>(shape.m_shape_ref));
+                        if (indexIter != shapeIndexLookup->end()) {
+                            shapeIndex = indexIter->second;
+                        }
+                    } else {
+                        shapeIndex = depthmapX::findIndexFromKey(m_shapes, int(shape.m_shape_ref));
+                    }
+                    if (shapeIndex >= 0) {
+                        depthmapX::insert_sorted(connections, shapeIndex);
+                    }
                 }
             }
         }
