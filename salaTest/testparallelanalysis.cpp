@@ -14,6 +14,7 @@
 #include "salalib/mgraph.h"
 #include "salalib/segmmodules/segmangular.h"
 #include "salalib/segmmodules/segmmetric.h"
+#include "salalib/segmmodules/segmtulip.h"
 #include "salalib/segmmodules/segmtopological.h"
 
 #include <cmath>
@@ -181,29 +182,6 @@ void requireSameAttributes(const ShapeGraph &serial, const ShapeGraph &parallel)
     }
 }
 
-void requireAngularIntegration(const ShapeGraph &graph, const std::vector<std::string> &radiusSuffixes) {
-    const AttributeTable &attributes = graph.getAttributeTable();
-    for (const std::string &suffix : radiusSuffixes) {
-        const int countColumn = attributes.getColumnIndex(std::string("Angular Node Count") + suffix);
-        const int totalDepthColumn = attributes.getColumnIndex(std::string("Angular Total Depth") + suffix);
-        const int integrationColumn = attributes.getColumnIndex(std::string("Angular Integration") + suffix);
-        REQUIRE(countColumn != -1);
-        REQUIRE(totalDepthColumn != -1);
-        REQUIRE(integrationColumn != -1);
-
-        for (size_t rowIndex = 0; rowIndex < graph.getShapeCount(); ++rowIndex) {
-            const AttributeRow &row = graph.getAttributeRowFromShapeIndex(rowIndex);
-            const double count = row.getValue(countColumn);
-            const double totalDepth = row.getValue(totalDepthColumn);
-            const double integration = row.getValue(integrationColumn);
-            if (totalDepth > 1e-9) {
-                REQUIRE(integration == Approx(count * count / totalDepth).epsilon(1e-5));
-            } else {
-                REQUIRE(integration == Approx(-1.0));
-            }
-        }
-    }
-}
 
 } // namespace
 
@@ -241,8 +219,6 @@ TEST_CASE("Parallel segment analyses match single-thread analyses") {
     }
 
     requireSameAttributes(*serial, *parallel);
-    requireAngularIntegration(*serial, {" R1.00", ""});
-    requireAngularIntegration(*parallel, {" R1.00", ""});
 }
 
 TEST_CASE("Parallel line connection discovery matches single-thread discovery") {
@@ -331,4 +307,64 @@ TEST_CASE("Parallel axial-to-segment conversion matches single-thread conversion
     requireSameGraphGeometryAndConnections(*serial, *parallel);
     requireSameSegmentConnections(*serial, *parallel);
     requireSameAttributes(*serial, *parallel);
+}
+
+
+TEST_CASE("Parallel Tulip analysis without Choice matches single-thread analysis") {
+    std::unique_ptr<ShapeGraph> serial = makeSegmentGraph();
+    std::unique_ptr<ShapeGraph> parallel = makeSegmentGraph();
+
+    const int serialWeight = serial->getAttributeTable().insertOrResetColumn("Tulip Weight");
+    const int parallelWeight = parallel->getAttributeTable().insertOrResetColumn("Tulip Weight");
+    const int serialRouteWeight = serial->getAttributeTable().insertOrResetColumn("Tulip Route Weight");
+    const int parallelRouteWeight = parallel->getAttributeTable().insertOrResetColumn("Tulip Route Weight");
+    for (size_t row = 0; row < serial->getShapeCount(); ++row) {
+        const float weight = static_cast<float>(1 + (row % 5));
+        const float routeWeight = static_cast<float>(1 + (row % 7));
+        serial->getAttributeRowFromShapeIndex(row).setValue(serialWeight, weight);
+        parallel->getAttributeRowFromShapeIndex(row).setValue(parallelWeight, weight);
+        serial->getAttributeRowFromShapeIndex(row).setValue(serialRouteWeight, routeWeight);
+        parallel->getAttributeRowFromShapeIndex(row).setValue(parallelRouteWeight, routeWeight);
+    }
+
+    {
+        AnalysisThreadSetting threads("1");
+        REQUIRE(SegmentTulip({1.0, 2.0, -1.0}, false, 1024, serialWeight, Options::RADIUS_STEPS, false)
+                    .run(nullptr, *serial, false));
+        REQUIRE(SegmentTulip({0.5, 1.0, -1.0}, false, 1024, serialWeight, Options::RADIUS_ANGULAR, false)
+                    .run(nullptr, *serial, false));
+        REQUIRE(SegmentTulip({2.0, 5.0, -1.0}, false, 1024, serialWeight, Options::RADIUS_METRIC, false, false, -1,
+                             serialRouteWeight)
+                    .run(nullptr, *serial, false));
+    }
+    {
+        AnalysisThreadSetting threads("4");
+        REQUIRE(SegmentTulip({1.0, 2.0, -1.0}, false, 1024, parallelWeight, Options::RADIUS_STEPS, false)
+                    .run(nullptr, *parallel, false));
+        REQUIRE(SegmentTulip({0.5, 1.0, -1.0}, false, 1024, parallelWeight, Options::RADIUS_ANGULAR, false)
+                    .run(nullptr, *parallel, false));
+        REQUIRE(SegmentTulip({2.0, 5.0, -1.0}, false, 1024, parallelWeight, Options::RADIUS_METRIC, false, false, -1,
+                             parallelRouteWeight)
+                    .run(nullptr, *parallel, false));
+    }
+
+    requireSameAttributes(*serial, *parallel);
+}
+
+TEST_CASE("Tulip Choice remains serial and matches regardless of thread setting") {
+    std::unique_ptr<ShapeGraph> serial = makeSegmentGraph();
+    std::unique_ptr<ShapeGraph> requestedParallel = makeSegmentGraph();
+
+    {
+        AnalysisThreadSetting threads("1");
+        REQUIRE(SegmentTulip({1.0, -1.0}, false, 1024, -1, Options::RADIUS_STEPS, true)
+                    .run(nullptr, *serial, false));
+    }
+    {
+        AnalysisThreadSetting threads("4");
+        REQUIRE(SegmentTulip({1.0, -1.0}, false, 1024, -1, Options::RADIUS_STEPS, true)
+                    .run(nullptr, *requestedParallel, false));
+    }
+
+    requireSameAttributes(*serial, *requestedParallel);
 }

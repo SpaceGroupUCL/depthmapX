@@ -49,13 +49,12 @@ bool SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
         radii.push_back(-1.0);
     }
 
-    std::vector<int> depth_col, count_col, total_col, integration_col;
+    std::vector<int> depth_col, count_col, total_col;
     for (double radius : radii) {
         std::string radius_text = makeRadiusText(Options::RADIUS_ANGULAR, radius);
         depth_col.push_back(attributes.insertOrResetColumn(std::string("Angular Mean Depth") + radius_text));
         count_col.push_back(attributes.insertOrResetColumn(std::string("Angular Node Count") + radius_text));
         total_col.push_back(attributes.insertOrResetColumn(std::string("Angular Total Depth") + radius_text));
-        integration_col.push_back(attributes.insertOrResetColumn(std::string("Angular Integration") + radius_text));
     }
 
     if (comm) {
@@ -158,13 +157,9 @@ bool SegmentAngular::run(Communicator *comm, ShapeGraph &map, bool) {
             if (nodeCount > 1) {
                 row.setValue(depth_col[radiusIndex], float(totalDepth / double(nodeCount - 1)));
                 row.setValue(total_col[radiusIndex], float(totalDepth));
-                row.setValue(integration_col[radiusIndex],
-                             totalDepth > 1e-9 ? float(double(nodeCount) * double(nodeCount) / totalDepth)
-                                                : -1.0f);
             } else {
                 row.setValue(depth_col[radiusIndex], -1.0f);
                 row.setValue(total_col[radiusIndex], -1.0f);
-                row.setValue(integration_col[radiusIndex], -1.0f);
             }
         }
         ++root;

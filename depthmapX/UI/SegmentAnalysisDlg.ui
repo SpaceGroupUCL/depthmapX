@@ -23,7 +23,7 @@
       <item>
        <widget class="QRadioButton" name="c_analysis_type">
         <property name="text">
-         <string>Tulip Analysis</string>
+         <string>Tulip Analysis (Multi-Threaded)</string>
         </property>
        </widget>
       </item>
@@ -58,7 +58,7 @@
       <item>
        <widget class="QCheckBox" name="c_choice">
         <property name="text">
-         <string>Include choice (betweenness)</string>
+         <string>Include choice (betweenness — Serial / Slower)</string>
         </property>
        </widget>
       </item>
