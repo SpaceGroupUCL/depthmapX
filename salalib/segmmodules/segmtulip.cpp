@@ -18,7 +18,10 @@
 
 #include "salalib/segmmodules/segmtulip.h"
 
+#include "genlib/parallel.h"
 #include "genlib/stringutils.h"
+
+#include <cstdint>
 
 bool SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
 
@@ -339,6 +342,257 @@ bool SegmentTulip::run(Communicator *comm, ShapeGraph &map, bool) {
     int radiusmask = 0;
     for (int i = 0; i < radiussize; i++) {
         radiusmask |= (1 << i);
+    }
+
+    // Choice accumulates data across all origins and therefore keeps the original
+    // serial implementation below. Without Choice, each origin is independent and can
+    // safely run with private traversal state on a worker thread.
+    if (!m_choice) {
+        const size_t shapeCount = map.getConnections().size();
+        std::vector<size_t> roots;
+        roots.reserve(shapeCount);
+        for (size_t cursor = 0; cursor < shapeCount; ++cursor) {
+            if (!m_sel_only || map.getAttributeRowFromShapeIndex(cursor).isSelected()) {
+                roots.push_back(cursor);
+            }
+        }
+
+        struct TulipResult {
+            double nodeCount = 0.0;
+            double totalDepth = 0.0;
+            double totalWeight = 0.0;
+            double totalWeightedDepth = 0.0;
+        };
+
+        struct TulipWorkerState {
+            std::vector<std::vector<SegmentData>> bins;
+            std::vector<unsigned int> uncovered;
+            std::vector<int> depths;
+
+            TulipWorkerState(size_t binCount, size_t shapeCount, size_t radiusCount)
+                : bins(binCount), uncovered(shapeCount * 2), depths(shapeCount * radiusCount * 2) {}
+        };
+
+        const size_t resultStride = static_cast<size_t>(radiussize);
+        std::vector<TulipResult> results(roots.size() * resultStride);
+
+        const size_t bytesPerWorker =
+            shapeCount * 2 * sizeof(unsigned int) +
+            shapeCount * resultStride * 2 * sizeof(int) +
+            static_cast<size_t>(tulip_bins) * sizeof(std::vector<SegmentData>);
+        const size_t workerCount = depthmapX::configuredAnalysisThreadCount(roots.size(), bytesPerWorker);
+
+        std::vector<TulipWorkerState> workerStates;
+        workerStates.reserve(workerCount);
+        for (size_t worker = 0; worker < workerCount; ++worker) {
+            workerStates.emplace_back(static_cast<size_t>(tulip_bins), shapeCount, resultStride);
+        }
+
+        auto depthIndex = [resultStride](size_t ref, size_t radiusIndex, int dir) {
+            return ((ref * resultStride + radiusIndex) * 2) + static_cast<size_t>(dir);
+        };
+        auto uncoveredIndex = [](size_t ref, int dir) {
+            return ref * 2 + static_cast<size_t>(dir);
+        };
+
+        depthmapX::parallelFor(roots.size(), workerCount, comm, [&](size_t task, size_t workerIndex) {
+            const size_t cursor = roots[task];
+            TulipWorkerState &state = workerStates[workerIndex];
+
+            for (std::vector<SegmentData> &bin : state.bins) {
+                bin.clear();
+            }
+            std::fill(state.uncovered.begin(), state.uncovered.end(), static_cast<unsigned int>(radiusmask));
+            std::fill(state.depths.begin(), state.depths.end(), 0);
+
+            const double rootseglength = lengths[cursor];
+            SegmentData rootData(0, static_cast<int>(cursor), SegmentRef(), 0,
+                                 static_cast<float>(0.5 * rootseglength), radiusmask);
+            auto rootIter = std::lower_bound(state.bins[0].begin(), state.bins[0].end(), rootData);
+            if (rootIter == state.bins[0].end() || rootData != *rootIter) {
+                state.bins[0].insert(rootIter, rootData);
+            }
+
+            int depthlevel = 0;
+            int opencount = 1;
+            size_t currentbin = 0;
+            size_t processed = 0;
+            while (opencount) {
+                if (comm && ((processed++ & 0x3ff) == 0) && comm->IsCancelled()) {
+                    throw Communicator::CancelledException();
+                }
+
+                while (state.bins[currentbin].empty()) {
+                    ++depthlevel;
+                    ++currentbin;
+                    if (currentbin == static_cast<size_t>(tulip_bins)) {
+                        currentbin = 0;
+                    }
+                }
+
+                SegmentData lineindex = state.bins[currentbin].back();
+                state.bins[currentbin].pop_back();
+                --opencount;
+
+                const int ref = lineindex.ref;
+                const int dir = (lineindex.dir == 1) ? 0 : 1;
+                const unsigned int coverage =
+                    lineindex.coverage & state.uncovered[uncoveredIndex(static_cast<size_t>(ref), dir)];
+                if (coverage == 0) {
+                    continue;
+                }
+
+                int rbin = 0;
+                int rbinbase = 0;
+                if (lineindex.previous.ref != -1) {
+                    state.uncovered[uncoveredIndex(static_cast<size_t>(ref), dir)] &= ~coverage;
+                    while (((coverage >> rbin) & 0x1U) == 0U) {
+                        ++rbin;
+                    }
+                    rbinbase = rbin;
+                    while (rbin < radiussize) {
+                        if (((coverage >> rbin) & 0x1U) == 1U) {
+                            state.depths[depthIndex(static_cast<size_t>(ref), static_cast<size_t>(rbin), dir)] =
+                                depthlevel;
+                        }
+                        ++rbin;
+                    }
+                } else {
+                    state.uncovered[uncoveredIndex(static_cast<size_t>(ref), 0)] &= ~coverage;
+                    state.uncovered[uncoveredIndex(static_cast<size_t>(ref), 1)] &= ~coverage;
+                }
+
+                const Connector &line = map.getConnections()[static_cast<size_t>(ref)];
+                auto addConnections = [&](const std::map<SegmentRef, float> &connections, char previousDirection) {
+                    for (const auto &segconn : connections) {
+                        rbin = rbinbase;
+                        const SegmentRef conn = segconn.first;
+                        const int connDir = (conn.dir == 1) ? 0 : 1;
+                        if ((state.uncovered[uncoveredIndex(static_cast<size_t>(conn.ref), connDir)] & coverage) == 0) {
+                            continue;
+                        }
+
+                        const int extradepth = routeweight_col != -1
+                                                   ? static_cast<int>(floor(segconn.second * tulip_bins * 0.5 *
+                                                                            routeweights[static_cast<size_t>(conn.ref)]))
+                                                   : static_cast<int>(floor(segconn.second * tulip_bins * 0.5));
+                        const float seglength = lengths[static_cast<size_t>(conn.ref)];
+
+                        switch (m_radius_type) {
+                        case Options::RADIUS_ANGULAR:
+                            while (rbin != radiussize && radius[static_cast<size_t>(rbin)] != -1 &&
+                                   depthlevel + extradepth > static_cast<int>(radius[static_cast<size_t>(rbin)])) {
+                                ++rbin;
+                            }
+                            break;
+                        case Options::RADIUS_METRIC:
+                            while (rbin != radiussize && radius[static_cast<size_t>(rbin)] != -1 &&
+                                   lineindex.metricdepth + seglength * 0.5 > radius[static_cast<size_t>(rbin)]) {
+                                ++rbin;
+                            }
+                            break;
+                        case Options::RADIUS_STEPS:
+                            if (rbin != radiussize && radius[static_cast<size_t>(rbin)] != -1 &&
+                                lineindex.segdepth >= static_cast<int>(radius[static_cast<size_t>(rbin)])) {
+                                ++rbin;
+                            }
+                            break;
+                        }
+
+                        if ((coverage >> rbin) != 0U) {
+                            SegmentData next(conn, SegmentRef(previousDirection, lineindex.ref),
+                                             lineindex.segdepth + 1, lineindex.metricdepth + seglength,
+                                             (coverage >> rbin) << rbin);
+                            const size_t bin =
+                                (currentbin + static_cast<size_t>(tulip_bins) + static_cast<size_t>(extradepth)) %
+                                static_cast<size_t>(tulip_bins);
+                            depthmapX::insert_sorted(state.bins[bin], next);
+                            ++opencount;
+                        }
+                    }
+                };
+
+                if (lineindex.dir != -1) {
+                    addConnections(line.m_forward_segconns, 1);
+                }
+                if (lineindex.dir != 1) {
+                    addConnections(line.m_back_segconns, -1);
+                }
+            }
+
+            for (int radiusIndex = 0; radiusIndex < radiussize; ++radiusIndex) {
+                TulipResult result;
+                for (size_t ref = 0; ref < shapeCount; ++ref) {
+                    const bool reached0 =
+                        ((state.uncovered[uncoveredIndex(ref, 0)] >> radiusIndex) & 0x1U) == 0U;
+                    const bool reached1 =
+                        ((state.uncovered[uncoveredIndex(ref, 1)] >> radiusIndex) & 0x1U) == 0U;
+                    if (!reached0 && !reached1) {
+                        continue;
+                    }
+
+                    int reachedDir;
+                    if (reached0 && reached1) {
+                        const int depth0 = state.depths[depthIndex(ref, static_cast<size_t>(radiusIndex), 0)];
+                        const int depth1 = state.depths[depthIndex(ref, static_cast<size_t>(radiusIndex), 1)];
+                        reachedDir = depth0 < depth1 ? 0 : 1;
+                    } else {
+                        reachedDir = reached0 ? 0 : 1;
+                    }
+
+                    const int reachedDepth =
+                        state.depths[depthIndex(ref, static_cast<size_t>(radiusIndex), reachedDir)];
+                    result.nodeCount += 1.0;
+                    result.totalDepth += reachedDepth;
+                    result.totalWeight += weights[ref];
+                    result.totalWeightedDepth += reachedDepth * weights[ref];
+                }
+
+                result.totalDepth /= ((tulip_bins - 1.0f) * 0.5f);
+                result.totalWeightedDepth /= ((tulip_bins - 1.0f) * 0.5f);
+                results[task * resultStride + static_cast<size_t>(radiusIndex)] = result;
+            }
+        });
+
+        for (size_t task = 0; task < roots.size(); ++task) {
+            AttributeRow &row = map.getAttributeRowFromShapeIndex(roots[task]);
+            for (size_t radiusIndex = 0; radiusIndex < resultStride; ++radiusIndex) {
+                const TulipResult &result = results[task * resultStride + radiusIndex];
+                row.setValue(count_col[radiusIndex], static_cast<float>(result.nodeCount));
+                if (result.nodeCount > 1.0) {
+                    row.setValue(td_col[radiusIndex], static_cast<float>(result.totalDepth));
+                    if (m_weighted_measure_col != -1) {
+                        row.setValue(total_weight_col[radiusIndex], static_cast<float>(result.totalWeight));
+                        row.setValue(w_td_col[radiusIndex], static_cast<float>(result.totalWeightedDepth));
+                    }
+                } else {
+                    row.setValue(td_col[radiusIndex], -1.0f);
+                    if (m_weighted_measure_col != -1) {
+                        row.setValue(total_weight_col[radiusIndex], -1.0f);
+                        row.setValue(w_td_col[radiusIndex], -1.0f);
+                    }
+                }
+
+                if (result.totalDepth > 1e-9) {
+                    row.setValue(integ_col[radiusIndex],
+                                 static_cast<float>(result.nodeCount * result.nodeCount / result.totalDepth));
+                    if (m_weighted_measure_col != -1) {
+                        row.setValue(w_integ_col[radiusIndex],
+                                     static_cast<float>(result.totalWeight * result.totalWeight /
+                                                        result.totalWeightedDepth));
+                    }
+                } else {
+                    row.setValue(integ_col[radiusIndex], -1.0f);
+                    if (m_weighted_measure_col != -1) {
+                        row.setValue(w_integ_col[radiusIndex], -1.0f);
+                    }
+                }
+            }
+        }
+
+        map.setDisplayedAttribute(-2);
+        map.setDisplayedAttribute(td_col.back());
+        return !roots.empty();
     }
 
     for (size_t cursor = 0; cursor < map.getConnections().size(); cursor++) {

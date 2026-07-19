@@ -18,196 +18,222 @@
 
 #include "salalib/segmmodules/segmtopological.h"
 
+#include "genlib/parallel.h"
 #include "genlib/stringutils.h"
 
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+
+namespace {
+struct SegmentTopologicalResult {
+    double meanDepth = -1.0;
+    double weightedMeanDepth = -1.0;
+    double totalDepth = -1.0;
+    double totalNodes = 0.0;
+    double totalLength = 0.0;
+};
+
+struct SegmentTopologicalWorkerState {
+    std::vector<unsigned int> seen;
+    std::vector<TopoMetSegmentRef> audittrail;
+    std::array<std::vector<int>, 512> bins;
+    std::vector<TopoMetSegmentChoice> choice;
+
+    SegmentTopologicalWorkerState(size_t shapeCount, bool calculateChoice)
+        : seen(shapeCount), audittrail(shapeCount), choice(calculateChoice ? shapeCount : 0) {}
+};
+} // namespace
+
 bool SegmentTopological::run(Communicator *comm, ShapeGraph &map, bool) {
-
     AttributeTable &attributes = map.getAttributeTable();
+    const size_t shapeCount = map.getShapeCount();
 
-    bool retvar = true;
-
-    time_t atime = 0;
-
-    if (comm) {
-        qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS,
-                              (m_sel_only ? map.getSelSet().size() : map.getConnections().size()));
-    }
-    int reccount = 0;
-
-    // record axial line refs for topological analysis
     std::vector<int> axialrefs;
-    // quick through to find the longest seg length
+    axialrefs.reserve(shapeCount);
     std::vector<float> seglengths;
-    float maxseglength = 0.0f;
-    for (size_t cursor = 0; cursor < map.getShapeCount(); cursor++) {
-        AttributeRow& row = map.getAttributeRowFromShapeIndex(cursor);
-        axialrefs.push_back(row.getValue(attributes.getColumnIndex("Axial Line Ref")));
-        seglengths.push_back(row.getValue(attributes.getColumnIndex("Segment Length")));
-        if (seglengths.back() > maxseglength) {
-            maxseglength = seglengths.back();
+    seglengths.reserve(shapeCount);
+    std::vector<size_t> roots;
+    roots.reserve(shapeCount);
+    for (size_t cursor = 0; cursor < shapeCount; ++cursor) {
+        AttributeRow &row = map.getAttributeRowFromShapeIndex(cursor);
+        axialrefs.push_back(static_cast<int>(row.getValue(attributes.getColumnIndex("Axial Line Ref"))));
+        const float length = row.getValue(attributes.getColumnIndex("Segment Length"));
+        seglengths.push_back(length);
+        if (!m_sel_only || row.isSelected()) {
+            roots.push_back(cursor);
         }
     }
 
-    std::string prefix, suffix;
-    int maxbin;
-    prefix = "Topological ";
-    maxbin = 2;
+    std::string suffix;
     if (m_radius != -1.0) {
         suffix = dXstring::formatString(m_radius, " R%.f metric");
     }
-    std::string choicecol = prefix + "Choice" + suffix;
-    std::string wchoicecol = prefix + "Choice [SLW]" + suffix;
-    std::string meandepthcol = prefix + "Mean Depth" + suffix;
-    std::string wmeandepthcol = prefix + std::string("Mean Depth [SLW]") + suffix;
-    std::string totaldcol = prefix + "Total Depth" + suffix;
-    std::string totalcol = prefix + "Total Nodes" + suffix;
-    std::string wtotalcol = prefix + "Total Length" + suffix;
-    //
+    const std::string prefix = "Topological ";
+    const std::string choicecol = prefix + "Choice" + suffix;
+    const std::string wchoicecol = prefix + "Choice [SLW]" + suffix;
+    const std::string meandepthcol = prefix + "Mean Depth" + suffix;
+    const std::string wmeandepthcol = prefix + "Mean Depth [SLW]" + suffix;
+    const std::string totaldcol = prefix + "Total Depth" + suffix;
+    const std::string totalcol = prefix + "Total Nodes" + suffix;
+    const std::string wtotalcol = prefix + "Total Length" + suffix;
+
     if (!m_sel_only) {
-        attributes.insertOrResetColumn(choicecol.c_str());
-        attributes.insertOrResetColumn(wchoicecol.c_str());
+        attributes.insertOrResetColumn(choicecol);
+        attributes.insertOrResetColumn(wchoicecol);
     }
-    attributes.insertOrResetColumn(meandepthcol.c_str());
-    attributes.insertOrResetColumn(wmeandepthcol.c_str());
-    attributes.insertOrResetColumn(totaldcol.c_str());
-    attributes.insertOrResetColumn(totalcol.c_str());
-    attributes.insertOrResetColumn(wtotalcol.c_str());
-    //
-    std::vector<unsigned int> seen(map.getShapeCount());
-    std::vector<TopoMetSegmentRef> audittrail(map.getShapeCount());
-    std::vector<TopoMetSegmentChoice> choicevals(map.getShapeCount());
-    for (size_t cursor = 0; cursor < map.getShapeCount(); cursor++) {
-        AttributeRow& row = map.getAttributeRowFromShapeIndex(cursor);
-        if (m_sel_only && !row.isSelected()) {
-            continue;
+    attributes.insertOrResetColumn(meandepthcol);
+    attributes.insertOrResetColumn(wmeandepthcol);
+    attributes.insertOrResetColumn(totaldcol);
+    attributes.insertOrResetColumn(totalcol);
+    attributes.insertOrResetColumn(wtotalcol);
+
+    if (comm) {
+        comm->CommPostMessage(Communicator::NUM_RECORDS, static_cast<int>(roots.size()));
+    }
+
+    std::vector<SegmentTopologicalResult> results(shapeCount);
+    const size_t estimatedBytesPerWorker =
+        shapeCount * (sizeof(unsigned int) + sizeof(TopoMetSegmentRef) + (!m_sel_only ? sizeof(TopoMetSegmentChoice) : 0));
+    const size_t workerCount = depthmapX::configuredAnalysisThreadCount(roots.size(), estimatedBytesPerWorker);
+
+    std::vector<SegmentTopologicalWorkerState> workerStates;
+    workerStates.reserve(workerCount);
+    for (size_t worker = 0; worker < workerCount; ++worker) {
+        workerStates.emplace_back(shapeCount, !m_sel_only);
+    }
+
+    depthmapX::parallelFor(roots.size(), workerCount, comm, [&](size_t task, size_t workerIndex) {
+        const size_t cursor = roots[task];
+        SegmentTopologicalWorkerState &state = workerStates[workerIndex];
+        std::fill(state.seen.begin(), state.seen.end(), std::numeric_limits<unsigned int>::max());
+        for (auto &bin : state.bins) {
+            bin.clear();
         }
-        for (size_t i = 0; i < map.getShapeCount(); i++) {
-            seen[i] = 0xffffffff;
-        }
-        std::vector<int> list[512]; // 512 bins!
+
         int bin = 0;
-        list[bin].push_back(cursor);
-        double rootseglength = seglengths[cursor];
-        audittrail[cursor] = TopoMetSegmentRef(cursor, Connector::SEG_CONN_ALL, rootseglength * 0.5, -1);
+        state.bins[bin].push_back(static_cast<int>(cursor));
+        const double rootseglength = seglengths[cursor];
+        state.audittrail[cursor] =
+            TopoMetSegmentRef(static_cast<int>(cursor), Connector::SEG_CONN_ALL, rootseglength * 0.5, -1);
+
         int open = 1;
         unsigned int segdepth = 0;
-        double total = 0.0, wtotal = 0.0, wtotaldepth = 0.0, totalsegdepth = 0.0, totalmetdepth = 0.0;
+        double total = 0.0;
+        double wtotal = 0.0;
+        double wtotaldepth = 0.0;
+        double totalmetdepth = 0.0;
+        size_t processed = 0;
+
         while (open != 0) {
-            while (list[bin].size() == 0) {
-                bin++;
-                segdepth += 1;
-                if (bin == maxbin) {
-                    bin = 0;
-                }
+            if (comm && ((processed++ & 0x3ff) == 0) && comm->IsCancelled()) {
+                throw Communicator::CancelledException();
             }
-            //
-            TopoMetSegmentRef &here = audittrail[list[bin].back()];
-            list[bin].pop_back();
-            open--;
-            //
+            while (state.bins[bin].empty()) {
+                bin = (bin + 1) % 2;
+                ++segdepth;
+            }
+
+            TopoMetSegmentRef &here = state.audittrail[state.bins[bin].back()];
+            state.bins[bin].pop_back();
+            --open;
             if (here.done) {
                 continue;
-            } else {
-                here.done = true;
             }
-            //
-            double len = seglengths[here.ref];
-            totalsegdepth += segdepth;
-            totalmetdepth += here.dist - len * 0.5; // preloaded with length ahead
+            here.done = true;
+
+            const double len = seglengths[here.ref];
+            totalmetdepth += segdepth;
             wtotal += len;
             wtotaldepth += len * segdepth;
+            total += 1.0;
 
-            total += 1;
-            //
-            Connector &axline = map.getConnections().at(here.ref);
-            int connected_cursor = -2;
-
-            auto iter = axline.m_back_segconns.begin();
-            bool backsegs = true;
-
-            while (connected_cursor != -1) {
-                if (backsegs && iter == axline.m_back_segconns.end()) {
-                    iter = axline.m_forward_segconns.begin();
-                    backsegs = false;
+            const Connector &axline = map.getConnections().at(here.ref);
+            auto processConnection = [&](int connected_cursor) {
+                if (connected_cursor < 0 || static_cast<size_t>(connected_cursor) >= shapeCount) {
+                    return;
                 }
-                if (!backsegs && iter == axline.m_forward_segconns.end()) {
-                    break;
-                }
-
-                connected_cursor = iter->first.ref;
-
-                if (seen[connected_cursor] > segdepth && static_cast<size_t>(connected_cursor) != cursor) {
-                    bool seenalready = (seen[connected_cursor] == 0xffffffff) ? false : true;
-                    float length = seglengths[connected_cursor];
-                    int axialref = axialrefs[connected_cursor];
-                    audittrail[connected_cursor] =
+                if (state.seen[connected_cursor] > segdepth && static_cast<size_t>(connected_cursor) != cursor) {
+                    const bool seenalready = state.seen[connected_cursor] != std::numeric_limits<unsigned int>::max();
+                    const float length = seglengths[connected_cursor];
+                    state.audittrail[connected_cursor] =
                         TopoMetSegmentRef(connected_cursor, here.dir, here.dist + length, here.ref);
-                    seen[connected_cursor] = segdepth;
+                    state.seen[connected_cursor] = segdepth;
                     if (m_radius == -1 || here.dist + length < m_radius) {
-                        // puts in a suitable bin ahead of us...
-                        open++;
-                        //
+                        ++open;
+                        const int axialref = axialrefs[connected_cursor];
                         if (axialrefs[here.ref] == axialref) {
-                            list[bin].push_back(connected_cursor);
+                            state.bins[bin].push_back(connected_cursor);
                         } else {
-                            list[(bin + 1) % 2].push_back(connected_cursor);
-                            seen[connected_cursor] =
-                                segdepth + 1; // this is so if another node is connected directly to this one but
-                                              // is found later it is still handled -- note it can result in the
-                                              // connected cursor being added twice
+                            state.bins[(bin + 1) % 2].push_back(connected_cursor);
+                            state.seen[connected_cursor] = segdepth + 1;
                         }
                     }
-                    // not sure why this is outside the radius restriction
-                    // (sel_only: with restricted selection set, not all lines will be labelled)
-                    // (seenalready: need to check that we're not doing this twice, given the seen can go twice)
-
-                    // Quick mod - TV
-                    if (!m_sel_only && connected_cursor > int(cursor) &&
-                        !seenalready) { // only one way paths, saves doing this twice
+                    if (!m_sel_only && connected_cursor > static_cast<int>(cursor) && !seenalready) {
                         int subcur = connected_cursor;
                         while (subcur != -1) {
-                            // in this method of choice, start and end lines are included
-                            choicevals[subcur].choice += 1;
-                            choicevals[subcur].wchoice += (rootseglength * length);
-                            subcur = audittrail[subcur].previous;
+                            state.choice[subcur].choice += 1.0;
+                            state.choice[subcur].wchoice += rootseglength * length;
+                            subcur = state.audittrail[subcur].previous;
                         }
                     }
                 }
-                iter++;
+            };
+
+            for (const auto &connection : axline.m_back_segconns) {
+                processConnection(connection.first.ref);
+            }
+            for (const auto &connection : axline.m_forward_segconns) {
+                processConnection(connection.first.ref);
             }
         }
-        // also put in mean depth:
-        row.setValue(meandepthcol.c_str(), totalsegdepth / (total - 1));
-        row.setValue(totaldcol.c_str(), totalsegdepth);
-        row.setValue(wmeandepthcol.c_str(), wtotaldepth / (wtotal - rootseglength));
-        row.setValue(totalcol.c_str(), total);
-        row.setValue(wtotalcol.c_str(), wtotal);
-        //
-        if (comm) {
-            if (qtimer(atime, 500)) {
-                if (comm->IsCancelled()) {
-                    throw Communicator::CancelledException();
-                }
-            }
-            comm->CommPostMessage(Communicator::CURRENT_RECORD, reccount);
+
+        SegmentTopologicalResult &result = results[cursor];
+        result.totalDepth = totalmetdepth;
+        result.totalNodes = total;
+        result.totalLength = wtotal;
+        if (total > 1.0) {
+            result.meanDepth = totalmetdepth / (total - 1.0);
         }
-        reccount++;
-    }
-    if (!m_sel_only) {
-        // note, I've stopped sel only from calculating choice values:
-        for (size_t cursor = 0; cursor < map.getShapeCount(); cursor++) {
-            AttributeRow& row = map.getAttributeRowFromShapeIndex(cursor);
-            row.setValue(choicecol.c_str(), choicevals[cursor].choice);
-            row.setValue(wchoicecol.c_str(), choicevals[cursor].wchoice);
+        if (wtotal > rootseglength) {
+            result.weightedMeanDepth = wtotaldepth / (wtotal - rootseglength);
         }
+    });
+
+    for (size_t cursor : roots) {
+        if (comm && ((cursor & 0x3ff) == 0) && comm->IsCancelled()) {
+            throw Communicator::CancelledException();
+        }
+        const SegmentTopologicalResult &result = results[cursor];
+        AttributeRow &row = map.getAttributeRowFromShapeIndex(cursor);
+        row.setValue(meandepthcol, float(result.meanDepth));
+        row.setValue(totaldcol, float(result.totalDepth));
+        row.setValue(wmeandepthcol, float(result.weightedMeanDepth));
+        row.setValue(totalcol, float(result.totalNodes));
+        row.setValue(wtotalcol, float(result.totalLength));
     }
 
     if (!m_sel_only) {
-        map.setDisplayedAttribute(attributes.getColumnIndex(choicecol.c_str()));
+        for (size_t cursor = 0; cursor < shapeCount; ++cursor) {
+            if (comm && ((cursor & 0x3ff) == 0) && comm->IsCancelled()) {
+                throw Communicator::CancelledException();
+            }
+            double choice = 0.0;
+            double weightedChoice = 0.0;
+            for (size_t worker = 0; worker < workerCount; ++worker) {
+                choice += workerStates[worker].choice[cursor].choice;
+                weightedChoice += workerStates[worker].choice[cursor].wchoice;
+            }
+            AttributeRow &row = map.getAttributeRowFromShapeIndex(cursor);
+            row.setValue(choicecol, float(choice));
+            row.setValue(wchoicecol, float(weightedChoice));
+        }
+        map.setDisplayedAttribute(attributes.getColumnIndex(choicecol));
     } else {
-        map.setDisplayedAttribute(attributes.getColumnIndex(meandepthcol.c_str()));
+        map.setDisplayedAttribute(attributes.getColumnIndex(meandepthcol));
     }
 
-    return retvar;
+    return true;
 }

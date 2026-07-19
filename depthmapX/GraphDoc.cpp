@@ -292,7 +292,7 @@ void QGraphDoc::cancel_wait()
 		else {
 			m_communicator->Cancel();
 		}
-	// Don't cancel --- cancel should be handled by the thread! 
+	// Don't cancel --- cancel should be handled by the thread!
 	}
 }
 

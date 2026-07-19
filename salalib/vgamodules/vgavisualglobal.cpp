@@ -20,6 +20,8 @@
 
 #include "genlib/stringutils.h"
 
+#include <cmath>
+
 bool VGAVisualGlobal::run(Communicator *comm, PointMap &map, bool simple_version) {
     time_t atime = 0;
     if (comm) {
@@ -173,11 +175,11 @@ bool VGAVisualGlobal::run(Communicator *comm, PointMap &map, bool simple_version
                     for (size_t k = 1; k < distribution.size(); k++) {
                         if (distribution[k] > 0) {
                             double prob = double(distribution[k]) / double(total_nodes - 1);
-                            entropy -= prob * log2(prob);
+                            entropy -= prob * std::log2(prob);
                             // Formula from Turner 2001, "Depthmap"
                             factorial *= double(k + 1);
                             double q = (pow(mean_depth, double(k)) / double(factorial)) * exp(-mean_depth);
-                            rel_entropy += (float)prob * log2(prob / q);
+                            rel_entropy += (float)prob * std::log2(prob / q);
                         }
                     }
                     if (!simple_version) {

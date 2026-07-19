@@ -79,6 +79,10 @@ void SalaShape::setCentroidAreaPerim() {
     m_area = 0.0;
     m_perimeter = 0.0;
     m_centroid = Point2f(0, 0);
+    if (m_points.empty()) {
+        return;
+    }
+
     for (size_t i = 0; i < m_points.size(); i++) {
         Point2f &p1 = m_points[i];
         Point2f &p2 = m_points[(i + 1) % m_points.size()];
@@ -90,12 +94,25 @@ void SalaShape::setCentroidAreaPerim() {
         Point2f side = p2 - p1;
         m_perimeter += side.length();
     }
+    const double signedArea = m_area;
     m_type &= ~SHAPE_CCW;
-    if (sgn(m_area) == 1) {
+    if (sgn(signedArea) == 1) {
         m_type |= SHAPE_CCW;
     }
-    m_centroid.scale(2.0 / m_area); // note, *not* fabs(m_area) as it is then confused by clockwise ordered shapes
-    m_area = fabs(m_area);
+
+    if (std::isfinite(signedArea) && fabs(signedArea) > TOLERANCE_A) {
+        // Do not use fabs here: clockwise polygons need the signed-area direction.
+        m_centroid.scale(2.0 / signedArea);
+    } else {
+        // Repeated or collinear points have zero area. Keep a finite centroid
+        // instead of introducing Inf/NaN into rendering and spatial indexing.
+        m_centroid = Point2f(0, 0);
+        for (const Point2f &point : m_points) {
+            m_centroid += point;
+        }
+        m_centroid /= static_cast<double>(m_points.size());
+    }
+    m_area = std::isfinite(signedArea) ? fabs(signedArea) : 0.0;
     if (isOpen()) {
         // take off the automatically collected final side
         Point2f side = m_points.back() - m_points.front();
@@ -108,6 +125,10 @@ void SalaShape::setCentroid(const Point2f &p) { m_centroid = p; }
 
 // get the angular deviation along the length of a poly line:
 double SalaShape::getAngDev() const {
+    if (m_points.size() < 3) {
+        return 0.0;
+    }
+
     double dev = 0.0;
     for (size_t i = 1; i < m_points.size() - 1; i++) {
         double ang = angle(m_points[i - 1], m_points[i], m_points[i + 1]);
@@ -223,7 +244,7 @@ void ShapeMap::copy(const ShapeMap &sourcemap, int copyflags) {
         }
     }
 
-    if ((copyflags & ShapeMap::COPY_ATTRIBUTES) == ShapeMap::COPY_GRAPH) {
+    if ((copyflags & ShapeMap::COPY_GRAPH) == ShapeMap::COPY_GRAPH) {
         if (sourcemap.m_hasgraph) {
             m_hasgraph = true;
             // straight copy:
@@ -813,8 +834,11 @@ int ShapeMap::polyBegin(const Line &line) {
 }
 
 bool ShapeMap::polyAppend(int shape_ref, const Point2f &point) {
-    // don't do anything too complex:
-    SalaShape &shape = m_shapes.rbegin()->second;
+    auto shapeIter = m_shapes.find(shape_ref);
+    if (shapeIter == m_shapes.end()) {
+        return false;
+    }
+    SalaShape &shape = shapeIter->second;
 
     // check you can actually do this first
     if (!(shape.isLine() || shape.isPolyLine())) {
@@ -855,8 +879,11 @@ bool ShapeMap::polyAppend(int shape_ref, const Point2f &point) {
 }
 
 bool ShapeMap::polyClose(int shape_ref) {
-    // don't do anything too complex:
-    SalaShape &shape = m_shapes.rbegin()->second;
+    auto shapeIter = m_shapes.find(shape_ref);
+    if (shapeIter == m_shapes.end()) {
+        return false;
+    }
+    SalaShape &shape = shapeIter->second;
 
     // check you can actually do this first
     if (!shape.isPolyLine()) {
@@ -874,14 +901,22 @@ bool ShapeMap::polyClose(int shape_ref) {
 }
 
 bool ShapeMap::polyCancel(int shape_ref) {
-    // don't do anything too complex:
-    SalaShape &shape = m_shapes.rbegin()->second;
+    auto shapeIter = m_shapes.find(shape_ref);
+    if (shapeIter == m_shapes.end()) {
+        return false;
+    }
+    SalaShape &shape = shapeIter->second;
 
     // check you can actually do this first
     if (!(shape.isLine() || shape.isPolyLine())) {
         return false;
     }
 
+    if (m_undobuffer.empty() ||
+        m_undobuffer.back().m_action != SalaEvent::SALA_CREATED ||
+        m_undobuffer.back().m_shape_ref != shape_ref) {
+        return false;
+    }
     m_undobuffer.pop_back();
     removeShape(shape_ref, true);
 
@@ -913,11 +948,19 @@ bool ShapeMap::removeSelected() {
 }
 
 void ShapeMap::removeShape(int shaperef, bool undoing) {
+    auto shapeIter = m_shapes.find(shaperef);
+    if (shapeIter == m_shapes.end()) {
+        return;
+    }
+
+    const size_t rowid = static_cast<size_t>(std::distance(m_shapes.begin(), shapeIter));
+    if (m_hasgraph && m_connectors.size() != m_shapes.size()) {
+        // Connector indices are positional. Avoid partially mutating a corrupt map.
+        return;
+    }
+
     // remove shape from four keys: the pixel grid, the poly list, the attributes and the connections
     removePolyPixels(shaperef); // done first, as all interface references use this list
-
-    auto shapeIter = m_shapes.find(shaperef);
-    size_t rowid = std::distance(m_shapes.begin(), shapeIter);
 
     if (!undoing) { // <- if not currently undoing another event, then add to the undo buffer:
         m_undobuffer.push_back(SalaEvent(SalaEvent::SALA_DELETED, shaperef));
@@ -933,11 +976,11 @@ void ShapeMap::removeShape(int shaperef, bool undoing) {
         int conn_col = m_attributes->getColumnIndex("Connectivity");
 
         // TODO: Replace with iterators
-        for (size_t i = m_connectors.size() - 1; static_cast<int>(i) != -1; i--) {
+        for (size_t i = m_connectors.size(); i-- > 0;) {
             if (i == rowid) {
                 continue; // it's going to be removed anyway
             }
-            for (size_t j = m_connectors[i].m_connections.size() - 1; static_cast<int>(j) != -1; j--) {
+            for (size_t j = m_connectors[i].m_connections.size(); j-- > 0;) {
                 if (m_connectors[i].m_connections[j] == int(rowid)) {
                     m_connectors[i].m_connections.erase(m_connectors[i].m_connections.begin() + int(j));
                     if (conn_col != -1) {
@@ -953,32 +996,28 @@ void ShapeMap::removeShape(int shaperef, bool undoing) {
 
         m_connectors.erase(m_connectors.begin() + int(rowid));
 
-        // take out explicit links and unlinks (note, undo won't restore these):
-        for (auto revIter = m_links.rbegin(); revIter != m_links.rend(); ++revIter) {
-            if (revIter->a == static_cast<int>(rowid) || revIter->b == static_cast<int>(rowid)) {
-                m_links.erase(std::next(revIter).base());
-            } else {
-                if (revIter->a > int(rowid))
-                    revIter->a -= 1;
-                if (revIter->b > int(rowid))
-                    revIter->b -= 1;
+        // Take out explicit links and unlinks (note, undo won't restore these).
+        // Erasing through a reverse iterator invalidated the iterator used by the old loop.
+        auto removeAndReindex = [rowid](std::vector<OrderedIntPair> &pairs) {
+            for (auto iter = pairs.begin(); iter != pairs.end();) {
+                if (iter->a == static_cast<int>(rowid) || iter->b == static_cast<int>(rowid)) {
+                    iter = pairs.erase(iter);
+                    continue;
+                }
+                if (iter->a > static_cast<int>(rowid)) {
+                    --iter->a;
+                }
+                if (iter->b > static_cast<int>(rowid)) {
+                    --iter->b;
+                }
+                ++iter;
             }
-        }
-        for (auto revIter = m_unlinks.rbegin(); revIter != m_unlinks.rend(); ++revIter) {
-            if (revIter->a == static_cast<int>(rowid) || revIter->b == static_cast<int>(rowid)) {
-                m_unlinks.erase(std::next(revIter).base());
-            } else {
-                if (revIter->a > int(rowid))
-                    revIter->a -= 1;
-                if (revIter->b > int(rowid))
-                    revIter->b -= 1;
-            }
-        }
+        };
+        removeAndReindex(m_links);
+        removeAndReindex(m_unlinks);
     }
 
-    if (shapeIter != m_shapes.end()) {
-        shapeIter = m_shapes.erase(shapeIter);
-    }
+    m_shapes.erase(shapeIter);
     // n.b., shaperef should have been used to create the row in the first place:
     const AttributeKey shapeRefKey(shaperef);
     m_attributes->removeRow(shapeRefKey);
@@ -2022,14 +2061,15 @@ int ShapeMap::connectIntersected(int rowid, bool linegraph) {
 // use the other version, getShapeConnections for arbitrary shape-shape connections
 // note, connections are listed by rowid in list, *not* reference number
 // (so they may vary: must be checked carefully when shapes are removed / added)
-std::vector<int> ShapeMap::getLineConnections(int lineref, double tolerance) {
+std::vector<int> ShapeMap::getLineConnections(
+    int lineref, double tolerance, const std::unordered_map<int, int> *shapeIndexLookup) const {
     std::vector<int> connections;
 
-    SalaShape &poly = m_shapes.find(lineref)->second;
-    if (!poly.isLine()) {
-        return std::vector<int>();
+    const auto polyIter = m_shapes.find(lineref);
+    if (polyIter == m_shapes.end() || !polyIter->second.isLine()) {
+        return connections;
     }
-    const Line &l = poly.getLine();
+    const Line &l = polyIter->second.getLine();
 
     std::unordered_set<ShapeRef, ShapeRefHash> shapesToTest;
 
@@ -2052,13 +2092,27 @@ std::vector<int> ShapeMap::getLineConnections(int lineref, double tolerance) {
     }
     for (ShapeRef shape : shapesToTest) {
         if ((shape.m_tags & ShapeRef::SHAPE_OPEN) == ShapeRef::SHAPE_OPEN) {
-            const Line &line = m_shapes.find(int(shape.m_shape_ref))->second.getLine();
+            const auto shapeIter = m_shapes.find(static_cast<int>(shape.m_shape_ref));
+            if (shapeIter == m_shapes.end()) {
+                continue;
+            }
+            const Line &line = shapeIter->second.getLine();
             if (intersect_region(line, l, line.length() * tolerance)) {
                 // n.b. originally this followed the logic that we must normalise intersect_line properly: tolerance *
                 // line length one * line length two in fact, works better if it's just line.length() * tolerance...
                 if (intersect_line(line, l, line.length() * tolerance)) {
-                    depthmapX::insert_sorted(connections,
-                                             depthmapX::findIndexFromKey(m_shapes, int(shape.m_shape_ref)));
+                    int shapeIndex = -1;
+                    if (shapeIndexLookup) {
+                        const auto indexIter = shapeIndexLookup->find(static_cast<int>(shape.m_shape_ref));
+                        if (indexIter != shapeIndexLookup->end()) {
+                            shapeIndex = indexIter->second;
+                        }
+                    } else {
+                        shapeIndex = depthmapX::findIndexFromKey(m_shapes, int(shape.m_shape_ref));
+                    }
+                    if (shapeIndex >= 0) {
+                        depthmapX::insert_sorted(connections, shapeIndex);
+                    }
                 }
             }
         }

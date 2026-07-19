@@ -2,6 +2,7 @@ depthmapX
 C 2000-2010 University College London, Alasdair Turner, Eva Friedrich
 C 2011-2014 Tasos Varoudis, UCL
 C 2017 Christian Sailer, Petros Koutsolampros
+C 2026 Victor Yu-Chieh Lin
 
 Released under Gnu Public License (GPL v3)
 Please see gplv3.txt for license details

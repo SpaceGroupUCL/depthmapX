@@ -18,17 +18,22 @@
 
 #include "salalib/axialmodules/axialintegration.h"
 
+#include "genlib/parallel.h"
 #include "genlib/pflipper.h"
 #include "genlib/stringutils.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
+#include <random>
 
 bool AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simple_version) {
     // note, from 10.0, Depthmap no longer includes *self* connections on axial lines
     // self connections are stripped out on loading graph files, as well as no longer made
 
-    time_t atime = 0;
     if (comm) {
-        qtimer(atime, 0);
-        comm->CommPostMessage(Communicator::NUM_RECORDS, map.getShapeCount());
+        comm->CommPostMessage(Communicator::NUM_RECORDS, static_cast<int>(map.getShapeCount()));
     }
 
     AttributeTable &attributes = map.getAttributeTable();
@@ -217,300 +222,323 @@ bool AxialIntegration::run(Communicator *comm, ShapeGraph &map, bool simple_vers
         }
     }
 
-    // for choice
-    AnalysisInfo **audittrail;
-    if (m_choice) {
-        audittrail = new AnalysisInfo *[map.getShapeCount()];
-        for (size_t i = 0; i < map.getShapeCount(); i++) {
-            audittrail[i] = new AnalysisInfo[radii.size()];
-        }
+    const size_t shapeCount = map.getShapeCount();
+    const size_t radiusCount = radii.size();
+
+    struct RadiusResult {
+        float nodeCount = 0.0f;
+        float totalWeight = -1.0f;
+        float meanDepth = -1.0f;
+        float weightedMeanDepth = -1.0f;
+        float integrationDv = -1.0f;
+        float integrationPv = -1.0f;
+        float integrationTekl = -1.0f;
+        float ra = -1.0f;
+        float rra = -1.0f;
+        float totalDepth = -1.0f;
+        float penn = -1.0f;
+        float entropy = -1.0f;
+        float relativeEntropy = -1.0f;
+        float intensity = -1.0f;
+        float harmonic = -1.0f;
+    };
+    struct ChoiceValue {
+        double choice = 0.0;
+        double weightedChoice = 0.0;
+    };
+    struct WorkerState {
+        std::vector<std::uint8_t> covered;
+        std::vector<int> previous;
+        std::vector<ChoiceValue> choice;
+
+        WorkerState(size_t count, size_t radiiCount, bool calculateChoice)
+            : covered(count), previous(count), choice(calculateChoice ? count * radiiCount : 0) {}
+    };
+
+    std::vector<RadiusResult> results(shapeCount * radiusCount);
+    std::vector<float> controlResults(shapeCount, -1.0f);
+    std::vector<float> controllabilityResults(shapeCount, -1.0f);
+
+    const size_t estimatedBytesPerWorker =
+        shapeCount * (sizeof(std::uint8_t) + sizeof(int) + (m_choice ? radiusCount * sizeof(ChoiceValue) : 0));
+    const size_t workerCount = depthmapX::configuredAnalysisThreadCount(shapeCount, estimatedBytesPerWorker);
+    std::vector<WorkerState> workerStates;
+    workerStates.reserve(workerCount);
+    for (size_t worker = 0; worker < workerCount; ++worker) {
+        workerStates.emplace_back(shapeCount, radiusCount, m_choice);
     }
 
-    // n.b., for this operation we assume continuous line referencing from zero (this is silly?)
-    // has already failed due to this!  when intro hand drawn fewest line (where user may have deleted)
-    // it's going to get worse...
-
-    bool *covered = new bool[map.getShapeCount()];
-
-    size_t i = -1;
-    for (auto & iter : attributes) {
-        i++;
-        AttributeRow &row = iter.getRow();
-        for (size_t j = 0; j < map.getShapeCount(); j++) {
-            covered[j] = false;
-        }
+    depthmapX::parallelFor(shapeCount, workerCount, comm, [&](size_t root, size_t workerIndex) {
+        WorkerState &state = workerStates[workerIndex];
+        std::fill(state.covered.begin(), state.covered.end(), std::uint8_t(0));
         if (m_choice) {
-            for (size_t k = 0; k < map.getShapeCount(); k++) {
-                audittrail[k][0].previous.ref = -1; // note, 0th member used as radius doesn't matter
-                // note, choice columns are not cleared, but cummulative over all shortest path pairs
-            }
+            std::fill(state.previous.begin(), state.previous.end(), -1);
         }
 
         if (m_local) {
             double control = 0.0;
-            const std::vector<int> &connections = map.getConnections()[i].m_connections;
+            const std::vector<int> &connections = map.getConnections()[root].m_connections;
             std::vector<int> totalneighbourhood;
             for (int connection : connections) {
-                // n.b., as of Depthmap 10.0, connections[j] and i cannot coexist
-                // if (connections[j] != i) {
+                if (connection < 0 || static_cast<size_t>(connection) >= shapeCount) {
+                    continue;
+                }
                 depthmapX::addIfNotExists(totalneighbourhood, connection);
-                int retro_size = 0;
-                auto &retconnectors = map.getConnections()[size_t(connection)].m_connections;
-                for (auto retconnector : retconnectors) {
-                    retro_size++;
+                const auto &retconnectors = map.getConnections()[size_t(connection)].m_connections;
+                for (int retconnector : retconnectors) {
                     depthmapX::addIfNotExists(totalneighbourhood, retconnector);
                 }
-                control += 1.0 / double(retro_size);
-                //}
+                if (!retconnectors.empty()) {
+                    control += 1.0 / double(retconnectors.size());
+                }
             }
-
-            if (!simple_version) {
-                if (connections.size() > 0) {
-                    row.setValue(control_col, float(control));
-                    row.setValue(controllability_col,
-                                 float(double(connections.size()) / double(totalneighbourhood.size() - 1)));
-                } else {
-                    row.setValue(control_col, -1);
-                    row.setValue(controllability_col, -1);
+            if (!simple_version && !connections.empty()) {
+                controlResults[root] = float(control);
+                if (totalneighbourhood.size() > 1) {
+                    controllabilityResults[root] =
+                        float(double(connections.size()) / double(totalneighbourhood.size() - 1));
                 }
             }
         }
 
-        std::vector<int> depthcounts;
-        depthcounts.push_back(0);
-
+        std::vector<int> depthcounts(1, 0);
         pflipper<std::vector<std::pair<int, int>>> foundlist;
-        foundlist.a().push_back(std::pair<int, int>(i, -1));
-        covered[i] = true;
-        int total_depth = 0, depth = 1, node_count = 1, pos = -1, previous = -1; // node_count includes this 1
-        double weight = 0.0, rootweight = 0.0, total_weight = 0.0, w_total_depth = 0.0;
+        foundlist.a().push_back(std::make_pair(static_cast<int>(root), -1));
+        state.covered[root] = 1;
+
+        int totalDepth = 0;
+        int depth = 1;
+        int nodeCount = 1;
+        double rootweight = 0.0;
+        double totalWeight = 0.0;
+        double weightedTotalDepth = 0.0;
         if (m_weighted_measure_col != -1) {
-            rootweight = weights[i];
-            // include this line in total weights (as per nodecount)
-            total_weight += rootweight;
+            rootweight = weights[root];
+            totalWeight = rootweight;
         }
-        int index = -1;
-        int r = 0;
-        for (int radius : radii) {
-            while (foundlist.a().size()) {
-                if (!m_choice) {
-                    index = foundlist.a().back().first;
-                } else {
-                    pos = pafrand() % foundlist.a().size();
-                    index = foundlist.a().at(pos).first;
-                    previous = foundlist.a().at(pos).second;
-                    audittrail[index][0].previous.ref =
-                        previous; // note 0th member used here: can be used individually different radius previous
+
+        std::minstd_rand random(static_cast<unsigned int>(0x9e3779b9U ^ static_cast<unsigned int>(root)));
+        size_t processed = 0;
+
+        for (size_t radiusIndex = 0; radiusIndex < radiusCount; ++radiusIndex) {
+            const int radius = radii[radiusIndex];
+            while (!foundlist.a().empty()) {
+                if (comm && ((processed++ & 0x3ff) == 0) && comm->IsCancelled()) {
+                    throw Communicator::CancelledException();
                 }
-                Connector &line = map.getConnections()[index];
-                for (size_t k = 0; k < line.m_connections.size(); k++) {
-                    if (!covered[line.m_connections[k]]) {
-                        covered[line.m_connections[k]] = true;
-                        foundlist.b().push_back(std::pair<int, int>(line.m_connections[k], index));
-                        if (m_weighted_measure_col != -1) {
-                            // the weight is taken from the discovered node:
-                            weight = weights[line.m_connections[k]];
-                            total_weight += weight;
-                            w_total_depth += depth * weight;
-                        }
-                        if (m_choice && previous != -1) {
-                            // both directional paths are now recorded for choice
-                            // (coincidentally fixes choice problem which was completely wrong)
-                            size_t here = index;   // note: start counting from index as actually looking ahead here
-                            while (here != i) { // not i means not the current root for the path
-                                audittrail[here][r].choice += 1;
-                                audittrail[here][r].weighted_choice += weight * rootweight;
-                                here =
-                                    audittrail[here][0].previous.ref; // <- note, just using 0th position: radius for
-                                                                      // the previous doesn't matter in this analysis
-                            }
-                            if (m_weighted_measure_col != -1) {
-                                // in weighted choice, root node and current node receive values:
-                                audittrail[i][r].weighted_choice += (weight * rootweight) * 0.5;
-                                audittrail[line.m_connections[k]][r].weighted_choice += (weight * rootweight) * 0.5;
-                            }
-                        }
-                        total_depth += depth;
-                        node_count++;
-                        depthcounts.back() += 1;
+
+                size_t position = foundlist.a().size() - 1;
+                if (m_choice) {
+                    position = static_cast<size_t>(random()) % foundlist.a().size();
+                }
+                const int index = foundlist.a()[position].first;
+                const int previous = foundlist.a()[position].second;
+                if (m_choice) {
+                    state.previous[index] = previous;
+                }
+
+                const Connector &line = map.getConnections()[size_t(index)];
+                for (int connection : line.m_connections) {
+                    if (connection < 0 || static_cast<size_t>(connection) >= shapeCount || state.covered[connection]) {
+                        continue;
                     }
+                    state.covered[connection] = 1;
+                    foundlist.b().push_back(std::make_pair(connection, index));
+
+                    double weight = 0.0;
+                    if (m_weighted_measure_col != -1) {
+                        weight = weights[connection];
+                        totalWeight += weight;
+                        weightedTotalDepth += depth * weight;
+                    }
+
+                    if (m_choice && previous != -1) {
+                        int here = index;
+                        while (here != static_cast<int>(root) && here >= 0 && static_cast<size_t>(here) < shapeCount) {
+                            ChoiceValue &choice = state.choice[size_t(here) * radiusCount + radiusIndex];
+                            choice.choice += 1.0;
+                            choice.weightedChoice += weight * rootweight;
+                            here = state.previous[here];
+                        }
+                        if (m_weighted_measure_col != -1) {
+                            state.choice[root * radiusCount + radiusIndex].weightedChoice +=
+                                (weight * rootweight) * 0.5;
+                            state.choice[size_t(connection) * radiusCount + radiusIndex].weightedChoice +=
+                                (weight * rootweight) * 0.5;
+                        }
+                    }
+                    totalDepth += depth;
+                    ++nodeCount;
+                    ++depthcounts.back();
                 }
-                if (!m_choice)
+
+                if (m_choice) {
+                    foundlist.a().erase(foundlist.a().begin() + static_cast<std::ptrdiff_t>(position));
+                } else {
                     foundlist.a().pop_back();
-                else
-                    foundlist.a().erase(foundlist.a().begin() + pos);
-                if (!foundlist.a().size()) {
+                }
+                if (foundlist.a().empty()) {
                     foundlist.flip();
-                    depth++;
+                    ++depth;
                     depthcounts.push_back(0);
                     if (radius != -1 && depth > radius) {
                         break;
                     }
                 }
             }
-            // set the attributes for this node:
-            row.setValue(count_col[r], float(node_count));
+
+            RadiusResult &result = results[root * radiusCount + radiusIndex];
+            result.nodeCount = float(nodeCount);
             if (m_weighted_measure_col != -1) {
-                row.setValue(total_weight_col[r], float(total_weight));
+                result.totalWeight = float(totalWeight);
             }
-            // node count > 1 to avoid divide by zero (was > 2)
-            if (node_count > 1) {
-                // note -- node_count includes this one -- mean depth as per p.108 Social Logic of Space
-                double mean_depth = double(total_depth) / double(node_count - 1);
-                row.setValue(depth_col[r], float(mean_depth));
-                if (m_weighted_measure_col != -1) {
-                    // weighted mean depth:
-                    row.setValue(w_depth_col[r], float(w_total_depth / total_weight));
+
+            if (nodeCount > 1) {
+                const double meanDepth = double(totalDepth) / double(nodeCount - 1);
+                result.meanDepth = float(meanDepth);
+                if (m_weighted_measure_col != -1 && totalWeight != 0.0) {
+                    result.weightedMeanDepth = float(weightedTotalDepth / totalWeight);
                 }
-                // total nodes > 2 to avoid divide by 0 (was > 3)
-                if (node_count > 2 && mean_depth > 1.0) {
-                    double ra = 2.0 * (mean_depth - 1.0) / double(node_count - 2);
-                    // d-value / p-value from Depthmap 4 manual, note: node_count includes this one
-                    double rra_d = ra / dvalue(node_count);
-                    double rra_p = ra / dvalue(node_count);
-                    double integ_tk = teklinteg(node_count, total_depth);
-                    row.setValue(integ_dv_col[r], float(1.0 / rra_d));
 
+                if (nodeCount > 2 && meanDepth > 1.0) {
+                    const double ra = 2.0 * (meanDepth - 1.0) / double(nodeCount - 2);
+                    const double rraD = ra / dvalue(nodeCount);
+                    const double rraP = ra / dvalue(nodeCount);
+                    result.integrationDv = float(1.0 / rraD);
                     if (!simple_version) {
-                        row.setValue(integ_pv_col[r], float(1.0 / rra_p));
-                        if (total_depth - node_count + 1 > 1) {
-                            row.setValue(integ_tk_col[r], float(integ_tk));
-                        } else {
-                            row.setValue(integ_tk_col[r], -1.0f);
-                        }
+                        result.integrationPv = float(1.0 / rraP);
+                        result.integrationTekl =
+                            totalDepth - nodeCount + 1 > 1 ? float(teklinteg(nodeCount, totalDepth)) : -1.0f;
                     }
-
                     if (m_fulloutput) {
-                        row.setValue(ra_col[r], float(ra));
-
+                        result.ra = float(ra);
+                        result.totalDepth = float(totalDepth);
                         if (!simple_version) {
-                            row.setValue(rra_col[r], float(rra_d));
-                        }
-                        row.setValue(td_col[r], float(total_depth));
-
-                        if (!simple_version) {
-                            // alan's palm-tree normalisation: palmtree
-                            double dmin = node_count - 1;
-                            double dmax = palmtree(node_count, depth - 1);
+                            result.rra = float(rraD);
+                            const double dmin = nodeCount - 1;
+                            const double dmax = palmtree(nodeCount, depth - 1);
                             if (dmax != dmin) {
-                                row.setValue(penn_norm_col[r], float((dmax - total_depth) / (dmax - dmin)));
+                                result.penn = float((dmax - totalDepth) / (dmax - dmin));
                             }
                         }
                     }
-                } else {
-                    row.setValue(integ_dv_col[r], -1.0f);
-
-                    if (!simple_version) {
-                        row.setValue(integ_pv_col[r], -1.0f);
-                        row.setValue(integ_tk_col[r], -1.0f);
-                    }
-                    if (m_fulloutput) {
-                        row.setValue(ra_col[r], -1.0f);
-
-                        if (!simple_version) {
-                            row.setValue(rra_col[r], -1.0f);
-                        }
-
-                        row.setValue(td_col[r], -1.0f);
-
-                        if (!simple_version) {
-                            row.setValue(penn_norm_col[r], -1.0f);
-                        }
-                    }
                 }
 
                 if (!simple_version) {
-                    double entropy = 0.0, intensity = 0.0, rel_entropy = 0.0, factorial = 1.0, harmonic = 0.0;
-                    for (size_t k = 0; k < depthcounts.size(); k++) {
-                        if (depthcounts[k] != 0) {
-                            // some debate over whether or not this should be node count - 1
-                            // (i.e., including or not including the node itself)
-                            double prob = double(depthcounts[k]) / double(node_count);
-                            entropy -= prob * log2(prob);
-                            // Formula from Turner 2001, "Depthmap"
-                            factorial *= double(k + 1);
-                            double q = (pow(mean_depth, double(k)) / double(factorial)) * exp(-mean_depth);
-                            rel_entropy += (double)prob * log2(prob / q);
-                            //
-                            harmonic += 1.0 / double(depthcounts[k]);
+                    double entropy = 0.0;
+                    double intensity = 0.0;
+                    double relativeEntropy = 0.0;
+                    double factorial = 1.0;
+                    double harmonicDenominator = 0.0;
+                    for (size_t k = 0; k < depthcounts.size(); ++k) {
+                        if (depthcounts[k] == 0) {
+                            continue;
                         }
+                        const double probability = double(depthcounts[k]) / double(nodeCount);
+                        entropy -= probability * std::log2(probability);
+                        factorial *= double(k + 1);
+                        const double q =
+                            (std::pow(meanDepth, double(k)) / factorial) * std::exp(-meanDepth);
+                        if (q > 0.0) {
+                            relativeEntropy += probability * std::log2(probability / q);
+                        }
+                        harmonicDenominator += 1.0 / double(depthcounts[k]);
                     }
-                    harmonic = double(depthcounts.size()) / harmonic;
-                    if (total_depth > node_count) {
-                        intensity = node_count * entropy / (total_depth - node_count);
-                    } else {
-                        intensity = -1;
+                    if (harmonicDenominator > 0.0) {
+                        result.harmonic = float(double(depthcounts.size()) / harmonicDenominator);
                     }
-                    row.setValue(entropy_col[r], float(entropy));
-                    row.setValue(rel_entropy_col[r], float(rel_entropy));
-                    row.setValue(intensity_col[r], float(intensity));
-                    row.setValue(harmonic_col[r], float(harmonic));
+                    intensity = totalDepth > nodeCount ? nodeCount * entropy / (totalDepth - nodeCount) : -1.0;
+                    result.entropy = float(entropy);
+                    result.relativeEntropy = float(relativeEntropy);
+                    result.intensity = float(intensity);
                 }
-            } else {
-                row.setValue(depth_col[r], -1.0f);
-                row.setValue(integ_dv_col[r], -1.0f);
+            }
+        }
+    });
 
+    size_t root = 0;
+    for (auto &attributeIter : attributes) {
+        if (comm && ((root & 0x3ff) == 0) && comm->IsCancelled()) {
+            throw Communicator::CancelledException();
+        }
+        AttributeRow &row = attributeIter.getRow();
+        if (m_local && !simple_version) {
+            row.setValue(control_col, controlResults[root]);
+            row.setValue(controllability_col, controllabilityResults[root]);
+        }
+        for (size_t radiusIndex = 0; radiusIndex < radiusCount; ++radiusIndex) {
+            const RadiusResult &result = results[root * radiusCount + radiusIndex];
+            row.setValue(count_col[radiusIndex], result.nodeCount);
+            row.setValue(depth_col[radiusIndex], result.meanDepth);
+            row.setValue(integ_dv_col[radiusIndex], result.integrationDv);
+            if (m_weighted_measure_col != -1) {
+                row.setValue(total_weight_col[radiusIndex], result.totalWeight);
+                row.setValue(w_depth_col[radiusIndex], result.weightedMeanDepth);
+            }
+            if (!simple_version) {
+                row.setValue(integ_pv_col[radiusIndex], result.integrationPv);
+                row.setValue(integ_tk_col[radiusIndex], result.integrationTekl);
+                row.setValue(entropy_col[radiusIndex], result.entropy);
+                row.setValue(rel_entropy_col[radiusIndex], result.relativeEntropy);
+                row.setValue(intensity_col[radiusIndex], result.intensity);
+                row.setValue(harmonic_col[radiusIndex], result.harmonic);
+            }
+            if (m_fulloutput) {
+                row.setValue(ra_col[radiusIndex], result.ra);
+                row.setValue(td_col[radiusIndex], result.totalDepth);
                 if (!simple_version) {
-                    row.setValue(integ_pv_col[r], -1.0f);
-                    row.setValue(integ_tk_col[r], -1.0f);
-                    row.setValue(entropy_col[r], -1.0f);
-                    row.setValue(rel_entropy_col[r], -1.0f);
-                    row.setValue(harmonic_col[r], -1.0f);
+                    row.setValue(rra_col[radiusIndex], result.rra);
+                    row.setValue(penn_norm_col[radiusIndex], result.penn);
                 }
             }
-            ++r;
         }
-        //
-        if (comm) {
-            if (qtimer(atime, 500)) {
-                if (comm->IsCancelled()) {
-                    delete[] covered;
-                    throw Communicator::CancelledException();
-                }
-                comm->CommPostMessage(Communicator::CURRENT_RECORD, i);
-            }
-        }
+        ++root;
     }
-    delete[] covered;
+
     if (m_choice) {
-        i = -1;
-        for (auto & iter: attributes) {
-            i++;
-            AttributeRow &row = iter.getRow();
-            double total_choice = 0.0, w_total_choice = 0.0;
-            for (size_t r = 0; r < radii.size(); r++) {
-                total_choice += audittrail[i][r].choice;
-                w_total_choice += audittrail[i][r].weighted_choice;
-                // n.b., normalise choice according to (n-1)(n-2)/2 (maximum possible through routes)
-                double node_count = row.getValue(count_col[r]);
-                double total_weight = 0;
-                if (m_weighted_measure_col != -1) {
-                    total_weight = row.getValue(total_weight_col[r]);
+        root = 0;
+        for (auto &attributeIter : attributes) {
+            if (comm && ((root & 0x3ff) == 0) && comm->IsCancelled()) {
+                throw Communicator::CancelledException();
+            }
+            AttributeRow &row = attributeIter.getRow();
+            double cumulativeChoice = 0.0;
+            double cumulativeWeightedChoice = 0.0;
+            for (size_t radiusIndex = 0; radiusIndex < radiusCount; ++radiusIndex) {
+                for (size_t worker = 0; worker < workerCount; ++worker) {
+                    const ChoiceValue &choice =
+                        workerStates[worker].choice[root * radiusCount + radiusIndex];
+                    cumulativeChoice += choice.choice;
+                    cumulativeWeightedChoice += choice.weightedChoice;
                 }
-                if (node_count > 2) {
-                    row.setValue(choice_col[r], float(total_choice));
-                    row.setValue(n_choice_col[r], float(2.0 * total_choice / ((node_count - 1) * (node_count - 2))));
+                const RadiusResult &result = results[root * radiusCount + radiusIndex];
+                const double nodeCount = result.nodeCount;
+                const double totalWeight = result.totalWeight;
+                if (nodeCount > 2.0) {
+                    row.setValue(choice_col[radiusIndex], float(cumulativeChoice));
+                    row.setValue(n_choice_col[radiusIndex],
+                                 float(2.0 * cumulativeChoice / ((nodeCount - 1.0) * (nodeCount - 2.0))));
                     if (m_weighted_measure_col != -1) {
-                        row.setValue(w_choice_col[r], float(w_total_choice));
-                        row.setValue(nw_choice_col[r], float(2.0 * w_total_choice / (total_weight * total_weight)));
+                        row.setValue(w_choice_col[radiusIndex], float(cumulativeWeightedChoice));
+                        row.setValue(nw_choice_col[radiusIndex],
+                                     totalWeight != 0.0
+                                         ? float(2.0 * cumulativeWeightedChoice / (totalWeight * totalWeight))
+                                         : -1.0f);
                     }
                 } else {
-                    row.setValue(choice_col[r], -1);
-                    row.setValue(n_choice_col[r], -1);
+                    row.setValue(choice_col[radiusIndex], -1.0f);
+                    row.setValue(n_choice_col[radiusIndex], -1.0f);
                     if (m_weighted_measure_col != -1) {
-                        row.setValue(w_choice_col[r], -1);
-                        row.setValue(nw_choice_col[r], -1);
+                        row.setValue(w_choice_col[radiusIndex], -1.0f);
+                        row.setValue(nw_choice_col[radiusIndex], -1.0f);
                     }
                 }
             }
+            ++root;
         }
-        for (size_t i = 0; i < map.getShapeCount(); i++) {
-            delete[] audittrail[i];
-        }
-        delete[] audittrail;
     }
 
-    map.setDisplayedAttribute(-1); // <- override if it's already showing
+    map.setDisplayedAttribute(-1);
     map.setDisplayedAttribute(integ_dv_col.back());
 
     return true;

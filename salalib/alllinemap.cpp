@@ -2,8 +2,147 @@
 #include "salalib/axialminimiser.h"
 #include "salalib/tolerances.h"
 #include "genlib/exceptions.h"
+#include "genlib/parallel.h"
 #include <time.h>
+#include <algorithm>
+#include <atomic>
+#include <cstdint>
 #include <iomanip>
+#include <limits>
+#include <utility>
+#include <unordered_set>
+
+namespace {
+
+bool axialLinesMatch(const Line &a, const Line &b, double tolerance) {
+   return approxeq(a.start(), b.start(), tolerance) && approxeq(a.end(), b.end(), tolerance);
+}
+
+void compactDuplicateAxialLinesSerial(std::vector<Line> &axiallines, KeyVertices &preaxialdata,
+                                      double tolerance) {
+   std::vector<bool> duplicate(axiallines.size(), false);
+   for (size_t j = 0; j < axiallines.size(); ++j) {
+      if (duplicate[j]) {
+         continue;
+      }
+      for (size_t k = j + 1; k < axiallines.size(); ++k) {
+         if (!duplicate[k] && axialLinesMatch(axiallines[j], axiallines[k], tolerance)) {
+            preaxialdata[j].insert(preaxialdata[k].begin(), preaxialdata[k].end());
+            duplicate[k] = true;
+         }
+      }
+   }
+
+   size_t writeIndex = 0;
+   for (size_t readIndex = 0; readIndex < axiallines.size(); ++readIndex) {
+      if (duplicate[readIndex]) {
+         continue;
+      }
+      if (writeIndex != readIndex) {
+         axiallines[writeIndex] = std::move(axiallines[readIndex]);
+         preaxialdata[writeIndex] = std::move(preaxialdata[readIndex]);
+      }
+      ++writeIndex;
+   }
+   axiallines.resize(writeIndex);
+   preaxialdata.resize(writeIndex);
+}
+
+void compactDuplicateAxialLines(std::vector<Line> &axiallines, KeyVertices &preaxialdata,
+                                double tolerance) {
+   const size_t lineCount = axiallines.size();
+   const size_t workerCount = depthmapX::configuredAnalysisThreadCount(lineCount);
+   if (workerCount == 1 || lineCount < 512 ||
+       lineCount > static_cast<size_t>(std::numeric_limits<uint32_t>::max())) {
+      compactDuplicateAxialLinesSerial(axiallines, preaxialdata, tolerance);
+      return;
+   }
+
+   using DuplicatePair = std::pair<uint32_t, uint32_t>;
+   constexpr size_t MAX_STORED_PAIRS = size_t(4) * 1024 * 1024;
+   const size_t perWorkerLimit = std::max<size_t>(1, MAX_STORED_PAIRS / workerCount);
+   std::vector<std::vector<DuplicatePair>> workerPairs(workerCount);
+   std::atomic_bool overflow{false};
+
+   depthmapX::parallelFor(lineCount, workerCount, nullptr, [&](size_t j, size_t worker) {
+      if (overflow.load(std::memory_order_relaxed)) {
+         return;
+      }
+      std::vector<DuplicatePair> &pairs = workerPairs[worker];
+      for (size_t k = j + 1; k < lineCount; ++k) {
+         if (axialLinesMatch(axiallines[j], axiallines[k], tolerance)) {
+            if (pairs.size() >= perWorkerLimit) {
+               overflow.store(true, std::memory_order_relaxed);
+               return;
+            }
+            pairs.emplace_back(static_cast<uint32_t>(j), static_cast<uint32_t>(k));
+         }
+      }
+   });
+
+   if (overflow.load(std::memory_order_relaxed)) {
+      // Pathological duplicate-heavy inputs would require too much temporary
+      // memory. Fall back to the exact serial algorithm instead.
+      compactDuplicateAxialLinesSerial(axiallines, preaxialdata, tolerance);
+      return;
+   }
+
+   size_t pairCount = 0;
+   for (const auto &pairs : workerPairs) {
+      pairCount += pairs.size();
+   }
+   std::vector<DuplicatePair> pairs;
+   pairs.reserve(pairCount);
+   for (auto &workerResult : workerPairs) {
+      pairs.insert(pairs.end(), workerResult.begin(), workerResult.end());
+   }
+   std::sort(pairs.begin(), pairs.end());
+
+   // Apply the matches in the same j/k order as the original serial loop. This
+   // preserves which representative survives even though comparisons ran in parallel.
+   std::vector<bool> duplicate(lineCount, false);
+   size_t pairIndex = 0;
+   for (size_t j = 0; j < lineCount; ++j) {
+      while (pairIndex < pairs.size() && pairs[pairIndex].first < j) {
+         ++pairIndex;
+      }
+      size_t groupEnd = pairIndex;
+      while (groupEnd < pairs.size() && pairs[groupEnd].first == j) {
+         ++groupEnd;
+      }
+      if (!duplicate[j]) {
+         for (size_t index = pairIndex; index < groupEnd; ++index) {
+            const size_t k = pairs[index].second;
+            if (!duplicate[k]) {
+               preaxialdata[j].insert(preaxialdata[k].begin(), preaxialdata[k].end());
+               duplicate[k] = true;
+            }
+         }
+      }
+      pairIndex = groupEnd;
+   }
+
+   size_t writeIndex = 0;
+   for (size_t readIndex = 0; readIndex < lineCount; ++readIndex) {
+      if (duplicate[readIndex]) {
+         continue;
+      }
+      if (writeIndex != readIndex) {
+         axiallines[writeIndex] = std::move(axiallines[readIndex]);
+         preaxialdata[writeIndex] = std::move(preaxialdata[readIndex]);
+      }
+      ++writeIndex;
+   }
+   axiallines.resize(writeIndex);
+   preaxialdata.resize(writeIndex);
+}
+
+struct DivisionTaskResult {
+   size_t radialIndex = std::numeric_limits<size_t>::max();
+   std::vector<int> axialShapeRefs;
+};
+
+} // namespace
 
 AllLineMap::AllLineMap(Communicator *comm,
                        std::vector<SpacePixelFile> &drawingLayers,
@@ -104,21 +243,11 @@ AllLineMap::AllLineMap(Communicator *comm,
       comm->CommPostMessage( Communicator::CURRENT_RECORD, 0 );
    }
 
-   // cut out duplicates:
-   int removed = 0;  // for testing purposes
-   for (size_t j = 0; j < axiallines.size(); j++) {
-      for (size_t k = axiallines.size() - 1; k > j; k--) {
-         double maxdim = __max(region.width(),region.height());
-         if (approxeq(axiallines[j].start(), axiallines[k].start(), maxdim * TOLERANCE_B) && approxeq(axiallines[j].end(), axiallines[k].end(), maxdim * TOLERANCE_B)) {
-            for (int preaxiali: preaxialdata[k]) {
-                preaxialdata[j].insert(preaxiali);
-            }
-            preaxialdata.erase(preaxialdata.begin() + int(k));
-            axiallines.erase(axiallines.begin() + int(k));
-            removed++;
-         }
-      }
-   }
+   // Duplicate comparisons are independent and can be distributed across
+   // workers. Their matches are merged in the original serial order so the
+   // surviving line and key-vertex data remain deterministic.
+   const double maxdim = __max(region.width(), region.height());
+   compactDuplicateAxialLines(axiallines, preaxialdata, maxdim * TOLERANCE_B);
 
    region.grow(0.99); // <- this paired with crop code below to prevent error
    init(axiallines.size(), m_polygons.getRegion());  // used to be double density here
@@ -290,71 +419,87 @@ void AllLineMap::makeDivisions(const std::vector<PolyConnector>& polyconnections
                                std::map<RadialKey,std::set<int> >& radialdivisions, std::map<int, std::set<int> > &axialdividers,
                                Communicator *comm)
 {
-   time_t atime = 0;
    if (comm) {
-      qtimer( atime, 0 );
-      comm->CommPostMessage( Communicator::NUM_RECORDS, polyconnections.size() );
+      comm->CommPostMessage(Communicator::NUM_RECORDS, static_cast<int>(polyconnections.size()));
    }
 
-   for (size_t i = 0; i < polyconnections.size(); i++) {
-      PixelRefVector pixels = pixelateLine(polyconnections[i].line);
-      std::vector<size_t> testedshapes;
-      auto connIter = radialdivisions.find(polyconnections[i].key);
-      size_t connindex = std::distance(radialdivisions.begin(), connIter);
-      double tolerance = sqrt(TOLERANCE_A);// * polyconnections[i].line.length();
-      for (size_t j = 0; j < pixels.size(); j++) {
-         PixelRef pix = pixels[j];
-         auto& shapes = m_pixel_shapes(static_cast<size_t>(pix.y),
-                                       static_cast<size_t>(pix.x));
-         for (const ShapeRef& shape: shapes) {
-            auto iter = depthmapX::findBinary( testedshapes, shape.m_shape_ref );
-            if (iter != testedshapes.end()) {
+   // std::distance on a std::map is linear. Cache its stable map-order index
+   // once rather than walking from begin() for every polygon connector.
+   std::map<RadialKey, size_t> radialIndices;
+   size_t radialIndex = 0;
+   for (const auto &entry : radialdivisions) {
+      radialIndices.emplace(entry.first, radialIndex++);
+   }
+
+   const auto &shapesByRef = m_shapes;
+   const auto &pixelShapes = m_pixel_shapes;
+   const AllLineMap &readOnlyMap = *this;
+   std::vector<DivisionTaskResult> taskResults(polyconnections.size());
+   const size_t workerCount = depthmapX::configuredAnalysisThreadCount(polyconnections.size());
+
+   depthmapX::parallelFor(polyconnections.size(), workerCount, comm, [&](size_t i, size_t) {
+      const auto connIndexIter = radialIndices.find(polyconnections[i].key);
+      if (connIndexIter == radialIndices.end() || connIndexIter->second >= radiallines.size()) {
+         return;
+      }
+
+      DivisionTaskResult &result = taskResults[i];
+      result.radialIndex = connIndexIter->second;
+      const Line &connectionLine = polyconnections[i].line;
+      const double tolerance = sqrt(TOLERANCE_A);
+      const PixelRefVector pixels = readOnlyMap.pixelateLine(connectionLine);
+      std::unordered_set<unsigned int> testedShapes;
+
+      for (const PixelRef &pixel : pixels) {
+         const auto &shapes = pixelShapes(static_cast<size_t>(pixel.y),
+                                          static_cast<size_t>(pixel.x));
+         for (const ShapeRef &shape : shapes) {
+            if (!testedShapes.insert(shape.m_shape_ref).second) {
                continue;
             }
-            testedshapes.insert(iter, int(shape.m_shape_ref));
-            const Line& line = m_shapes.find(shape.m_shape_ref)->second.getLine();
-            //
-            if (intersect_region(line, polyconnections[i].line, tolerance * line.length()) ) {
-               switch ( intersect_line_distinguish(line, polyconnections[i].line, tolerance * line.length()) ) {
-               case 0:
-                  break;
-               case 2:
-                  {
-                     size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
-                     if (index != shape.m_shape_ref) {
-                        throw 1; // for the code to work later this can't be true!
-                     }
-                     axialdividers[index].insert(connindex);
-                     connIter->second.insert(shape.m_shape_ref);
-                  }
-                  break;
-               case 1:
-                  {
-                     size_t index = depthmapX::findIndexFromKey(axialdividers, (int) shape.m_shape_ref);
-                     if (index != shape.m_shape_ref) {
-                        throw 1; // for the code to work later this can't be true!
-                     }
-                     //
-                     // this makes sure actually crosses between the line and the openspace properly
-                     if (radiallines[connindex].cuts(line)) {
-                        axialdividers[index].insert(connindex);
-                        connIter->second.insert(shape.m_shape_ref);
-                     }
-                  }
-                  break;
-               default:
-                  break;
-               }
+
+            const auto shapeIter = shapesByRef.find(static_cast<int>(shape.m_shape_ref));
+            if (shapeIter == shapesByRef.end()) {
+               continue;
+            }
+            const Line &line = shapeIter->second.getLine();
+            const double lineTolerance = tolerance * line.length();
+            if (!intersect_region(line, connectionLine, lineTolerance)) {
+               continue;
+            }
+
+            const int intersectionType = intersect_line_distinguish(line, connectionLine, lineTolerance);
+            if (intersectionType == 2 ||
+                (intersectionType == 1 && radiallines[result.radialIndex].cuts(line))) {
+               result.axialShapeRefs.push_back(static_cast<int>(shape.m_shape_ref));
             }
          }
       }
-      if (comm) {
-         if (qtimer( atime, 500 )) {
-            if (comm->IsCancelled()) {
-               throw Communicator::CancelledException();
-            }
-            comm->CommPostMessage( Communicator::CURRENT_RECORD, i );
+
+      std::sort(result.axialShapeRefs.begin(), result.axialShapeRefs.end());
+      result.axialShapeRefs.erase(
+          std::unique(result.axialShapeRefs.begin(), result.axialShapeRefs.end()),
+          result.axialShapeRefs.end());
+   });
+
+   // Commit results in polygon-connection order. Only this phase mutates the
+   // maps, keeping the worker phase read-only and deterministic.
+   for (size_t i = 0; i < taskResults.size(); ++i) {
+      const DivisionTaskResult &result = taskResults[i];
+      if (result.radialIndex == std::numeric_limits<size_t>::max()) {
+         continue;
+      }
+      auto radialDivisionIter = radialdivisions.find(polyconnections[i].key);
+      if (radialDivisionIter == radialdivisions.end()) {
+         continue;
+      }
+      for (int shapeRef : result.axialShapeRefs) {
+         auto axialDividerIter = axialdividers.find(shapeRef);
+         if (axialDividerIter == axialdividers.end()) {
+            continue;
          }
+         axialDividerIter->second.insert(static_cast<int>(result.radialIndex));
+         radialDivisionIter->second.insert(shapeRef);
       }
    }
 }

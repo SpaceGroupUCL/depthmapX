@@ -36,6 +36,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // each pixel has various lists of information:
@@ -413,7 +414,9 @@ private:
     // Connect a particular shape into the graph
     int connectIntersected(int rowid, bool linegraph);
     // Get the connections for a particular line
-    std::vector<int> getLineConnections(int lineref, double tolerance);
+    std::vector<int> getLineConnections(
+        int lineref, double tolerance,
+        const std::unordered_map<int, int> *shapeIndexLookup = nullptr) const;
     // Get arbitrary shape connections for a particular shape
     std::vector<int> getShapeConnections(int polyref, double tolerance);
     // Make all connections
