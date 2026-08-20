@@ -399,8 +399,8 @@ private:
     bool pointInPoly(const Point2f &p, int shaperef) const;
     // retrieve lists of polys point intersects:
     std::vector<int> pointInPolyList(const Point2f &p) const;
-    std::vector<int> lineInPolyList(const Line &li, size_t lineref = -1, double tolerance = 0.0) const;
-    std::vector<int> polyInPolyList(int polyref, double tolerance = 0.0) const;
+    std::vector<int> lineInPolyList(const Line &li, size_t lineref = -1, double tolerance = 1e-9) const;
+    std::vector<int> polyInPolyList(int polyref, double tolerance = 1e-9) const;
     std::vector<int> shapeInPolyList(const SalaShape &shape);
     // helper to make actual test of point in shape:
     int testPointInPoly(const Point2f &p, const ShapeRef &shape) const;
