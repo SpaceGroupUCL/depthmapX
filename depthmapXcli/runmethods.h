@@ -44,6 +44,7 @@ class Point2f;
 
 namespace dm_runmethods{
     std::unique_ptr<MetaGraph> loadGraph(const std::string& filename, IPerformanceSink &perfWriter);
+    std::unique_ptr<Communicator> getCommunicator(const CommandLineParser &clp);
     void importFiles(const CommandLineParser &cmdP, const ImportParser &parser, IPerformanceSink &perfWriter);
     void linkGraph(const CommandLineParser &cmdP, const LinkParser &parser, IPerformanceSink &perfWriter );
     void runVga(const CommandLineParser &cmdP, const VgaParser &vgaP, const IRadiusConverter &converter, IPerformanceSink &perfWriter );
