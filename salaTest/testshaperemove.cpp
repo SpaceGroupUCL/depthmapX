@@ -308,6 +308,25 @@ TEST_CASE("Testing deleting shapes from segment maps") {
             segmentMap->removeShape(shapeRef, false);
             REQUIRE(segmentMap->getAllShapes().size() == idx - 1);
             REQUIRE(segmentMap->getConnections().size() == idx - 1);
+
+            for (auto it = segmentMap->getAllShapes().begin(); it != segmentMap->getAllShapes().end(); it++) {
+                std::vector<int> connForConnections = segmentForConnections[it->first];
+                std::vector<int> connBackConnections = segmentBackConnections[it->first];
+                if (std::find(connForConnections.begin(), connForConnections.end(), shapeRef) !=
+                    connForConnections.end()) {
+                    // if the other shape contains this one, then remove from its connectivity
+                    // removal does not currently work for segment maps, so connectivity is not adjusted
+                    connectivitiesAfterRemoval[it->first] = connectivitiesAfterRemoval[it->first] - 1;
+                } else if (std::find(connBackConnections.begin(), connBackConnections.end(), shapeRef) !=
+                           connBackConnections.end()) {
+                    // if the other shape contains this one, then remove from its connectivity
+                    // removal does not currently work for segment maps, so connectivity is not adjusted
+                    connectivitiesAfterRemoval[it->first] = connectivitiesAfterRemoval[it->first] - 1;
+                }
+
+                REQUIRE(segmentTable.getRow(AttributeKey(it->first)).getValue(segmentConnectivityColIdx) ==
+                        connectivitiesAfterRemoval[it->first]);
+            }
         }
     }
 
@@ -325,6 +344,25 @@ TEST_CASE("Testing deleting shapes from segment maps") {
             segmentMap->removeShape(shapeRef, false);
             REQUIRE(segmentMap->getAllShapes().size() == idx - 1);
             REQUIRE(segmentMap->getConnections().size() == idx - 1);
+
+            for (auto it = segmentMap->getAllShapes().begin(); it != segmentMap->getAllShapes().end(); it++) {
+                std::vector<int> connForConnections = segmentForConnections[it->first];
+                std::vector<int> connBackConnections = segmentBackConnections[it->first];
+                if (std::find(connForConnections.begin(), connForConnections.end(), shapeRef) !=
+                    connForConnections.end()) {
+                    // if the other shape contains this one, then remove from its connectivity
+                    // removal does not currently work for segment maps, so connectivity is not adjusted
+                    connectivitiesAfterRemoval[it->first] = connectivitiesAfterRemoval[it->first] - 1;
+                } else if (std::find(connBackConnections.begin(), connBackConnections.end(), shapeRef) !=
+                           connBackConnections.end()) {
+                    // if the other shape contains this one, then remove from its connectivity
+                    // removal does not currently work for segment maps, so connectivity is not adjusted
+                    connectivitiesAfterRemoval[it->first] = connectivitiesAfterRemoval[it->first] - 1;
+                }
+
+                REQUIRE(segmentTable.getRow(AttributeKey(it->first)).getValue(segmentConnectivityColIdx) ==
+                        connectivitiesAfterRemoval[it->first]);
+            }
         }
     }
 
@@ -344,6 +382,25 @@ TEST_CASE("Testing deleting shapes from segment maps") {
             segmentMap->removeShape(shapeRef, false);
             REQUIRE(segmentMap->getAllShapes().size() == idx - 1);
             REQUIRE(segmentMap->getConnections().size() == idx - 1);
+
+            for (auto it = segmentMap->getAllShapes().begin(); it != segmentMap->getAllShapes().end(); it++) {
+                std::vector<int> connForConnections = segmentForConnections[it->first];
+                std::vector<int> connBackConnections = segmentBackConnections[it->first];
+                if (std::find(connForConnections.begin(), connForConnections.end(), shapeRef) !=
+                    connForConnections.end()) {
+                    // if the other shape contains this one, then remove from its connectivity
+                    // removal does not currently work for segment maps, so connectivity is not adjusted
+                    connectivitiesAfterRemoval[it->first] = connectivitiesAfterRemoval[it->first] - 1;
+                } else if (std::find(connBackConnections.begin(), connBackConnections.end(), shapeRef) !=
+                           connBackConnections.end()) {
+                    // if the other shape contains this one, then remove from its connectivity
+                    // removal does not currently work for segment maps, so connectivity is not adjusted
+                    connectivitiesAfterRemoval[it->first] = connectivitiesAfterRemoval[it->first] - 1;
+                }
+
+                REQUIRE(segmentTable.getRow(AttributeKey(it->first)).getValue(segmentConnectivityColIdx) ==
+                        connectivitiesAfterRemoval[it->first]);
+            }
         }
     }
 }
