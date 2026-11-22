@@ -1,4 +1,5 @@
 // Copyright (C) 2018 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,90 +17,40 @@
 
 #include "salalib/attributetableindex.h"
 
-std::vector<ConstAttributeIndexItem> makeAttributeIndex(const AttributeTable &table, int colIndex)
+#include <limits>
+
+namespace {
+template <typename IndexItem, typename Table>
+std::vector<IndexItem> buildAttributeIndex(Table &table, int colIndex)
 {
-    std::vector<ConstAttributeIndexItem> index;
-    size_t numRows = table.getNumRows();
-    if (numRows == 0)
-    {
-        return index;
-    }
-    index.reserve(numRows);
-    // perturb the values to be sorted by so same values will be in order of appearence in the map
-    size_t idx = 0;
-    if ( colIndex == -1 )
-    {
-        double perturbationFactor = 1e-9 / numRows;
-        for (auto& item: table)
-        {
-            double value = (double)item.getKey().value;
-            value += idx * perturbationFactor;
-
-            index.push_back(ConstAttributeIndexItem(item.getKey(), value, item.getRow()));
-            ++idx;
-        }
-    }
-    else if (colIndex >= 0 )
-    {
-        double perturbationFactor = table.getColumn(colIndex).getStats().max * 1e-9 / numRows;
-        for (auto & item : table)
-        {
-            double value = item.getRow().getValue(colIndex);
-            value += idx * perturbationFactor;
-
-            index.push_back(ConstAttributeIndexItem(item.getKey(), value, item.getRow()));
-            ++idx;
-        }
-    }
-    else
-    {
+    if (colIndex < -1) {
         throw std::out_of_range("Column index out of range");
     }
-    std::sort(index.begin(), index.end());
+    std::vector<IndexItem> index;
+    index.reserve(table.getNumRows());
+    for (auto &item : table) {
+        const auto &key = item.getKey();
+        auto &row = item.getRow();
+        double value = key.value;
+        if (colIndex >= 0) {
+            value = row.hasValue(colIndex) ? row.getValue(colIndex) : -std::numeric_limits<double>::infinity();
+        }
+        index.emplace_back(key, value, row);
+    }
+    // Keep the original row order for equal values, including missing cells.
+    std::stable_sort(index.begin(), index.end());
     return index;
+}
+} // namespace
+
+std::vector<ConstAttributeIndexItem> makeAttributeIndex(const AttributeTable &table, int colIndex)
+{
+    return buildAttributeIndex<ConstAttributeIndexItem>(table, colIndex);
 }
 
 std::vector<AttributeIndexItem> makeAttributeIndex(AttributeTable &table, int colIndex)
 {
-    std::vector<AttributeIndexItem> index;
-    size_t numRows = table.getNumRows();
-    if (numRows == 0)
-    {
-        return index;
-    }
-    index.reserve(numRows);
-    // perturb the values to be sorted by so same values will be in order of appearence in the map
-    size_t idx = 0;
-    if ( colIndex == -1 )
-    {
-        double perturbationFactor = 1e-9 / numRows;
-        for (auto& item: table)
-        {
-            double value = (double)item.getKey().value;
-            value += idx * perturbationFactor;
-
-            index.push_back(AttributeIndexItem(item.getKey(), value, item.getRow()));
-            ++idx;
-        }
-    }
-    else if (colIndex >= 0 )
-    {
-        double perturbationFactor = table.getColumn(colIndex).getStats().max * 1e-9 / numRows;
-        for (auto & item : table)
-        {
-            double value = item.getRow().getValue(colIndex);
-            value += idx * perturbationFactor;
-
-            index.push_back(AttributeIndexItem(item.getKey(), value, item.getRow()));
-            ++idx;
-        }
-    }
-    else
-    {
-        throw std::out_of_range("Column index out of range");
-    }
-    std::sort(index.begin(), index.end());
-    return index;
+    return buildAttributeIndex<AttributeIndexItem>(table, colIndex);
 }
 
 std::pair<std::vector<AttributeIndexItem>::iterator, std::vector<AttributeIndexItem>::iterator>

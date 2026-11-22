@@ -1,6 +1,6 @@
 // sala - a component of the depthmapX - spatial network analysis platform
 // Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,8 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAVisualGlobalDepth::run(Communicator *, PointMap &map, bool) {
+bool VGAVisualGlobalDepth::run(Communicator *comm, PointMap &map, bool) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = map.getAttributeTable();
 
@@ -28,6 +29,7 @@ bool VGAVisualGlobalDepth::run(Communicator *, PointMap &map, bool) {
     int col = attributes.insertOrResetColumn("Visual Step Depth");
 
     for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
+        Communicator::checkCancelled(comm);
         PixelRef pix = iter->getKey().value;
         map.getPoint(pix).m_misc = 0;
         map.getPoint(pix).m_extent = pix;
@@ -36,12 +38,14 @@ bool VGAVisualGlobalDepth::run(Communicator *, PointMap &map, bool) {
     std::vector<PixelRefVector> search_tree;
     search_tree.push_back(PixelRefVector());
     for (auto &sel : map.getSelSet()) {
+        Communicator::checkCancelled(comm);
         // need to convert from ints (m_selection_set) to pixelrefs for this op:
         search_tree.back().push_back(sel);
     }
 
     size_t level = 0;
     while (search_tree[level].size()) {
+        Communicator::checkCancelled(comm);
         search_tree.push_back(PixelRefVector());
         const PixelRefVector& searchTreeAtLevel = search_tree[level];
         for (auto currLvlIter = searchTreeAtLevel.rbegin(); currLvlIter != searchTreeAtLevel.rend(); currLvlIter++) {

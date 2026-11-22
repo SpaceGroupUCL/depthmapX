@@ -1,6 +1,7 @@
 // Paf Template Library --- a set of useful C++ templates
 //
 // Copyright (c) 1996-2011 Alasdair Turner (a.turner@ucl.ac.uk)
+// Copyright (C) 2011-2026, Tasos Varoudis
 //
 //-----------------------------------------------------------------------------
 //  This library is free software; you can redistribute it and/or
@@ -387,8 +388,10 @@ void pmemvec<T>::grow(size_t pos)
       throw pexception( pexception::MEMORY_ALLOCATION, sizeof(T) * storage_size() );
 
    if (m_length) {
-      for (size_t i = 0; i < m_length + 1; i++)
-         new_data[i] = (i < pos) ? m_data[i] : m_data[i-1];
+      for (size_t i = 0; i < pos; ++i)
+         new_data[i] = m_data[i];
+      for (size_t i = pos; i < m_length; ++i)
+         new_data[i + 1] = m_data[i];
    }
    if (m_data) {
       delete [] m_data;

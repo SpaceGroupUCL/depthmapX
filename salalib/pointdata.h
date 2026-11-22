@@ -1,5 +1,5 @@
 // sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 #ifndef __POINTDATA_H__
 #define __POINTDATA_H__
 
+#include <optional>
 #include "salalib/spacepixfile.h"
 #include "genlib/exceptions.h"
 #include "salalib/point.h"
@@ -294,7 +295,7 @@ public:
        return(m_attributes->getSelAvg(m_displayed_attribute));
    }
 
-   double getLocationValue(const Point2f& point);
+   std::optional<double> getLocationValue(const Point2f& point);
    //
    // Screen functionality
 public:

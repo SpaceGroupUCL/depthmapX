@@ -1,6 +1,6 @@
 // sala - a component of the depthmapX - spatial network analysis platform
 // Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -21,14 +21,16 @@
 #include "genlib/stringutils.h"
 
 bool SegmentTopologicalShortestPath::run(Communicator *comm) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = m_map.getAttributeTable();
     int shapeCount = m_map.getShapeCount();
 
     bool retvar = true;
 
-    int depth_col = attributes.insertOrResetColumn("Topological Shortest Path Depth");
-    int path_col = attributes.insertOrResetColumn("Topological Shortest Path Order");
+    const size_t resultCount = m_map.getShapeCount();
+    std::vector<float> costs(resultCount, -1.0f);
+    std::vector<int> order(resultCount, -1);
 
     // record axial line refs for topological analysis
     std::vector<int> axialrefs;
@@ -36,6 +38,7 @@ bool SegmentTopologicalShortestPath::run(Communicator *comm) {
     std::vector<float> seglengths;
     float maxseglength = 0.0f;
     for (size_t cursor = 0; cursor < shapeCount; cursor++) {
+        Communicator::checkCancelled(comm);
         AttributeRow &row = m_map.getAttributeRowFromShapeIndex(cursor);
         axialrefs.push_back(row.getValue("Axial Line Ref"));
         seglengths.push_back(row.getValue("Segment Length"));
@@ -63,7 +66,7 @@ bool SegmentTopologicalShortestPath::run(Communicator *comm) {
     double length = seglengths[refFrom];
     audittrail[refFrom] = TopoMetSegmentRef(refFrom, Connector::SEG_CONN_ALL, length * 0.5, -1);
     list[0].push_back(refFrom);
-    m_map.getAttributeRowFromShapeIndex(refFrom).setValue(depth_col, 0);
+    costs[refFrom] = 0;
 
     unsigned int segdepth = 0;
     int bin = 0;
@@ -71,7 +74,17 @@ bool SegmentTopologicalShortestPath::run(Communicator *comm) {
     std::map<unsigned int, unsigned int> parents;
     bool refFound = false;
 
+    Communicator *progress = comm;
+    if (comm) {
+        comm->CommPostMessage(Communicator::NUM_STEPS, 2);
+    }
     while (open != 0) {
+        Communicator::checkCancelled(comm);
+        if (progress) {
+            progress->CommPostMessage(Communicator::CURRENT_STEP, 1);
+            progress = nullptr;
+            Communicator::checkCancelled(comm);
+        }
         while (list[bin].empty()) {
             bin++;
             segdepth += 1;
@@ -97,6 +110,7 @@ bool SegmentTopologicalShortestPath::run(Communicator *comm) {
         bool backsegs = true;
 
         while (connected_cursor != -1) {
+            Communicator::checkCancelled(comm);
             if (backsegs && iter == axline.m_back_segconns.end()) {
                 iter = axline.m_forward_segconns.begin();
                 backsegs = false;
@@ -106,7 +120,6 @@ bool SegmentTopologicalShortestPath::run(Communicator *comm) {
             }
 
             connected_cursor = iter->first.ref;
-            AttributeRow &row = m_map.getAttributeRowFromShapeIndex(connected_cursor);
             if (seen[connected_cursor] > segdepth) {
                 float length = seglengths[connected_cursor];
                 int axialref = axialrefs[connected_cursor];
@@ -118,14 +131,14 @@ bool SegmentTopologicalShortestPath::run(Communicator *comm) {
                 //
                 if (axialrefs[here.ref] == axialref) {
                     list[bin].push_back(connected_cursor);
-                    row.setValue(depth_col, segdepth);
+                    costs[connected_cursor] = segdepth;
                 } else {
                     list[(bin + 1) % 2].push_back(connected_cursor);
                     seen[connected_cursor] =
                         segdepth +
                         1; // this is so if another node is connected directly to this one but is found later it is
                            // still handled -- note it can result in the connected cursor being added twice
-                    row.setValue(depth_col, segdepth + 1);
+                    costs[connected_cursor] = segdepth + 1;
                 }
                 if(parents.find(connected_cursor) == parents.end()) {
                     parents[connected_cursor] = here.ref;
@@ -141,23 +154,29 @@ bool SegmentTopologicalShortestPath::run(Communicator *comm) {
             break;
     }
 
+    if (comm) {
+        comm->CommPostMessage(Communicator::CURRENT_STEP, 2);
+    }
     auto refToParent = parents.find(refTo);
     int counter = 0;
     while (refToParent != parents.end()) {
-        AttributeRow &row = m_map.getAttributeRowFromShapeIndex(refToParent->first);
-        row.setValue(path_col, counter);
-        counter++;
+        Communicator::checkCancelled(comm);
+        order[refToParent->first] = counter++;
         refToParent = parents.find(refToParent->second);
     }
-    m_map.getAttributeRowFromShapeIndex(refFrom).setValue(path_col, counter);
+    order[refFrom] = counter;
 
-    for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
-        AttributeRow &row = iter->getRow();
-        if (row.getValue(path_col) < 0) {
-            row.setValue(depth_col, -1);
-        } else {
-            row.setValue(path_col, counter - row.getValue(path_col));
+    // Publish complete results only once the analysis has passed its last cancellation check.
+    Communicator::checkCancelled(comm);
+    const auto depth_col = attributes.insertOrResetColumn("Topological Shortest Path Depth");
+    const auto path_col = attributes.insertOrResetColumn("Topological Shortest Path Order");
+    size_t index = 0;
+    for (auto &item : attributes) {
+        if (order[index] >= 0) {
+            item.getRow().setValue(depth_col, costs[index]);
+            item.getRow().setValue(path_col, counter - order[index]);
         }
+        ++index;
     }
 
     m_map.overrideDisplayedAttribute(-2); // <- override if it's already showing

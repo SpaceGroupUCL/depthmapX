@@ -1,5 +1,5 @@
 // sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -375,6 +375,9 @@ bool SalaProgram::runselect(std::vector<int> &selsetout, const std::set<int>& se
 
 std::string SalaProgram::getLastErrorMessage() const
 {
+   if (m_error_stack.size() == 0) {
+      return {};
+   }
    const SalaError& error = m_error_stack.tail();
    if (error.lineno == -1) {
       return error.message;

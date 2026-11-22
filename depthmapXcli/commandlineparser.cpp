@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,7 +18,10 @@
 #include "exceptions.h"
 #include "imodeparserfactory.h"
 #include "parsingutils.h"
+#include "performancewriter.h"
+#include "genlib/comm.h"
 #include "version.h"
+#include <exception>
 #include <iostream>
 #include <cstring>
 #include <algorithm>
@@ -47,6 +51,34 @@ void CommandLineParser::printVersion(){
 CommandLineParser::CommandLineParser(const IModeParserFactory &parserFactory)
     :  m_simpleMode(false), _parserFactory(parserFactory), _modeParser(0)
 {}
+
+int CommandLineParser::execute(int argc, char *argv[], std::ostream &errors) {
+    try {
+        parse(argc, argv);
+        if (!isValid()) {
+            if (printVersionMode()) {
+                printVersion();
+            } else {
+                printHelp();
+            }
+            return 0;
+        }
+
+        PerformanceWriter perfWriter(getTimingFile());
+        run(perfWriter);
+        perfWriter.write();
+        return 0;
+    } catch (const Communicator::CancelledException &) {
+        errors << "Analysis cancelled.\n";
+    } catch (const std::exception &error) {
+        const char *message = error.what();
+        errors << (*message ? message : "An error occurred during analysis.")
+               << "\nType 'depthmapXcli -h' for help\n";
+    } catch (...) {
+        errors << "An unknown error occurred during analysis.\n";
+    }
+    return -1;
+}
 
 void CommandLineParser::parse(size_t argc, char *argv[])
 {

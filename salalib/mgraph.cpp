@@ -1,5 +1,5 @@
 // sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -57,9 +57,36 @@
 #include "math.h"
 #include "time.h"
 
+#include <exception>
 #include <sstream>
 #include <tuple>
 
+
+// Repair temporarily hidden layers on unwind, including conversions that
+// may already have added or removed a layer when an exception occurs.
+class MetaGraph::RestoreStateOnFailure {
+    MetaGraph &m_graph;
+    int m_state;
+    int m_mask;
+    int m_exceptions = std::uncaught_exceptions();
+
+public:
+    RestoreStateOnFailure(MetaGraph &graph, int mask)
+        : m_graph(graph), m_state(graph.m_state), m_mask(mask) {}
+
+    ~RestoreStateOnFailure() {
+        if (std::uncaught_exceptions() <= m_exceptions) {
+            return;
+        }
+        constexpr int layerFlags = POINTMAPS | LINEDATA | DATAMAPS | SHAPEGRAPHS;
+        const int layers = (m_graph.m_pointMaps.empty() ? 0 : POINTMAPS) |
+                           (m_graph.m_drawingFiles.empty() ? 0 : LINEDATA) |
+                           (m_graph.m_dataMaps.empty() ? 0 : DATAMAPS) |
+                           (m_graph.m_shapeGraphs.empty() ? 0 : SHAPEGRAPHS);
+        m_graph.m_state = (m_graph.m_state & ~m_mask) |
+                          (m_mask & ((m_state & ~layerFlags) | layers));
+    }
+};
 
 MetaGraph::MetaGraph(std::string name)
 { 
@@ -201,10 +228,10 @@ bool MetaGraph::setViewClass(int command)
    return true;
 }
 
-double MetaGraph::getLocationValue(const Point2f& point)
+std::optional<double> MetaGraph::getLocationValue(const Point2f& point)
 {
    // this varies according to whether axial or vga information is displayed on top
-   double val = -2;
+   std::optional<double> val;
 
    if (viewingProcessedPoints()) {
       val = getDisplayedPointMap().getLocationValue(point);
@@ -221,6 +248,7 @@ double MetaGraph::getLocationValue(const Point2f& point)
 
 bool MetaGraph::setGrid( double spacing, const Point2f& offset )
 {
+   RestoreStateOnFailure restoreState(*this, POINTMAPS);
    m_state &= ~POINTMAPS;
 
    getDisplayedPointMap().setGrid( spacing, offset );
@@ -337,7 +365,7 @@ bool MetaGraph::analyseGraph( Communicator *communicator, Options options , bool
       }
       else if (options.point_depth_selection == 4) {
          if (m_view_class & VIEWVGA) {
-            getDisplayedPointMap().binDisplay( communicator );
+            analysisCompleted = getDisplayedPointMap().binDisplay(communicator);
          }
          else if (m_view_class & VIEWAXIAL && getDisplayedShapeGraph().isSegmentMap()) {
              analysisCompleted = SegmentTopologicalPD().run(communicator, getDisplayedShapeGraph(), false);
@@ -763,6 +791,7 @@ bool MetaGraph::convertDrawingToAxial(Communicator *comm, std::string layer_name
 {
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;
 
    bool converted = true;
@@ -790,6 +819,7 @@ bool MetaGraph::convertDataToAxial(Communicator *comm, std::string layer_name, b
 {
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;
 
    bool converted = true;
@@ -830,6 +860,7 @@ bool MetaGraph::convertToConvex(Communicator *comm, std::string layer_name, bool
 {
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS; // and convex maps...
 
    bool converted = false;
@@ -878,6 +909,7 @@ bool MetaGraph::convertDrawingToSegment(Communicator *comm, std::string layer_na
 {
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;
 
    bool converted = true;
@@ -906,6 +938,7 @@ bool MetaGraph::convertDataToSegment(Communicator *comm, std::string layer_name,
 {
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;
 
    bool converted = true;
@@ -945,6 +978,7 @@ bool MetaGraph::convertToData(Communicator *, std::string layer_name, bool keepo
 {
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, DATAMAPS);
    m_state &= ~DATAMAPS;
 
    bool converted = false;
@@ -1029,6 +1063,7 @@ bool MetaGraph::convertToDrawing(Communicator *, std::string layer_name, bool fr
 
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, LINEDATA);
    m_state &= ~LINEDATA;
 
    try {
@@ -1075,7 +1110,6 @@ bool MetaGraph::convertToDrawing(Communicator *, std::string layer_name, bool fr
          //
          converted = true;
       }
-      converted = true;
    }
    catch (Communicator::CancelledException) {
       converted = false;
@@ -1094,6 +1128,7 @@ bool MetaGraph::convertAxialToSegment(Communicator *comm, std::string layer_name
 {
    int oldstate = m_state;
 
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;
 
    bool converted = true;
@@ -1136,6 +1171,7 @@ bool MetaGraph::convertAxialToSegment(Communicator *comm, std::string layer_name
 int MetaGraph::loadMifMap(Communicator *comm, std::istream& miffile, std::istream& midfile)
 {
    int oldstate = m_state;
+   RestoreStateOnFailure restoreState(*this, DATAMAPS);
    m_state &= ~DATAMAPS;
 
    int mapLoaded = -1;
@@ -1173,6 +1209,7 @@ int MetaGraph::loadMifMap(Communicator *comm, std::istream& miffile, std::istrea
 bool MetaGraph::makeAllLineMap( Communicator *communicator, const Point2f& seed )
 {
    int oldstate = m_state;
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload)
    m_view_class &= ~VIEWAXIAL;   // Also clear the view_class flag
 
@@ -1209,6 +1246,7 @@ bool MetaGraph::makeAllLineMap( Communicator *communicator, const Point2f& seed 
 bool MetaGraph::makeFewestLineMap( Communicator *communicator, int replace )
 {
    int oldstate= m_state;
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload) 
 
    bool mapMade = true;
@@ -1276,6 +1314,7 @@ bool MetaGraph::makeFewestLineMap( Communicator *communicator, int replace )
 
 bool MetaGraph::analyseAxial( Communicator *communicator, Options options, bool ) // options copied to keep thread safe
 {
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload) 
 
    bool analysisCompleted = false;
@@ -1296,6 +1335,7 @@ bool MetaGraph::analyseAxial( Communicator *communicator, Options options, bool 
 
 bool MetaGraph::analyseSegmentsTulip( Communicator *communicator, Options options ) // <- options copied to keep thread safe
 {
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload)
 
    bool analysisCompleted = false;
@@ -1316,6 +1356,7 @@ bool MetaGraph::analyseSegmentsTulip( Communicator *communicator, Options option
 
 bool MetaGraph::analyseSegmentsAngular( Communicator *communicator, Options options ) // <- options copied to keep thread safe
 {
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload)
 
    bool analysisCompleted = false;
@@ -1334,6 +1375,7 @@ bool MetaGraph::analyseSegmentsAngular( Communicator *communicator, Options opti
 
 bool MetaGraph::analyseTopoMetMultipleRadii( Communicator *communicator, Options options ) // <- options copied to keep thread safe
 {
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload)
 
    bool analysisCompleted = true;
@@ -1361,6 +1403,7 @@ bool MetaGraph::analyseTopoMetMultipleRadii( Communicator *communicator, Options
 
 bool MetaGraph::analyseTopoMet( Communicator *communicator, Options options ) // <- options copied to keep thread safe
 {
+   RestoreStateOnFailure restoreState(*this, SHAPEGRAPHS);
    m_state &= ~SHAPEGRAPHS;      // Clear axial map data flag (stops accidental redraw during reload) 
 
    bool analysisCompleted = false;
@@ -1389,6 +1432,7 @@ int MetaGraph::loadLineData( Communicator *communicator, int load_type )
        return depthmapX::importFile(*this, communicator->getInFileStream(), communicator, communicator->GetMBInfileName(), depthmapX::ImportType::DRAWINGMAP, depthmapX::ImportFileType::DXF);
     }
 
+   RestoreStateOnFailure restoreState(*this, LINEDATA);
    m_state &= ~LINEDATA;      // Clear line data flag (stops accidental redraw during reload) 
 
    // if bsp tree exists 
@@ -1750,6 +1794,7 @@ bool MetaGraph::pushValuesToLayer(int desttype, int destlayer, int push_func, bo
 
    // temporarily turn off everything to prevent redraw during sensitive time:
    int oldstate = m_state;
+   RestoreStateOnFailure restoreState(*this, (DATAMAPS | AXIALLINES | POINTMAPS));
    m_state &= ~(DATAMAPS | AXIALLINES | POINTMAPS);
 
    bool valuesPushed = pushValuesToLayer(sourcetype, sourcelayer, desttype, destlayer, col_in,
@@ -2657,8 +2702,7 @@ int MetaGraph::write( const std::string& filename, int version, bool currentlaye
 {
    std::ofstream stream;
 
-   int oldstate = m_state;
-   m_state = 0;   // <- temporarily clear out state, avoids any potential read / write errors
+   const int oldstate = m_state;
 
    char type;
 
@@ -2668,7 +2712,6 @@ int MetaGraph::write( const std::string& filename, int version, bool currentlaye
       if (stream.rdbuf()->is_open()) {
          stream.close();
       }
-      m_state = oldstate;
       return DISK_ERROR;  
    }
    stream.write("grf", 3);
@@ -2752,8 +2795,7 @@ int MetaGraph::write( const std::string& filename, int version, bool currentlaye
 
    stream.close();
 
-   m_state = oldstate;
-   return OK;
+   return stream ? OK : DISK_ERROR;
 }
 
 

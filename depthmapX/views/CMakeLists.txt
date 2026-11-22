@@ -1,4 +1,4 @@
-target_sources(depthmapX
+target_sources(depthmapXGui
     PRIVATE
         mapview.cpp
         viewhelpers.cpp
@@ -20,7 +20,6 @@ target_sources(depthmapX
         3dview/3dview.cpp
         glview/glregularpolygons.cpp
         glview/gltriangles.cpp
-    PUBLIC
         mapview.h
         viewhelpers.h
         glview/gllinesuniform.h

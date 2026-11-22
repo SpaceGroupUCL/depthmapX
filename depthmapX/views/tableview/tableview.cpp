@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2019, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -15,6 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "tableview.h"
+#include <cmath>
 
 #include "mainwindow.h"
 
@@ -125,7 +126,8 @@ void TableView::PrepareCache(int to) {
                 }
             }
             if (!item(to + i, j)) {
-                Item = new QTableWidgetItem(QString("%1").arg(indexItem.row->getValue(j - 1)));
+                const auto &row = *indexItem.row;
+                Item = new QTableWidgetItem(row.hasValue(j - 1) ? QString::number(row.getValue(j - 1)) : QString());
                 setRowHeight(to + i, ROW_HEIGHT);
                 setItem(to + i, j, Item);
             }
@@ -150,20 +152,25 @@ void TableView::itemChanged(QTableWidgetItem *item) {
         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_SELECTION, this);
         PrepareCache(m_curr_row);
     } else {
-        double value = -1;
-        try {
-            value = std::stod(item->text().toStdString());
-        } catch (std::invalid_argument) {
+        const QString text = item->text().trimmed();
+        bool valid = false;
+        const float value = text.toFloat(&valid);
+        if (!text.isEmpty() && (!valid || !std::isfinite(value))) {
             QMessageBox::warning(this, tr("Warning"), tr("Cannot convert text to number"), QMessageBox::Ok,
                                  QMessageBox::Ok);
             return;
         }
 
         if (graph && graph->viewingProcessed()) {
-            // go for the change:
-            double value2 = index[row].row->getValue(col - 1);
-            if (value2 == 0 || fabs((value / value2) - 1.0) > 1e-5) {
-                index[row].mutable_row->setValue(col - 1, value);
+            auto &attributeRow = *index[row].mutable_row;
+            const size_t column = col - 1;
+            if (text.isEmpty()) {
+                if (attributeRow.hasValue(column)) {
+                    attributeRow.setValue(column, -1.0f);
+                    pDoc->modifiedFlag = true;
+                }
+            } else if (!attributeRow.hasValue(column) || value != attributeRow.getValue(column)) {
+                attributeRow.setValue(column, value);
                 pDoc->modifiedFlag = true;
             }
 

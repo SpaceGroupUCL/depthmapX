@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -80,22 +80,22 @@ void CColumnPropertiesDlg::UpdateData(bool value) {
     for (auto iter = m_table->begin(); iter != m_table->end(); iter++) {
         auto &row = iter->getRow();
         double val = row.getValue(m_col);
-        if (val != -1.0 && isObjectVisible(*m_layers, iter->getRow())) {
+        if (row.hasValue(m_col) && isObjectVisible(*m_layers, iter->getRow())) {
             summary_all[0] += val;
             summary_all[4] += 1.0;
-            if (summary_all[1] == -1.0 || val < summary_all[1]) {
+            if (summary_all[4] == 1.0 || val < summary_all[1]) {
                 summary_all[1] = val;
             }
-            if (summary_all[2] == -1.0 || val > summary_all[2]) {
+            if (summary_all[4] == 1.0 || val > summary_all[2]) {
                 summary_all[2] = val;
             }
             if (row.isSelected()) {
                 summary_sel[0] += val;
                 summary_sel[4] += 1.0;
-                if (summary_sel[1] == -1.0 || val < summary_sel[1]) {
+                if (summary_sel[4] == 1.0 || val < summary_sel[1]) {
                     summary_sel[1] = val;
                 }
-                if (summary_sel[2] == -1.0 || val > summary_sel[2]) {
+                if (summary_sel[4] == 1.0 || val > summary_sel[2]) {
                     summary_sel[2] = val;
                 }
             }
@@ -104,7 +104,7 @@ void CColumnPropertiesDlg::UpdateData(bool value) {
 
     bool freqrows = false;
     double unit;
-    if (summary_all[1] != -1.0 && summary_all[2] != -1.0 && summary_all[1] != summary_all[2]) {
+    if (summary_all[4] > 0 && summary_all[1] != summary_all[2]) {
         freqrows = true;
         unit = (summary_all[2] - summary_all[1]) / 10.0;
         for (int i = 0; i < 10; i++) {
@@ -136,7 +136,7 @@ void CColumnPropertiesDlg::UpdateData(bool value) {
     for (auto iter = m_table->begin(); iter != m_table->end(); iter++) {
         auto &row = iter->getRow();
         double val = row.getValue(m_col);
-        if (val != -1.0 && isObjectVisible(*m_layers, iter->getRow())) {
+        if (row.hasValue(m_col) && isObjectVisible(*m_layers, iter->getRow())) {
             var_all += sqr(val - summary_all[0]);
             if (freqrows) {
                 int pos = floor((val - summary_all[1]) / unit);

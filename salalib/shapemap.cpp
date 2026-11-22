@@ -1,5 +1,5 @@
 // sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -2129,7 +2129,7 @@ void ShapeMap::makeShapeConnections() {
 /////////////////////////////////////////////////////////////////////////////////
 
 // note: uses rowid not key
-double ShapeMap::getLocationValue(const Point2f &point) const {
+std::optional<double> ShapeMap::getLocationValue(const Point2f &point) const {
     double val = -1.0;
     int x = pointInPoly(point);
     if (x == -1) {
@@ -2145,7 +2145,7 @@ double ShapeMap::getLocationValue(const Point2f &point) const {
             val = row.getValue(m_displayed_attribute);
         }
     }
-    return (x == -1) ? -2.0 : val; // -2.0 is returned when point cannot be associated with a poly
+    return x == -1 ? std::nullopt : std::optional<double>(val);
 }
 
 const std::map<int, SalaShape> ShapeMap::getShapesInRegion(const QtRegion &r) const {

@@ -1,6 +1,6 @@
 // sala - a component of the depthmapX - spatial network analysis platform
 // Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,8 @@
 
 #include "genlib/stringutils.h"
 
-bool VGAAngularDepth::run(Communicator *, PointMap &map, bool) {
+bool VGAAngularDepth::run(Communicator *comm, PointMap &map, bool) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = map.getAttributeTable();
 
@@ -28,6 +29,7 @@ bool VGAAngularDepth::run(Communicator *, PointMap &map, bool) {
     int path_angle_col = attributes.insertOrResetColumn("Angular Step Depth");
 
     for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
+        Communicator::checkCancelled(comm);
         PixelRef pix = iter->getKey().value;
         map.getPoint(pix).m_misc = 0;
         map.getPoint(pix).m_dist = 0.0f;
@@ -37,6 +39,7 @@ bool VGAAngularDepth::run(Communicator *, PointMap &map, bool) {
     std::set<AngularTriple> search_list; // contains root point
 
     for (auto &sel : map.getSelSet()) {
+        Communicator::checkCancelled(comm);
         search_list.insert(AngularTriple(0.0f, sel, NoPixel));
         map.getPoint(sel).m_cumangle = 0.0f;
     }
@@ -44,6 +47,7 @@ bool VGAAngularDepth::run(Communicator *, PointMap &map, bool) {
     // note that m_misc is used in a different manner to analyseGraph / PointDepth
     // here it marks the node as used in calculation only
     while (search_list.size()) {
+        Communicator::checkCancelled(comm);
         std::set<AngularTriple>::iterator it = search_list.begin();
         AngularTriple here = *it;
         search_list.erase(it);

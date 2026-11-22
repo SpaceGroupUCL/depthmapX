@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -82,7 +82,6 @@ QGraphDoc::QGraphDoc(const QString &author, const QString &organisation)
 
    modifiedFlag = false;
 
-   modify_prog = false;
    m_num_steps = 0;
    m_record = 0;
    m_step = 0;
@@ -96,7 +95,11 @@ QGraphDoc::QGraphDoc(const QString &author, const QString &organisation)
     qRegisterMetaType< std::string >();
     connect(&m_thread, &RenderThread::runtimeExceptionThrown, this, &QGraphDoc::exceptionThrownInRenderThread);
     connect(&m_thread, &RenderThread::showWarningMessage, this, &QGraphDoc::messageFromRenderThread);
-    connect(&m_thread, &RenderThread::closeWaitDialog, this, &QGraphDoc::DestroyWaitDialog);
+    connect(&m_thread, &RenderThread::progressChanged, this, &QGraphDoc::ProcPostMessage, Qt::QueuedConnection);
+    connect(&m_thread, &RenderThread::updateRequested, this, &QGraphDoc::SetUpdateFlag, Qt::QueuedConnection);
+    connect(&m_thread, &RenderThread::redrawRequested, this,
+            [this](int view, int flag, int reason) { SetRedrawFlag(view, flag, reason); }, Qt::QueuedConnection);
+    connect(&m_thread, &RenderThread::analysisCompleted, this, &QGraphDoc::finishAnalysis, Qt::QueuedConnection);
 }
 void QGraphDoc::exceptionThrownInRenderThread(int type, std::string message) {
     if(type == depthmapX::PointMapExceptionType::NO_ISOVIST_ANALYSIS) {
@@ -111,6 +114,19 @@ void QGraphDoc::exceptionThrownInRenderThread(int type, std::string message) {
 
 void QGraphDoc::messageFromRenderThread(QString title, QString message) {
     QMessageBox::warning(this, title, message, QMessageBox::Ok, QMessageBox::Ok);
+}
+
+void QGraphDoc::finishAnalysis(const QString &title, const QString &message) {
+    // The document stays busy until the worker has finished using the communicator.
+    m_thread.wait();
+    delete m_communicator;
+    m_communicator = nullptr;
+    DestroyWaitDialog();
+    SetRedrawFlag(VIEW_ALL, REDRAW_GRAPH, NEW_DATA);
+
+    if (!title.isEmpty()) {
+        messageFromRenderThread(title, message);
+    }
 }
 
 bool QGraphDoc::SetRedrawFlag(int viewtype, int flag, int reason, QWidget *originator) // (almost) thread safe
@@ -265,7 +281,10 @@ void QGraphDoc::OnLayerDelete()
 // Txt files for points and lines (shapes)
 void QGraphDoc::CreateWaitDialog(const QString& description, QWidget *pr)
 {
-	modify_prog = false;
+	m_num_steps = 0;
+	m_record = 0;
+	m_step = 0;
+	m_num_records = 0;
 	m_waitdlg = new QProgressDialog();
 	connect(m_waitdlg, SIGNAL(canceled()), this, SLOT(cancel_wait()));
 	m_waitdlg->setCancelButtonText(tr("&Cancel"));
@@ -278,41 +297,32 @@ void QGraphDoc::CreateWaitDialog(const QString& description, QWidget *pr)
 
 void QGraphDoc::DestroyWaitDialog()
 {
-	modify_prog = true;
-	killTimer(Tid_progress);
-	QApplication::postEvent((QObject*)m_waitdlg, new QEvent(QEvent::Close));
+    if (m_waitdlg) {
+        killTimer(Tid_progress);
+        delete m_waitdlg;
+        m_waitdlg = nullptr;
+    }
 }
 
 void QGraphDoc::cancel_wait()
 {
-	if (m_communicator) {
-		m_waitdlg->setLabelText(QString(" attempting to cancel"));
-		if (m_communicator->IsCancelled()) {
-		}
-		else {
-			m_communicator->Cancel();
-		}
-	// Don't cancel --- cancel should be handled by the thread! 
-	}
+    if (m_communicator && m_waitdlg) {
+        m_waitdlg->setLabelText(tr("Attempting to cancel"));
+        m_communicator->Cancel();
+    }
 }
 
 void QGraphDoc::timerEvent(QTimerEvent *event)
 {
-	if (event->timerId() == Tid_progress)
+	if (m_waitdlg && event->timerId() == Tid_progress)
 	{
-		if(modify_prog) {
-			QApplication::postEvent((QObject*)m_waitdlg, new QEvent(QEvent::Close));
-			killTimer(Tid_progress);
-			return;
-		}
-
 		QString lstr = QString("Step %1 of %2").arg(m_step).arg(m_num_steps);
 		m_waitdlg->setValue(m_record);
 
-		double percent = (100.0 * double(m_record)) / double(m_num_records);
+		double percent = m_num_records > 0 ? (100.0 * m_record) / m_num_records : 0.0;
 		QString str;
-		int timeleft = 1 + int((100.0 / percent - 1.0) * double(m_timer.elapsed()/1000));
         if (percent > 0.5) {
+            int timeleft = 1 + int((100.0 / percent - 1.0) * double(m_timer.elapsed()/1000));
 			if (timeleft >= 3600) {
 				str = QString(" : Estimated %1 hours %2 minutes remaining").arg(timeleft / 3600).arg((timeleft / 60) % 60 );
             }
@@ -335,7 +345,9 @@ void QGraphDoc::ProcPostMessage(int m, int x)
 		m_num_steps = x;
 		break;
 	case Communicator::NUM_RECORDS:
-		if(!modify_prog) m_waitdlg->setRange(0, x);
+        if (m_waitdlg) {
+            m_waitdlg->setRange(0, x);
+        }
 		 m_record = 0;
 		 m_num_records = x;
 		 break;

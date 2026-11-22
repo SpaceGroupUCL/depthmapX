@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,8 +19,11 @@
 #include "../depthmapXcli/commandlineparser.h"
 #include "../depthmapXcli/imodeparser.h"
 #include "../depthmapXcli/imodeparserfactory.h"
+#include "genlib/comm.h"
 #include <cstring>
+#include <functional>
 #include <sstream>
+#include <stdexcept>
 #include "argumentholder.h"
 
 
@@ -28,7 +32,8 @@ using namespace fakeit;
 class TestParser: public IModeParser
 {
 public:
-    TestParser(const std::string &modeName) : _parseCalled(false), _runCalled(false), _modeName(modeName)
+    TestParser(const std::string &modeName, std::function<void()> runAction = {})
+        : _parseCalled(false), _runCalled(false), _modeName(modeName), _runAction(std::move(runAction))
     {
     }
 
@@ -50,6 +55,9 @@ public:
     virtual void run(const CommandLineParser &, IPerformanceSink &) const
     {
         _runCalled = true;
+        if (_runAction) {
+            _runAction();
+        }
     }
 
     static std::string formatTestHelpString(bool runCalled, bool parseCalled)
@@ -65,7 +73,33 @@ private:
     bool _parseCalled;
     mutable bool _runCalled;
     std::string _modeName;
+    std::function<void()> _runAction;
 };
+
+TEST_CASE("CLI reports analysis failures", "[cli-errors]") {
+    auto execute = [](std::function<void()> analysis, const std::string &expected) {
+        ModeParserVec parsers;
+        parsers.push_back(std::make_unique<TestParser>("TEST", std::move(analysis)));
+        Mock<IModeParserFactory> factory;
+        When(Method(factory, getModeParsers)).AlwaysReturn(parsers);
+        CommandLineParser parser(factory.get());
+        ArgumentHolder args{"depthmapXcli", "-m", "TEST", "-f", "input.graph", "-o", "output.graph"};
+        std::ostringstream errors;
+
+        REQUIRE(parser.execute(args.argc(), args.argv(), errors) != 0);
+        REQUIRE_THAT(errors.str(), Catch::Contains(expected));
+    };
+
+    SECTION("Standard exception") {
+        execute([] { throw std::runtime_error("Module analysis failed"); }, "Module analysis failed");
+    }
+    SECTION("Unknown exception") {
+        execute([] { throw 42; }, "An unknown error occurred during analysis.");
+    }
+    SECTION("Cancellation") {
+        execute([] { throw Communicator::CancelledException(); }, "Analysis cancelled.");
+    }
+}
 
 
 TEST_CASE("Invalid Parser","Constructor"){

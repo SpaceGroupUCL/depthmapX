@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,10 +17,185 @@
 #include "catch.hpp"
 #include "Catch/fakeit.hpp"
 #include <salalib/attributetable.h>
+#include <salalib/attributetablehelpers.h>
 #include <cliTest/selfcleaningfile.h>
 #include <fstream>
 #include <salalib/mgraph_consts.h>
 #include <salalib/layermanagerimpl.h>
+#include <salalib/mgraph.h>
+#include <mgraph440/mgraph.h>
+
+TEST_CASE("A failed built-in analysis preserves maps on save", "[analysis-recovery]") {
+    MetaGraph graph;
+    REQUIRE(graph.readFromFile(std::string(DEPTHMAPX_TESTDATA) + "/barnsbury_axial.graph") == MetaGraph::OK);
+    REQUIRE(graph.getShapeGraphs().size() == 1);
+    const auto shapeCount = graph.getShapeGraphs().front()->getShapeCount();
+    Options options;
+    options.weighted_measure_col = static_cast<int>(graph.getShapeGraphs().front()->getAttributeTable().getNumColumns());
+    REQUIRE_THROWS_AS(graph.analyseAxial(nullptr, options, false), std::out_of_range);
+
+    SelfCleaningFile file("failed-analysis.graph");
+    REQUIRE(graph.write(file.Filename(), METAGRAPH_VERSION) == MetaGraph::OK);
+    MetaGraph reopened;
+    REQUIRE(reopened.readFromFile(file.Filename()) == MetaGraph::OK);
+    REQUIRE(reopened.getShapeGraphs().size() == 1);
+    REQUIRE(reopened.getShapeGraphs().front()->getShapeCount() == shapeCount);
+}
+
+TEST_CASE("Map lookup distinguishes negative two from empty space") {
+    MetaGraph graph;
+    auto &map = graph.getDataMaps().at(graph.addShapeMap("Signed lookup"));
+    graph.setDisplayedDataMapRef(0);
+    map.init(1, QtRegion(Point2f(0, 0), Point2f(10, 10)));
+    const auto key = AttributeKey(map.makePolyShape(
+        {Point2f(1, 1), Point2f(3, 1), Point2f(3, 3), Point2f(1, 3)}, false));
+    auto &table = map.getAttributeTable();
+    const auto col = table.getOrInsertColumn("Signed");
+    map.setDisplayedAttribute(col);
+    REQUIRE(graph.getLocationValue(Point2f(2, 2)) == -1.0);
+    table.getRow(key).setValue(col, -2.0f);
+    REQUIRE(graph.getLocationValue(Point2f(2, 2)) == -2.0);
+    REQUIRE_FALSE(graph.getLocationValue(Point2f(9, 9)).has_value());
+}
+
+TEST_CASE("Signed attribute values and missing cells remain distinct", "[signed-attributes]") {
+    AttributeTable table;
+    const auto column = table.getOrInsertColumn("Signed");
+    auto &negative = table.addRow(AttributeKey(1)).setValue(column, -3.0f);
+    auto &nearZero = table.addRow(AttributeKey(2)).setValue(column, -0.5f);
+    table.addRow(AttributeKey(3)).setValue(column, 2.0f);
+    table.addRow(AttributeKey(4)).setValue(column, 5.0f);
+    auto &missing = table.addRow(AttributeKey(5));
+    const auto &attribute = table.getColumn(column);
+
+    REQUIRE(attribute.getStats().count == 4);
+    REQUIRE(attribute.getStats().min == -3.0);
+    REQUIRE(attribute.getStats().max == 5.0);
+    REQUIRE(attribute.getStats().total == 3.5);
+    REQUIRE(nearZero.hasValue(column));
+    REQUIRE_FALSE(missing.hasValue(column));
+    REQUIRE(nearZero.getValue(column) == -0.5f);
+    REQUIRE(missing.getValue(column) == -1.0f);
+    REQUIRE(nearZero.getNormalisedValue(column) == Approx(0.3125));
+    REQUIRE(missing.getNormalisedValue(column) == -1.0f);
+    AttributeTableView view(table);
+    view.setDisplayColIndex(column);
+    REQUIRE(dXreimpl::getDisplayColor(AttributeKey(1), negative, view) !=
+            dXreimpl::getDisplayColor(AttributeKey(5), missing, view));
+
+    negative.incrValue(column, 1.0f);
+    REQUIRE(negative.getValue(column) == -2.0f);
+    REQUIRE(attribute.getStats().min == -2.0);
+    REQUIRE(attribute.getStats().total == 4.5);
+    table.removeRow(AttributeKey(4));
+    REQUIRE(attribute.getStats().max == 2.0);
+    REQUIRE(attribute.getStats().total == -0.5);
+    table.removeRow(AttributeKey(3));
+    REQUIRE(attribute.getStats().max == -0.5);
+    REQUIRE(attribute.getStats().total == -2.5);
+    nearZero.setValue(column, -1.0f);
+    REQUIRE_FALSE(nearZero.hasValue(column));
+    REQUIRE(attribute.getStats().count == 1);
+    REQUIRE(attribute.getStats().total == -2.0);
+    REQUIRE(negative.getNormalisedValue(column) == 0.5f);
+    REQUIRE(missing.getNormalisedValue(column) == -1.0f);
+
+    AttributeTable moved(std::move(table));
+    moved.getRow(AttributeKey(1)).setValue(column, -7.0f);
+    REQUIRE(moved.getColumn(column).getStats().min == -7.0);
+    moved.insertOrResetColumn("Signed");
+    REQUIRE(moved.getColumn(column).getStats().count == 0);
+}
+
+TEST_CASE("Graph files round-trip signed attribute cells", "[signed-attributes]") {
+    MetaGraph graph;
+    const auto mapIndex = graph.addShapeMap("Signed values");
+    auto &map = graph.getDataMaps().at(mapIndex);
+    graph.setDisplayedDataMapRef(mapIndex);
+    map.init(2, QtRegion(Point2f(0, 0), Point2f(10, 10)));
+    const AttributeKey present(map.makePointShape(Point2f(1, 1)));
+    const AttributeKey missing(map.makePointShape(Point2f(2, 2)));
+    auto &table = map.getAttributeTable();
+    const auto column = table.getOrInsertColumn("Signed");
+    table.getRow(present).setValue(column, -3.0f);
+
+    SelfCleaningFile file("signed-attributes.graph");
+    REQUIRE(graph.write(file.Filename(), METAGRAPH_VERSION) == MetaGraph::OK);
+    MetaGraph loaded;
+    REQUIRE(loaded.readFromFile(file.Filename()) == MetaGraph::OK);
+    const auto &loadedTable = loaded.getDataMaps().at(0).getAttributeTable();
+    REQUIRE(loaded.getVersion() == VERSION_ALWAYS_RECORD_BINDISTANCES);
+    REQUIRE(loadedTable.getRow(present).hasValue(column));
+    REQUIRE(loadedTable.getRow(present).getValue(column) == -3.0f);
+    REQUIRE_FALSE(loadedTable.getRow(missing).hasValue(column));
+    REQUIRE(loadedTable.getColumn(column).getStats().count == 1);
+    REQUIRE(loadedTable.getColumn(column).getStats().total == -3.0);
+
+    mgraph440::MetaGraph legacy;
+    REQUIRE(legacy.read(file.Filename()) == mgraph440::MetaGraph::OK);
+}
+
+TEST_CASE("Version 440 graph fixtures still open and round-trip", "[signed-attributes]") {
+    const char *files[] = {
+        "all_line_noncont_keys.graph", "axmap_noncont_keys.graph", "barnsbury_axial.graph",
+        "barnsbury_drawing.graph", "barnsbury_extended1_axial.graph", "barnsbury_extended1_segment.graph",
+        "barnsbury_extended2_axial.graph", "barnsbury_extended2_drawing.graph", "barnsbury_segment.graph",
+        "gallery_connected.graph", "gallery_connected_with_isovist.graph", "gallery_empty.graph",
+        "gallery_two_pointmaps.graph", "polygons_drawing.graph", "polywall.graph", "rect1x1.graph",
+        "simple_axlines.graph", "turns_connected.graph"
+    };
+    auto checkTable = [](const AttributeTable &original, const AttributeTable &copy) {
+        REQUIRE(copy.getNumRows() == original.getNumRows());
+        REQUIRE(copy.getNumColumns() == original.getNumColumns());
+        for (size_t col = 0; col < original.getNumColumns(); ++col) {
+            REQUIRE(copy.getColumnName(col) == original.getColumnName(col));
+        }
+        size_t mismatches = 0;
+        auto copiedRow = copy.begin();
+        for (const auto &originalRow : original) {
+            if (originalRow.getKey().value != copiedRow->getKey().value) {
+                ++mismatches;
+            }
+            for (size_t col = 0; col < original.getNumColumns(); ++col) {
+                const auto &left = originalRow.getRow();
+                const auto &right = copiedRow->getRow();
+                if (left.hasValue(col) != right.hasValue(col) ||
+                    (left.hasValue(col) && (left.getValue(col) == -1.0f || left.getValue(col) != right.getValue(col)))) {
+                    ++mismatches;
+                }
+            }
+            ++copiedRow;
+        }
+        REQUIRE(mismatches == 0);
+    };
+
+    for (const auto *name : files) {
+        CAPTURE(name);
+        MetaGraph original;
+        REQUIRE(original.readFromFile(std::string(DEPTHMAPX_TESTDATA) + "/" + name) == MetaGraph::OK);
+        REQUIRE(original.getVersion() == VERSION_ALWAYS_RECORD_BINDISTANCES);
+        SelfCleaningFile file("legacy-attribute-roundtrip.graph");
+        REQUIRE(original.write(file.Filename(), METAGRAPH_VERSION) == MetaGraph::OK);
+        {
+            mgraph440::MetaGraph legacy;
+            REQUIRE(legacy.read(file.Filename()) == mgraph440::MetaGraph::OK);
+        }
+        MetaGraph copy;
+        REQUIRE(copy.readFromFile(file.Filename()) == MetaGraph::OK);
+        REQUIRE(copy.getPointMaps().size() == original.getPointMaps().size());
+        REQUIRE(copy.getShapeGraphs().size() == original.getShapeGraphs().size());
+        REQUIRE(copy.getDataMaps().size() == original.getDataMaps().size());
+        for (size_t i = 0; i < original.getPointMaps().size(); ++i) {
+            checkTable(original.getPointMaps()[i].getAttributeTable(), copy.getPointMaps()[i].getAttributeTable());
+        }
+        for (size_t i = 0; i < original.getShapeGraphs().size(); ++i) {
+            checkTable(original.getShapeGraphs()[i]->getAttributeTable(), copy.getShapeGraphs()[i]->getAttributeTable());
+        }
+        for (size_t i = 0; i < original.getDataMaps().size(); ++i) {
+            checkTable(original.getDataMaps()[i].getAttributeTable(), copy.getDataMaps()[i].getAttributeTable());
+        }
+    }
+}
 
 TEST_CASE("test attribute column")
 {
@@ -125,8 +301,8 @@ TEST_CASE("test attribute row")
     REQUIRE(row.getValue(1) == Approx(3.2f));
 
 
-    Verify(Method(col1,updateStats).Using(1.2f,0.0f)).Once();
-    Verify(Method(col2,updateStats).Using(2.2f,0.0f)).Once();
+    Verify(Method(col1,updateStats).Using(1.2f,AttributeValue::MISSING)).Once();
+    Verify(Method(col2,updateStats).Using(2.2f,AttributeValue::MISSING)).Once();
     Verify(Method(col2,updateStats).Using(3.2f,2.2f)).Once();
 
     REQUIRE_THROWS_AS(row.setValue("colx", 1.1f), std::out_of_range);
@@ -310,14 +486,14 @@ TEST_CASE("normalised values"){
     table.addRow(AttributeKey(1)).setValue(0, 0.5f);
     table.addRow(AttributeKey(2)).setValue(0, 2.0f);
 
-    REQUIRE(table.getRow(AttributeKey(0)).getNormalisedValue(1) == Approx(0.5f));
+    REQUIRE(table.getRow(AttributeKey(0)).getNormalisedValue(1) == -1.0f);
     REQUIRE(table.getRow(AttributeKey(0)).getNormalisedValue(0) == Approx(0.33333f));
     REQUIRE(table.getRow(AttributeKey(1)).getNormalisedValue(0) == Approx(0.0f));
     REQUIRE(table.getRow(AttributeKey(2)).getNormalisedValue(0) == Approx(1.0f));
 
     table.addRow(AttributeKey(3)).setValue(1,1.0f);
 
-    REQUIRE(table.getRow(AttributeKey(1)).getNormalisedValue(1) == Approx(0.5f));
+    REQUIRE(table.getRow(AttributeKey(1)).getNormalisedValue(1) == -1.0f);
     REQUIRE(table.getRow(AttributeKey(3)).getNormalisedValue(1) == Approx(0.5f));
 
     table.getRow(AttributeKey(0)).setValue(1,1.1f);

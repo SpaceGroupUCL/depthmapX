@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,6 +18,54 @@
 
 #include "../depthmapXcli/axialparser.h"
 #include "argumentholder.h"
+#include "selfcleaningfile.h"
+#include "salalib/mgraph.h"
+#include "depthmapXcli/modeparserregistry.h"
+#include <fstream>
+#include <sstream>
+
+TEST_CASE("CLI reports failed analyses and conversions without writing an output") {
+    SelfCleaningFile input("failed-cli-input.graph");
+    SelfCleaningFile output("failed-cli-output.graph");
+    MetaGraph graph;
+    std::string mode = "AXIAL";
+    std::string option = "-xa";
+    std::string value = "n";
+    std::string expected = "Axial analysis requires a displayed axial map";
+
+    SECTION("No axial map") {}
+    SECTION("Segment map selected") {
+        graph.addShapeGraph("Segments", ShapeMap::SEGMENTMAP);
+        graph.setViewClass(MetaGraph::SHOWAXIALTOP);
+    }
+    SECTION("Empty drawing converted to segments") {
+        graph.m_drawingFiles.emplace_back("Drawing");
+        graph.m_drawingFiles.back().m_spacePixels.emplace_back("Empty", ShapeMap::DRAWINGMAP);
+        graph.setState(MetaGraph::LINEDATA);
+        mode = "MAPCONVERT";
+        option = "-co";
+        value = "segment";
+        expected = "No lines found in drawing";
+    }
+    SECTION("Empty data map converted to a drawing") {
+        graph.addShapeMap("Empty data");
+        graph.setDisplayedDataMapRef(0);
+        mode = "MAPCONVERT";
+        option = "-co";
+        value = "drawing";
+        expected = "Map conversion did not complete";
+    }
+
+    REQUIRE(graph.write(input.Filename(), METAGRAPH_VERSION) == MetaGraph::OK);
+    ModeParserRegistry registry;
+    CommandLineParser command(registry);
+    ArgumentHolder args{"depthmapXcli", "-m", mode, "-f", input.Filename(), "-o", output.Filename(),
+                        option, value, "-con", "Output"};
+    std::ostringstream errors;
+    REQUIRE(command.execute(args.argc(), args.argv(), errors) != 0);
+    REQUIRE_THAT(errors.str(), Catch::Contains(expected));
+    REQUIRE_FALSE(std::ifstream(output.Filename()).good());
+}
 
 TEST_CASE("Test mode and help")
 {

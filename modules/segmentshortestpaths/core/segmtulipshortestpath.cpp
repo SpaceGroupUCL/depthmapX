@@ -1,6 +1,6 @@
 // sala - a component of the depthmapX - spatial network analysis platform
 // Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,12 +22,14 @@
 
 // revised to use tulip bins for faster analysis of large spaces
 
-bool SegmentTulipShortestPath::run(Communicator *) {
+bool SegmentTulipShortestPath::run(Communicator *comm) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = m_map.getAttributeTable();
 
-    int angle_col = attributes.insertOrResetColumn("Angular Shortest Path Angle");
-    int path_col = attributes.insertOrResetColumn("Angular Shortest Path Order");
+    const size_t resultCount = m_map.getShapeCount();
+    std::vector<float> costs(resultCount, -1.0f);
+    std::vector<int> order(resultCount, -1);
 
     // The original code set tulip_bins to 1024, divided by two and added one
     // in order to duplicate previous code (using a semicircle of tulip bins)
@@ -60,7 +62,17 @@ bool SegmentTulipShortestPath::run(Communicator *) {
     int depthlevel = 0;
     auto binIter = bins.begin();
     int currentbin = 0;
+    Communicator *progress = comm;
+    if (comm) {
+        comm->CommPostMessage(Communicator::NUM_STEPS, 2);
+    }
     while (opencount && !refFound) {
+        Communicator::checkCancelled(comm);
+        if (progress) {
+            progress->CommPostMessage(Communicator::CURRENT_STEP, 1);
+            progress = nullptr;
+            Communicator::checkCancelled(comm);
+        }
         while (binIter->empty()) {
             depthlevel++;
             binIter++;
@@ -89,10 +101,11 @@ bool SegmentTulipShortestPath::run(Communicator *) {
             // convert depth from tulip_bins normalised to standard angle
             // (note the -1)
             double depth_to_line = depthlevel / ((tulip_bins - 1) * 0.5);
-            m_map.getAttributeRowFromShapeIndex(lineindex.ref).setValue(angle_col, depth_to_line);
+            costs[lineindex.ref] = depth_to_line;
             int extradepth;
             if (lineindex.dir != -1) {
                 for (auto &segconn : line.m_forward_segconns) {
+                    Communicator::checkCancelled(comm);
                     if (!covered[segconn.first.ref]) {
                         extradepth = (int)floor(segconn.second * tulip_bins * 0.5);
                         bins[(currentbin + tulip_bins + extradepth) % tulip_bins].push_back(
@@ -106,6 +119,7 @@ bool SegmentTulipShortestPath::run(Communicator *) {
             }
             if (lineindex.dir != 1) {
                 for (auto &segconn : line.m_back_segconns) {
+                    Communicator::checkCancelled(comm);
                     if (!covered[segconn.first.ref]) {
                         extradepth = (int)floor(segconn.second * tulip_bins * 0.5);
                         bins[(currentbin + tulip_bins + extradepth) % tulip_bins].push_back(
@@ -124,23 +138,29 @@ bool SegmentTulipShortestPath::run(Communicator *) {
         }
     }
 
+    if (comm) {
+        comm->CommPostMessage(Communicator::CURRENT_STEP, 2);
+    }
     auto refToParent = parents.find(refTo);
     int counter = 0;
     while (refToParent != parents.end()) {
-        AttributeRow &row = m_map.getAttributeRowFromShapeIndex(refToParent->first);
-        row.setValue(path_col, counter);
-        counter++;
+        Communicator::checkCancelled(comm);
+        order[refToParent->first] = counter++;
         refToParent = parents.find(refToParent->second);
     }
-    m_map.getAttributeRowFromShapeIndex(refFrom).setValue(path_col, counter);
+    order[refFrom] = counter;
 
-    for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
-        AttributeRow &row = iter->getRow();
-        if (row.getValue(path_col) < 0) {
-            row.setValue(angle_col, -1);
-        } else {
-            row.setValue(path_col, counter - row.getValue(path_col));
+    // Publish complete results only once the analysis has passed its last cancellation check.
+    Communicator::checkCancelled(comm);
+    const auto angle_col = attributes.insertOrResetColumn("Angular Shortest Path Angle");
+    const auto path_col = attributes.insertOrResetColumn("Angular Shortest Path Order");
+    size_t index = 0;
+    for (auto &item : attributes) {
+        if (order[index] >= 0) {
+            item.getRow().setValue(angle_col, costs[index]);
+            item.getRow().setValue(path_col, counter - order[index]);
         }
+        ++index;
     }
 
     m_map.overrideDisplayedAttribute(-2); // <- override if it's already showing

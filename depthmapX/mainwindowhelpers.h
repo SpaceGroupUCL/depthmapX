@@ -1,4 +1,5 @@
 // Copyright (C) 2020 Petros Koutsolampros
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,5 +22,5 @@
 
 namespace MainWindowHelpers {
     QMenu *getOrAddRootMenu(MainWindow *mainWindow, QString menuTitle);
-    QMenu *getOrAddMenu(QMenu *parent, QString menuTitle);
+    QMenu *getOrAddMenu(QMenu *parent, QString menuTitle, QAction *before = nullptr);
 } // namespace MainWindowHelpers

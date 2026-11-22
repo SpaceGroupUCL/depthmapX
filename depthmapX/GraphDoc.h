@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -59,7 +59,10 @@ signals:
     void renderedImage(const QImage &image, double scaleFactor);
     void runtimeExceptionThrown(int type, std::string message);
     void showWarningMessage(QString title, QString message);
-    void closeWaitDialog();
+    void analysisCompleted(QString title, QString message);
+    void progressChanged(int message, int value);
+    void updateRequested(int type, bool modified = true);
+    void redrawRequested(int view, int flag, int reason);
 
 protected:
     void run();
@@ -149,11 +152,11 @@ protected:
    //CImportedModule m_module;
    QString m_string;   // for a generic string
    std::unique_ptr<IAnalysis> m_analysis;
-   int m_successUpdateFlagType;
+   int m_successUpdateFlagType = -1;
    bool m_successUpdateFlagModified = true;
-   int m_successRedrawFlagViewType;
-   bool m_successRedrawFlag;
-   int m_successRedrawReason;
+   int m_successRedrawFlagViewType = 0;
+   int m_successRedrawFlag = 0;
+   int m_successRedrawReason = 0;
 };
 
 struct QFilePath {
@@ -190,6 +193,7 @@ class QGraphDoc : public QWidget
 private:
     void exceptionThrownInRenderThread(int type, std::string message);
     void messageFromRenderThread(QString title, QString message);
+    void finishAnalysis(const QString &title, const QString &message);
 public:
    QGraphDoc(const QString &author, const QString &organisation);
    CMSCommunicator *m_communicator;
@@ -255,9 +259,8 @@ public:
    std::vector<std::vector<Point2f>> m_evolved_paths;
    RenderThread m_thread;
 
-   QProgressDialog* m_waitdlg;
+   QProgressDialog *m_waitdlg = nullptr;
    QString m_base_description;
-   bool modify_prog;
    int Tid_progress;
    int m_num_steps;
    int m_record;

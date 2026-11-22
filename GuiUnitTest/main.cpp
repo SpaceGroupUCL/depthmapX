@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,6 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#define CATCH_CONFIG_MAIN
+#include <QApplication>
+
+#define CATCH_CONFIG_RUNNER
 #include "catch.hpp"
+
+int main(int argc, char *argv[]) {
+    QApplication app(argc, argv);
+    app.setQuitOnLastWindowClosed(false);
+    Q_INIT_RESOURCE(resource);
+    Q_INIT_RESOURCE(settingsdialog);
+    return Catch::Session().run(argc, argv);
+}
 

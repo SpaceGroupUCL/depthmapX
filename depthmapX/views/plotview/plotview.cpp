@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -111,12 +111,11 @@ bool QPlotView::eventFilter(QObject *object, QEvent *e) {
                         }
                     }
                     if (displayRow) {
-                        // and that it has an appropriate state to display a hover wnd
-                        float val = displayRow->getValue(pDoc->m_meta_graph->getDisplayedAttribute());
-                        if (val == -1.0f)
-                            setToolTip("No value");
-                        else if (val != -2.0f)
-                            setToolTip(QString("%1").arg(val));
+                        const int column = pDoc->m_meta_graph->getDisplayedAttribute();
+                        if (column >= 0) {
+                            setToolTip(displayRow->hasValue(column) ? QString::number(displayRow->getValue(column))
+                                                                   : tr("No value"));
+                        }
                     }
                 }
             }
@@ -182,7 +181,7 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) {
         return false;
     }
 
-    if (pDoc->m_communicator || !pDoc->m_meta_graph->viewingProcessed()) {
+    if (pDoc->m_communicator || !pDoc->m_meta_graph->viewingProcessed() || m_x_axis < 0 || m_y_axis < 0) {
         return false;
     }
 
@@ -198,15 +197,16 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) {
 
     int numVisible = 0;
     float minVisibleX = std::numeric_limits<float>::max();
-    float maxVisibleX = std::numeric_limits<float>::min();
+    float maxVisibleX = std::numeric_limits<float>::lowest();
     float minVisibleY = std::numeric_limits<float>::max();
-    float maxVisibleY = std::numeric_limits<float>::min();
+    float maxVisibleY = std::numeric_limits<float>::lowest();
 
     for (auto iter = table.begin(); iter != table.end(); iter++) {
-        if (isObjectVisible(layers, iter->getRow())) {
+        const auto &row = iter->getRow();
+        if (isObjectVisible(layers, row) && row.hasValue(m_x_axis) && row.hasValue(m_y_axis)) {
             numVisible++;
-            float xVal = iter->getRow().getValue(m_x_axis);
-            float yVal = iter->getRow().getValue(m_y_axis);
+            float xVal = row.getValue(m_x_axis);
+            float yVal = row.getValue(m_y_axis);
             minVisibleX = std::min(minVisibleX, xVal);
             maxVisibleX = std::max(maxVisibleX, xVal);
             minVisibleY = std::min(minVisibleY, yVal);
@@ -214,8 +214,9 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) {
         }
     }
 
-    if (numVisible == 0)
-        m_x_axis = m_y_axis = 0;
+    if (numVisible == 0) {
+        minVisibleX = maxVisibleX = minVisibleY = maxVisibleY = 0.0f;
+    }
 
     int spacer = floor(2.0 * sqrt(double(mindim) / double(numVisible != 0 ? numVisible : 1)));
     if (!screendraw && spacer < 4) {
@@ -240,10 +241,10 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) {
     float minx, miny, maxx, maxy;
     QString str_minx, str_miny, str_maxx, str_maxy;
 
-    minx = m_data_bounds.bottom_left.x = m_view_origin ? 0.0 : minVisibleX;
-    miny = m_data_bounds.bottom_left.y = m_view_origin ? 0.0 : minVisibleY;
-    maxx = m_data_bounds.top_right.x = maxVisibleX;
-    maxy = m_data_bounds.top_right.y = maxVisibleY;
+    minx = m_data_bounds.bottom_left.x = m_view_origin ? std::min(0.0f, minVisibleX) : minVisibleX;
+    miny = m_data_bounds.bottom_left.y = m_view_origin ? std::min(0.0f, minVisibleY) : minVisibleY;
+    maxx = m_data_bounds.top_right.x = m_view_origin ? std::max(0.0f, maxVisibleX) : maxVisibleX;
+    maxy = m_data_bounds.top_right.y = m_view_origin ? std::max(0.0f, maxVisibleY) : maxVisibleY;
 
     str_minx = QString(tr("%1")).arg(minx);
     str_miny = QString(tr("%1")).arg(miny);
@@ -312,14 +313,12 @@ bool QPlotView::Output(QPainter *pDC, QGraphDoc *pDoc, bool screendraw) {
     int sel_parity = 0;
     QPen pen2;
     for (const auto &iter : table) {
-        if (!isObjectVisible(layers, iter.getRow())) {
+        const auto &row = iter.getRow();
+        if (!isObjectVisible(layers, row) || !row.hasValue(m_x_axis) || !row.hasValue(m_y_axis)) {
             continue;
         }
-        float x = iter.getRow().getValue(m_x_axis);
-        float y = iter.getRow().getValue(m_y_axis);
-        if (!std::isfinite(x) || !std::isfinite(y) || x == -1.0f || y == -1.0f) {
-            continue;
-        }
+        const float x = row.getValue(m_x_axis);
+        const float y = row.getValue(m_y_axis);
         QRgb rgb;
         if (m_view_monochrome) {
             rgb = m_foreground;
@@ -530,12 +529,10 @@ void QPlotView::ResetRegression() {
     if (m_x_axis != -1 && m_y_axis != -1 && pDoc->m_meta_graph && pDoc->m_meta_graph->viewingProcessed()) {
         AttributeTable &table = pDoc->m_meta_graph->getAttributeTable();
         for (auto iter = table.begin(); iter != table.end(); iter++) {
-            if (isObjectVisible(pDoc->m_meta_graph->getLayers(), iter->getRow())) {
-                float x = iter->getRow().getValue(m_x_axis);
-                float y = iter->getRow().getValue(m_y_axis);
-                if (std::isfinite(x) && std::isfinite(y) && x != -1.0f && y != -1.0f) {
-                    m_regression.add(x, y);
-                }
+            const auto &row = iter->getRow();
+            if (isObjectVisible(pDoc->m_meta_graph->getLayers(), row) &&
+                row.hasValue(m_x_axis) && row.hasValue(m_y_axis)) {
+                m_regression.add(row.getValue(m_x_axis), row.getValue(m_y_axis));
             }
         }
     }

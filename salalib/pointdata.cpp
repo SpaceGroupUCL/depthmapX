@@ -1,5 +1,5 @@
 // sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -1566,11 +1566,13 @@ bool PointMap::sieve2(sparkSieve2& sieve, std::vector<PixelRef>& addlist, int q,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool PointMap::binDisplay(Communicator *)
+bool PointMap::binDisplay(Communicator *comm)
 {
+   Communicator::checkCancelled(comm);
    int bindisplay_col = m_attributes->insertOrResetColumn("Node Bins");
 
    for (auto& sel: m_selection_set) {
+      Communicator::checkCancelled(comm);
       Point& p = getPoint(sel);
       // Code for colouring pretty bins:
       for (int i = 0; i < 32; i++) {
@@ -1705,10 +1707,10 @@ bool PointMap::isPixelMerged(const PixelRef& a)
 }
 
 
-// -2 for point not in visibility graph, -1 for point has no data
-double PointMap::getLocationValue(const Point2f& point)
+// No result outside the visibility graph. -1 denotes a missing attribute.
+std::optional<double> PointMap::getLocationValue(const Point2f& point)
 {
-   double val = -2;
+   std::optional<double> val;
 
    // "false" does not constrain to bounds
    PixelRef pix = pixelate(point, false);
@@ -1718,7 +1720,7 @@ double PointMap::getLocationValue(const Point2f& point)
    }
 
    if (!getPoint(pix).filled()) {
-      val = -2;
+      return std::nullopt;
    }
    else if (m_displayed_attribute == -1) {
       val = static_cast<float>(pix);

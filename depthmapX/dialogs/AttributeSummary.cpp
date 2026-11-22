@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -76,25 +76,22 @@ void CAttributeSummary::showEvent(QShowEvent * event)
     c_list->setRowCount(table.getNumColumns());
     for (int i = 0; i < table.getNumColumns(); i++) {
         const AttributeColumn& column = table.getColumn(i);
+        const auto &stats = column.getStats();
         Item = new QTableWidgetItem(QString(column.getName().c_str()));
 		Item->setFlags(Qt::NoItemFlags);
 		c_list->setRowHeight(i, 20);
 		c_list->setItem(i, 0, Item);
 		//
-		char text[64];
 		// Min
-        sprintf(text, "%g", column.getStats().min);
-		Item = new QTableWidgetItem(QString(text));
+        Item = new QTableWidgetItem(stats.count ? QString::number(stats.min) : QString());
 		Item->setFlags(Qt::NoItemFlags);
 		c_list->setItem(i, 1, Item);
 		// Avg
-        sprintf(text,"%g", column.getStats().total/table.getNumRows());
-		Item = new QTableWidgetItem(QString(text));
+        Item = new QTableWidgetItem(stats.count ? QString::number(stats.total / stats.count) : QString());
 		Item->setFlags(Qt::NoItemFlags);
 		c_list->setItem(i, 2, Item);
 		// Max
-        sprintf(text,"%g",column.getStats().max);
-		Item = new QTableWidgetItem(QString(text));
+        Item = new QTableWidgetItem(stats.count ? QString::number(stats.max) : QString());
 		Item->setFlags(Qt::NoItemFlags);
 		c_list->setItem(i, 3, Item);
 	}

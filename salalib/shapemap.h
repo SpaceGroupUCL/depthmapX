@@ -1,5 +1,5 @@
 // sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 // This is my code to make a set of axial lines from a set of boundary lines
 
 #pragma once
+#include <optional>
 
 #include "salalib/attributetable.h"
 #include "salalib/attributetablehelpers.h"
@@ -505,7 +506,8 @@ private:
     void invalidateDisplayedAttribute() { m_invalidate = true; }
     //
     double getDisplayedAverage() {
-        return m_attributes->getColumn(m_displayed_attribute).getStats().total / m_attributes->getNumRows();
+        const auto &stats = m_attributes->getColumn(m_displayed_attribute).getStats();
+        return stats.count ? stats.total / stats.count : -1.0;
     }
     //
   protected:
@@ -557,7 +559,7 @@ private:
         return depthmapX::getMapAtIndex(m_shapes, m_display_shapes[m_current])->second.m_selected;
     }
     //
-    double getLocationValue(const Point2f &point) const;
+    std::optional<double> getLocationValue(const Point2f &point) const;
 
     // Quick mod - TV
 #if !defined(_MSC_VER)

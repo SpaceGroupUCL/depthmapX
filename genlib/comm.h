@@ -1,5 +1,5 @@
 // genlib - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 #pragma once
 
 //#include <io.h>
+#include <atomic>
 #include <fstream>
 #include <string>
 #include <chrono>
@@ -66,7 +67,7 @@ class Communicator {
     enum { NUM_STEPS, CURRENT_STEP, NUM_RECORDS, CURRENT_RECORD };
 
   protected:
-    bool m_cancelled;
+    std::atomic<bool> m_cancelled{false};
     bool m_delete_flag;
     // nb. converted to Win32 UTF-16 Unicode path (AT 31.01.11) Linux, MacOS use UTF-8 (AT 29.04.11)
     std::string m_infilename;
@@ -80,7 +81,6 @@ class Communicator {
         m_infile = NULL;
         m_infile2 = NULL;
         m_outfile = NULL;
-        m_cancelled = false;
         m_delete_flag = false;
     }
     //
@@ -130,8 +130,13 @@ class Communicator {
     }
     void SetOutfile(const char *filename) { m_outfile = new std::ofstream(filename); }
     //
-    bool IsCancelled() const { return m_cancelled; }
-    void Cancel() { m_cancelled = true; }
+    bool IsCancelled() const { return m_cancelled.load(std::memory_order_relaxed); }
+    void Cancel() { m_cancelled.store(true, std::memory_order_relaxed); }
+    static void checkCancelled(const Communicator *communicator) {
+        if (communicator && communicator->IsCancelled()) {
+            throw CancelledException();
+        }
+    }
     //
     std::ifstream &getInFileStream() { return *m_infile; }
     std::ifstream &GetInfile2() { return *m_infile2; }

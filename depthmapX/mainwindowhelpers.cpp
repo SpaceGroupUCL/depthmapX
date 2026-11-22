@@ -1,4 +1,5 @@
 // Copyright (C) 2020 Petros Koutsolampros
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -33,7 +34,7 @@ QMenu *MainWindowHelpers::getOrAddRootMenu(MainWindow *mainWindow, QString menuT
     return menu;
 }
 
-QMenu *MainWindowHelpers::getOrAddMenu(QMenu *parent, QString menuTitle) {
+QMenu *MainWindowHelpers::getOrAddMenu(QMenu *parent, QString menuTitle, QAction *before) {
     QMenu *menu = nullptr;
     foreach (QAction *action, parent->actions()) {
         if (action->menu()) {
@@ -44,7 +45,11 @@ QMenu *MainWindowHelpers::getOrAddMenu(QMenu *parent, QString menuTitle) {
         }
     }
     if (menu == nullptr) {
-        menu = parent->addMenu(menuTitle);
+        if (!before) {
+            return parent->addMenu(menuTitle);
+        }
+        menu = new QMenu(menuTitle, parent);
+        parent->insertMenu(before, menu);
     }
     return menu;
 }

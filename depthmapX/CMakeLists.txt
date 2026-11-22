@@ -31,7 +31,6 @@ set(depthmapX_SRCS
 	indexWidget.h
 	mdichild.h
 	treeWindow.h
-	main.cpp
 	coreapplication.cpp
         coreapplication.h
         mainwindowhelpers.cpp
@@ -71,8 +70,11 @@ qt5_wrap_ui(UI_HDRS
 
 qt5_add_resources(DM_RSRC resource.qrc dialogs/settings/settingsdialog.qrc)
 
+add_library(depthmapXGui STATIC ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC})
+target_include_directories(depthmapXGui PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+
 if (WIN32)
-        add_executable(${depthmapX} WIN32 ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC} icons.rc)
+        add_executable(${depthmapX} WIN32 main.cpp icons.rc)
         if(MINGW)
             # https://stackoverflow.com/a/18138926
             # MinGW compilation does not bring in the required DLLs to make the executable self-contained
@@ -87,7 +89,7 @@ if (WIN32)
         endif(MINGW)
 endif(WIN32)
 if(UNIX AND NOT APPLE)
-        add_executable(${depthmapX} ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC})
+        add_executable(${depthmapX} main.cpp)
         if (Qt5_POSITION_INDEPENDENT_CODE)
             SET(CMAKE_POSITION_INDEPENDENT_CODE ON)
         endif()
@@ -102,7 +104,7 @@ if(APPLE)
                MACOSX_PACKAGE_LOCATION "Resources")
         add_definitions(-DGL_SILENCE_DEPRECATION)
         add_executable(${depthmapX} MACOSX_BUNDLE ${depthmapX_ICON} ${graph_ICON}
-            ${depthmapX_SRCS} ${UI_HDRS} ${DM_RSRC})
+            main.cpp)
         set_target_properties(${depthmapX} PROPERTIES
             MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/resources/Info.plist)
 endif(APPLE)
@@ -117,8 +119,10 @@ set(MODULES_CORE FALSE)
 set(MODULES_CORE_TEST FALSE)
 add_subdirectory(../modules modules)
 
-target_link_libraries(${depthmapX} salalib genlib mgraph440 Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL
-    OpenGL::GL OpenGL::GLU ${modules_gui} ${modules_core})
+target_link_libraries(depthmapXGui
+    PUBLIC salalib genlib mgraph440 Qt5::Core Qt5::Gui Qt5::Widgets Qt5::OpenGL
+    PRIVATE OpenGL::GL OpenGL::GLU ${modules_gui} ${modules_core})
+target_link_libraries(${depthmapX} depthmapXGui)
 
 add_subdirectory(dialogs)
 add_subdirectory(views)

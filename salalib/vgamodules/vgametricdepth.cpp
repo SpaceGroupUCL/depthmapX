@@ -22,7 +22,8 @@
 
 #include <algorithm>
 
-bool VGAMetricDepth::run(Communicator *, PointMap &map, bool) {
+bool VGAMetricDepth::run(Communicator *comm, PointMap &map, bool) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = map.getAttributeTable();
 
@@ -40,6 +41,7 @@ bool VGAMetricDepth::run(Communicator *, PointMap &map, bool) {
     }
 
     for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
+        Communicator::checkCancelled(comm);
         PixelRef pix = iter->getKey().value;
         map.getPoint(pix).m_misc = 0;
         map.getPoint(pix).m_dist = -1.0f;
@@ -50,12 +52,14 @@ bool VGAMetricDepth::run(Communicator *, PointMap &map, bool) {
     std::set<MetricTriple> search_list; // contains root point
 
     for (auto &sel : map.getSelSet()) {
+        Communicator::checkCancelled(comm);
         search_list.insert(MetricTriple(0.0f, sel, NoPixel));
     }
 
     // note that m_misc is used in a different manner to analyseGraph / PointDepth
     // here it marks the node as used in calculation only
     while (search_list.size()) {
+        Communicator::checkCancelled(comm);
         std::set<MetricTriple>::iterator it = search_list.begin();
         MetricTriple here = *it;
         search_list.erase(it);

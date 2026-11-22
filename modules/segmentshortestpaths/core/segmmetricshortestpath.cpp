@@ -1,6 +1,6 @@
 // sala - a component of the depthmapX - spatial network analysis platform
 // Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,15 +20,17 @@
 
 #include "genlib/stringutils.h"
 
-bool SegmentMetricShortestPath::run(Communicator *) {
+bool SegmentMetricShortestPath::run(Communicator *comm) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = m_map.getAttributeTable();
     int shapeCount = m_map.getShapeCount();
 
     bool retvar = true;
 
-    int dist_col = attributes.insertOrResetColumn("Metric Shortest Path Distance");
-    int path_col = attributes.insertOrResetColumn("Metric Shortest Path Order");
+    const size_t resultCount = m_map.getShapeCount();
+    std::vector<float> costs(resultCount, -1.0f);
+    std::vector<int> order(resultCount, -1);
 
     // record axial line refs for topological analysis
     std::vector<int> axialrefs;
@@ -36,6 +38,7 @@ bool SegmentMetricShortestPath::run(Communicator *) {
     std::vector<float> seglengths;
     float maxseglength = 0.0f;
     for (size_t cursor = 0; cursor < shapeCount; cursor++) {
+        Communicator::checkCancelled(comm);
         AttributeRow &row = m_map.getAttributeRowFromShapeIndex(cursor);
         axialrefs.push_back(row.getValue("Axial Line Ref"));
         seglengths.push_back(row.getValue("Segment Length"));
@@ -64,7 +67,7 @@ bool SegmentMetricShortestPath::run(Communicator *) {
     audittrail[refFrom] = TopoMetSegmentRef(refFrom, Connector::SEG_CONN_ALL, length * 0.5, -1);
     // better to divide by 511 but have 512 bins...
     list[(int(floor(0.5 + 511 * length / maxseglength))) % 512].push_back(refFrom);
-    m_map.getAttributeRowFromShapeIndex(refFrom).setValue(dist_col, 0);
+    costs[refFrom] = 0;
 
     unsigned int segdepth = 0;
     int bin = 0;
@@ -72,7 +75,17 @@ bool SegmentMetricShortestPath::run(Communicator *) {
     std::map<unsigned int, unsigned int> parents;
     bool refFound = false;
 
+    Communicator *progress = comm;
+    if (comm) {
+        comm->CommPostMessage(Communicator::NUM_STEPS, 2);
+    }
     while (open != 0 && !refFound) {
+        Communicator::checkCancelled(comm);
+        if (progress) {
+            progress->CommPostMessage(Communicator::CURRENT_STEP, 1);
+            progress = nullptr;
+            Communicator::checkCancelled(comm);
+        }
         while (list[bin].empty()) {
             bin++;
             segdepth += 1;
@@ -98,6 +111,7 @@ bool SegmentMetricShortestPath::run(Communicator *) {
         bool backsegs = true;
 
         while (connected_cursor != -1) {
+            Communicator::checkCancelled(comm);
             if (backsegs && iter == axline.m_back_segconns.end()) {
                 iter = axline.m_forward_segconns.begin();
                 backsegs = false;
@@ -118,8 +132,7 @@ bool SegmentMetricShortestPath::run(Communicator *) {
                 //
                 // better to divide by 511 but have 512 bins...
                 list[(bin + int(floor(0.5 + 511 * length / maxseglength))) % 512].push_back(connected_cursor);
-                AttributeRow &row = m_map.getAttributeRowFromShapeIndex(connected_cursor);
-                row.setValue(dist_col, here.dist + length * 0.5);
+                costs[connected_cursor] = here.dist + length * 0.5;
             }
             if (connected_cursor == refTo) {
                 refFound = true;
@@ -129,23 +142,29 @@ bool SegmentMetricShortestPath::run(Communicator *) {
         }
     }
 
+    if (comm) {
+        comm->CommPostMessage(Communicator::CURRENT_STEP, 2);
+    }
     auto refToParent = parents.find(refTo);
     int counter = 0;
     while (refToParent != parents.end()) {
-        AttributeRow &row = m_map.getAttributeRowFromShapeIndex(refToParent->first);
-        row.setValue(path_col, counter);
-        counter++;
+        Communicator::checkCancelled(comm);
+        order[refToParent->first] = counter++;
         refToParent = parents.find(refToParent->second);
     }
-    m_map.getAttributeRowFromShapeIndex(refFrom).setValue(path_col, counter);
+    order[refFrom] = counter;
 
-    for (auto iter = attributes.begin(); iter != attributes.end(); iter++) {
-        AttributeRow &row = iter->getRow();
-        if (row.getValue(path_col) < 0) {
-            row.setValue(dist_col, -1);
-        } else {
-            row.setValue(path_col, counter - row.getValue(path_col));
+    // Publish complete results only once the analysis has passed its last cancellation check.
+    Communicator::checkCancelled(comm);
+    const auto dist_col = attributes.insertOrResetColumn("Metric Shortest Path Distance");
+    const auto path_col = attributes.insertOrResetColumn("Metric Shortest Path Order");
+    size_t index = 0;
+    for (auto &item : attributes) {
+        if (order[index] >= 0) {
+            item.getRow().setValue(dist_col, costs[index]);
+            item.getRow().setValue(path_col, counter - order[index]);
         }
+        ++index;
     }
 
     m_map.overrideDisplayedAttribute(-2);

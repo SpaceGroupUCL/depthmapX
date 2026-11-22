@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,40 +16,11 @@
 
 #include <iostream>
 #include "commandlineparser.h"
-#include "runmethods.h"
-#include "performancewriter.h"
 #include "modeparserregistry.h"
 
 int main(int argc, char *argv[])
 {
     ModeParserRegistry registry;
     CommandLineParser args(registry);
-    try{
-        args.parse(argc, argv);
-        if (!args.isValid())
-        {
-            if (args.printVersionMode())
-            {
-                args.printVersion();
-            }
-            else
-            {
-                args.printHelp();
-            }
-            return 0;
-        }
-
-        PerformanceWriter perfWriter(args.getTimingFile());
-
-        args.run(perfWriter);
-        perfWriter.write();
-
-    }
-    catch( std::exception &e)
-    {
-        std::cout << e.what() << "\n"
-                  << "Type 'depthmapXcli -h' for help" << std::endl;
-        return -1;
-    }
-    return 0;
+    return args.execute(argc, argv, std::cerr);
 }

@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -33,6 +34,12 @@ namespace AttributeName {
     const char * const REF = "Ref";
 }
 
+namespace AttributeValue {
+    constexpr float MISSING = -1.0f;
+}
+
+class AttributeTable;
+
 ///
 /// Interface to an attribute row
 ///
@@ -41,6 +48,7 @@ class AttributeRow : public LayerAware
 public:
     virtual float getValue(const std::string &column) const = 0;
     virtual float getValue(size_t index) const = 0;
+    virtual bool hasValue(size_t index) const = 0;
     virtual float getNormalisedValue(size_t index) const = 0;
     virtual AttributeRow& setValue(const std::string &column, float value ) = 0;
     virtual AttributeRow& setValue(size_t index, float value) = 0;
@@ -71,6 +79,7 @@ struct AttributeColumnStats
     double visibleTotal;
     double visibleMin;
     double visibleMax;
+    size_t count = 0;
 };
 
 
@@ -95,7 +104,7 @@ public:
 
     // stats are mutable - we need to be able to update them all the time,
     // even when not allowed to modify the column settings
-    virtual void updateStats(float val, float oldVal = 0.0f) const = 0;
+    virtual void updateStats(float val, float oldVal = AttributeValue::MISSING) const = 0;
 
     virtual ~AttributeColumn(){}
 
@@ -141,7 +150,7 @@ public:
     virtual void setDisplayParams(const DisplayParams &params){ m_displayParams = params; }
     virtual const DisplayParams &getDisplayParams() const{return m_displayParams;}
 
-    virtual void updateStats(float val, float oldVal = 0.0f) const;
+    virtual void updateStats(float val, float oldVal = AttributeValue::MISSING) const;
 
 public:
     // stats are mutable - we need to be able to update them all the time,
@@ -154,6 +163,9 @@ public:
     void write(std::ostream& stream, int physicalCol);
 
 private:
+    friend class AttributeTable;
+    const AttributeTable *m_table = nullptr;
+    mutable bool m_statsDirty = false;
     std::string m_name;
     bool m_locked;
     bool m_hidden;
@@ -174,22 +186,23 @@ public:
 class AttributeRowImpl : public AttributeRow
 {
 public:
-    AttributeRowImpl(const AttributeColumnManager& colManager) : m_data(colManager.getNumColumns(), -1.0), m_colManager(colManager), m_selected(false)
+    AttributeRowImpl(const AttributeColumnManager& colManager) : m_data(colManager.getNumColumns(), AttributeValue::MISSING), m_colManager(&colManager), m_selected(false)
     {
         m_layerKey = 1;
     }
 
     // AttributeRow interface
 public:
-    virtual float getValue(const std::string &column) const;
-    virtual float getValue(size_t index) const;
-    virtual float getNormalisedValue(size_t index) const;
-    virtual AttributeRow& setValue(const std::string &column, float value);
-    virtual AttributeRow& setValue(size_t index, float value);
-    virtual AttributeRow& incrValue(const std::string &column, float value);
-    virtual AttributeRow& incrValue(size_t index, float value);
-    virtual AttributeRow& setSelection(bool selected);
-    virtual bool isSelected() const;
+    float getValue(const std::string &column) const override;
+    float getValue(size_t index) const override;
+    bool hasValue(size_t index) const override;
+    float getNormalisedValue(size_t index) const override;
+    AttributeRow &setValue(const std::string &column, float value) override;
+    AttributeRow &setValue(size_t index, float value) override;
+    AttributeRow &incrValue(const std::string &column, float value) override;
+    AttributeRow &incrValue(size_t index, float value) override;
+    AttributeRow &setSelection(bool selected) override;
+    bool isSelected() const override;
 
     void addColumn();
     void removeColumn(size_t index);
@@ -198,8 +211,9 @@ public:
     void write(std::ostream &stream);
 
 private:
+    friend class AttributeTable;
     std::vector<float> m_data;
-    const AttributeColumnManager& m_colManager;
+    const AttributeColumnManager *m_colManager;
     bool m_selected;
 
     void checkIndex(size_t index) const;
@@ -243,8 +257,8 @@ class AttributeTable : public AttributeColumnManager
 public:
     AttributeTable(){}
     virtual ~AttributeTable(){}
-    AttributeTable(AttributeTable&&) = default;
-    AttributeTable& operator =(AttributeTable&&) = default;
+    AttributeTable(AttributeTable &&other);
+    AttributeTable &operator=(AttributeTable &&other);
     AttributeTable(const AttributeTable& ) = delete;
     AttributeTable& operator =(const AttributeTable&) = delete;
 
@@ -296,7 +310,7 @@ public:
         float selTotal = 0;
         int selNum = 0;
         for(auto& pair: m_rows) {
-            if(pair.second->isSelected()) {
+            if (pair.second->isSelected() && pair.second->hasValue(columnIndex)) {
                 selTotal += pair.second->getValue(columnIndex);
                 selNum++;
             }
@@ -320,6 +334,7 @@ public:
     size_t getColumnSortedIndex(size_t index) const;
 
 private:
+    friend class AttributeColumnImpl;
     typedef std::map<AttributeKey, std::unique_ptr<AttributeRowImpl>> StorageType;
     StorageType m_rows;
     std::map<std::string, size_t> m_columnMapping;

@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,8 +20,15 @@
 #include <genlib/stringutils.h>
 #include <genlib/readwritehelpers.h>
 
+#include <cmath>
 #include <sstream>
 #include <numeric>
+
+namespace {
+bool isAttributeValue(float value) {
+    return std::isfinite(value) && value != AttributeValue::MISSING;
+}
+} // namespace
 
 const std::string &AttributeColumnImpl::getName() const
 {
@@ -59,27 +67,48 @@ const std::string &AttributeColumnImpl::getFormula() const
 
 const AttributeColumnStats &AttributeColumnImpl::getStats() const
 {
+    if (m_statsDirty) {
+        const size_t index = m_table->getColumnIndex(m_name);
+        m_stats = AttributeColumnStats();
+        m_statsDirty = false;
+        for (const auto &entry : m_table->m_rows) {
+            const auto &row = *entry.second;
+            if (row.hasValue(index)) {
+                updateStats(row.getValue(index));
+            }
+        }
+    }
     return m_stats;
 }
 
 void AttributeColumnImpl::updateStats(float val, float oldVal) const
 {
-    if (m_stats.total < 0)
-    {
-        m_stats.total = val;
+    if (m_statsDirty || val == oldVal) {
+        return;
     }
-    else
-    {
-        m_stats.total += val;
+    const bool hadValue = isAttributeValue(oldVal);
+    const bool hasValue = isAttributeValue(val);
+
+    if (m_table && hadValue &&
+        ((oldVal == m_stats.min && (!hasValue || val > oldVal)) ||
+         (oldVal == m_stats.max && (!hasValue || val < oldVal)))) {
+        m_statsDirty = true;
+        return;
+    }
+    if (hadValue) {
+        --m_stats.count;
         m_stats.total -= oldVal;
     }
-    if (val > m_stats.max)
-    {
-        m_stats.max = val;
-    }
-    if (m_stats.min < 0 || val < m_stats.min)
-    {
-        m_stats.min = val;
+    if (hasValue) {
+        if (m_stats.count++ == 0) {
+            m_stats.min = m_stats.max = m_stats.total = val;
+        } else {
+            m_stats.min = std::min(m_stats.min, static_cast<double>(val));
+            m_stats.max = std::max(m_stats.max, static_cast<double>(val));
+            m_stats.total += val;
+        }
+    } else if (m_stats.count == 0) {
+        m_stats = AttributeColumnStats();
     }
 }
 
@@ -110,11 +139,12 @@ size_t AttributeColumnImpl::read(std::istream &stream)
 void AttributeColumnImpl::write(std::ostream &stream, int physicalCol)
 {
     dXstring::writeString(stream, m_name);
-    float min = (float)m_stats.min;
-    float max = (float)m_stats.max;
+    const auto &stats = getStats();
+    float min = (float)stats.min;
+    float max = (float)stats.max;
     stream.write((char *)&min, sizeof(float));
     stream.write((char *)&max, sizeof(float));
-    stream.write((char *)&m_stats.total, sizeof(m_stats.total));
+    stream.write((const char *)&stats.total, sizeof(stats.total));
     stream.write((char *)&physicalCol, sizeof(int));
     stream.write((char *)&m_hidden, sizeof(bool));
     stream.write((char *)&m_locked, sizeof(bool));
@@ -127,7 +157,7 @@ void AttributeColumnImpl::write(std::ostream &stream, int physicalCol)
 // AttributeRow implementation
 float AttributeRowImpl::getValue(const std::string &column) const
 {
-    return getValue(m_colManager.getColumnIndex(column));
+    return getValue(m_colManager->getColumnIndex(column));
 }
 
 float AttributeRowImpl::getValue(size_t index) const
@@ -136,32 +166,36 @@ float AttributeRowImpl::getValue(size_t index) const
     return m_data[index];
 }
 
-float AttributeRowImpl::getNormalisedValue(size_t index) const
+bool AttributeRowImpl::hasValue(size_t index) const
 {
     checkIndex(index);
-    auto& colStats = m_colManager.getColumn(index).getStats();
+    return isAttributeValue(m_data[index]);
+}
+
+float AttributeRowImpl::getNormalisedValue(size_t index) const
+{
+    if (!hasValue(index)) {
+        return -1.0f;
+    }
+    auto& colStats = m_colManager->getColumn(index).getStats();
     if (colStats.max == colStats.min)
     {
         return 0.5f;
     }
-    return  m_data[index] < 0 ? -1.0f : float((m_data[index] - colStats.min)/(colStats.max - colStats.min));
+    return float((m_data[index] - colStats.min)/(colStats.max - colStats.min));
 }
 
 AttributeRow& AttributeRowImpl::setValue(const std::string &column, float value)
 {
-    return setValue(m_colManager.getColumnIndex(column), value);
+    return setValue(m_colManager->getColumnIndex(column), value);
 }
 
 AttributeRow& AttributeRowImpl::setValue(size_t index, float value)
 {
     checkIndex(index);
-    float oldVal = m_data[index];
-    m_data[index] = value;
-    if (oldVal < 0.0f)
-    {
-        oldVal = 0.0f;
-    }
-    m_colManager.getColumn(index).updateStats(value, oldVal);
+    const float oldVal = m_data[index];
+    m_data[index] = std::isfinite(value) ? value : AttributeValue::MISSING;
+    m_colManager->getColumn(index).updateStats(m_data[index], oldVal);
     return *this;
 }
 
@@ -178,7 +212,7 @@ bool AttributeRowImpl::isSelected() const
 
 void AttributeRowImpl::addColumn()
 {
-    m_data.push_back(-1);
+    m_data.push_back(AttributeValue::MISSING);
 }
 
 void AttributeRowImpl::removeColumn(size_t index)
@@ -211,23 +245,36 @@ void AttributeRowImpl::checkIndex(size_t index) const
 
 AttributeRow &AttributeRowImpl::incrValue(size_t index, float value)
 {
-    checkIndex(index);
-    float val = m_data[index];
-    if ( val < 0)
-    {
-        setValue(index, value);
-    }
-    else
-    {
-        setValue(index, val + value);
-    }
-    return *this;
+    return setValue(index, hasValue(index) ? m_data[index] + value : value);
 }
 
 
 AttributeRow &AttributeRowImpl::incrValue(const std::string &colName, float value)
 {
-    return incrValue(m_colManager.getColumnIndex(colName), value);
+    return incrValue(m_colManager->getColumnIndex(colName), value);
+}
+
+AttributeTable::AttributeTable(AttributeTable &&other)
+{
+    *this = std::move(other);
+}
+
+AttributeTable &AttributeTable::operator=(AttributeTable &&other)
+{
+    if (this != &other) {
+        m_rows = std::move(other.m_rows);
+        m_columnMapping = std::move(other.m_columnMapping);
+        m_columns = std::move(other.m_columns);
+        m_keyColumn = std::move(other.m_keyColumn);
+        m_displayParams = other.m_displayParams;
+        for (auto &entry : m_rows) {
+            entry.second->m_colManager = this;
+        }
+        for (auto &column : m_columns) {
+            column.m_table = this;
+        }
+    }
+    return *this;
 }
 
 AttributeRow &AttributeTable::getRow(const AttributeKey &key)
@@ -288,6 +335,9 @@ void AttributeTable::removeRow(const AttributeKey &key)
     {
         throw new std::invalid_argument("Row does not exist");
     }
+    for (size_t index = 0; index < m_columns.size(); ++index) {
+        m_columns[index].updateStats(AttributeValue::MISSING, iter->second->m_data[index]);
+    }
     m_rows.erase(iter);
 }
 
@@ -309,12 +359,13 @@ size_t AttributeTable::insertOrResetColumn(const std::string &columnName, const 
     }
 
     // it exists - we need to reset it
-    m_columns[iter->second].m_stats = AttributeColumnStats();
     m_columns[iter->second].setLock(false);
     for (auto& row : m_rows)
     {
-        row.second->setValue(iter->second, -1.0f);
+        row.second->m_data[iter->second] = AttributeValue::MISSING;
     }
+    m_columns[iter->second].m_stats = AttributeColumnStats();
+    m_columns[iter->second].m_statsDirty = false;
     return iter->second;
 }
 
@@ -409,6 +460,8 @@ void AttributeTable::read(std::istream &stream, LayerManager &layerManager)
     {
         m_columnMapping[c.second.getName()] = m_columns.size();
         m_columns.push_back(c.second);
+        m_columns.back().m_table = this;
+        m_columns.back().m_statsDirty = true;
     }
 
     int rowcount, rowkey;
@@ -521,7 +574,8 @@ void AttributeTable::checkColumnIndex(size_t index) const
 size_t AttributeTable::addColumnInternal(const std::string &name, const std::string &formula)
 {
     size_t colIndex = m_columns.size();
-    m_columns.push_back(AttributeColumnImpl(name, formula));
+    m_columns.emplace_back(name, formula);
+    m_columns.back().m_table = this;
     m_columnMapping[name] = colIndex;
     for (auto& elem : m_rows)
     {

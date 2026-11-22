@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017 Christian Sailer
 
 // This program is free software: you can redistribute it and/or modify
@@ -191,19 +191,17 @@ bool QDepthmapView::eventFilter(QObject *object, QEvent *e) {
                     int count = m_pDoc.m_meta_graph->getSelCount();
                     if (val == -1.0f)
                         setToolTip("Null selection");
-                    else if (val != -2.0f)
-                        setToolTip(QString("Selection\nAverage: %1\nCount: %2").arg(val).arg(count));
                     else
-                        setToolTip("");
+                        setToolTip(QString("Selection\nAverage: %1\nCount: %2").arg(val).arg(count));
                 } else if (m_pDoc.m_meta_graph->viewingProcessed()) {
                     // and that it has an appropriate state to display a hover wnd
-                    float val = m_pDoc.m_meta_graph->getLocationValue(LogicalUnits(hit_point));
-                    if (val == -1.0f)
-                        setToolTip("No value");
-                    else if (val != -2.0f)
-                        setToolTip(QString("%1").arg(val));
-                    else
+                    const auto val = m_pDoc.m_meta_graph->getLocationValue(LogicalUnits(hit_point));
+                    if (!val)
                         setToolTip("");
+                    else if (*val == -1.0f)
+                        setToolTip("No value");
+                    else
+                        setToolTip(QString("%1").arg(*val));
                 }
             }
         }

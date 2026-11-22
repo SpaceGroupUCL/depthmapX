@@ -1,6 +1,6 @@
 // sala - a component of the depthmapX - spatial network analysis platform
 // Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -22,7 +22,8 @@
 
 // revised to use tulip bins for faster analysis of large spaces
 
-bool SegmentTulipDepth::run(Communicator *, ShapeGraph &map, bool) {
+bool SegmentTulipDepth::run(Communicator *comm, ShapeGraph &map, bool) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = map.getAttributeTable();
 
@@ -35,12 +36,14 @@ bool SegmentTulipDepth::run(Communicator *, ShapeGraph &map, bool) {
 
     std::vector<bool> covered(map.getConnections().size());
     for (size_t i = 0; i < map.getConnections().size(); i++) {
+        Communicator::checkCancelled(comm);
        covered[i] = false;
     }
     std::vector<std::vector<SegmentData> > bins(tulip_bins);
 
     int opencount = 0;
     for (auto& sel: map.getSelSet()) {
+        Communicator::checkCancelled(comm);
        int row = depthmapX::getMapAtIndex(map.getAllShapes(), sel)->first;
        if (row != -1) {
           bins[0].push_back(SegmentData(0,row,SegmentRef(),0,0.0,0));
@@ -51,6 +54,7 @@ bool SegmentTulipDepth::run(Communicator *, ShapeGraph &map, bool) {
     auto binIter = bins.begin();
     int currentbin = 0;
     while (opencount) {
+        Communicator::checkCancelled(comm);
        while (binIter->empty()) {
           depthlevel++;
           binIter++;

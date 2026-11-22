@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Petros Koutsolampros
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,6 +18,21 @@
 #include "genlib/comm.h"
 #include "genlib/p2dpoly.h"
 #include "genlib/bsptree.h"
+#include <atomic>
+#include <type_traits>
+
+TEST_CASE("The communicator uses an atomic cancellation flag") {
+    struct TestCommunicator : ICommunicator {
+        using CancellationFlag = decltype(m_cancelled);
+    };
+    STATIC_REQUIRE(std::is_same<TestCommunicator::CancellationFlag, std::atomic<bool>>::value);
+    TestCommunicator communicator;
+    REQUIRE_FALSE(communicator.IsCancelled());
+    communicator.Cancel();
+    REQUIRE(communicator.IsCancelled());
+    REQUIRE_THROWS_AS(Communicator::checkCancelled(&communicator), Communicator::CancelledException);
+    REQUIRE_NOTHROW(Communicator::checkCancelled(nullptr));
+}
 
 TEST_CASE("BSPTree::pickMidpointLine")
 {

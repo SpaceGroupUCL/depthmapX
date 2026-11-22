@@ -1,5 +1,5 @@
 // sala - a component of the depthmapX - spatial network analysis platform
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 
 #pragma once
+#include <optional>
 
 // Interface: the meta graph loads and holds all sorts of arbitrary data...
 
@@ -74,6 +75,7 @@ public:
    enum { NOT_EDITABLE = 0, EDITABLE_OFF = 1, EDITABLE_ON = 2 };
 protected:
    int m_file_version;
+   class RestoreStateOnFailure;
    int m_state;
 public:
    // some display options now set at file level
@@ -354,7 +356,7 @@ public:
    //
    bool setViewClass(int command);
    //
-   double getLocationValue(const Point2f& point);
+   std::optional<double> getLocationValue(const Point2f& point);
    //
 public:
    // these are dependent on what the view class is:

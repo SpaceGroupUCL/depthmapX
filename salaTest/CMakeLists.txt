@@ -34,4 +34,5 @@ include_directories("../ThirdParty/Catch" "../ThirdParty/FakeIt")
 set(LINK_LIBS salalib genlib mgraph440)
 
 add_executable(${salaTest} ${salaTest_SRCS})
+target_compile_definitions(${salaTest} PRIVATE DEPTHMAPX_TESTDATA="${PROJECT_SOURCE_DIR}/testdata")
 target_link_libraries(${salaTest} ${LINK_LIBS})

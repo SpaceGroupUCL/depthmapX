@@ -363,6 +363,9 @@ bool SalaProgram::runselect(std::vector<int> &selsetout, const std::set<int>& se
 
 std::string SalaProgram::getLastErrorMessage() const
 { 
+   if (m_error_stack.empty()) {
+      return {};
+   }
    const SalaError& error = m_error_stack.back();
    if (error.lineno == -1) {
       return error.message; 

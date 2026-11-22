@@ -1,4 +1,4 @@
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 
 #include <QtGui>
 #include <QEvent>
+#include <exception>
+#include <stdexcept>
 #include "mainwindow.h"
 
 
@@ -34,14 +36,21 @@ CMSCommunicator::~CMSCommunicator()
 inline void CMSCommunicator::CommPostMessage(int m, int x) const
 {
    QGraphDoc *pDoc = (QGraphDoc *)parent_doc;
-   pDoc->ProcPostMessage(m, x);
+   emit pDoc->m_thread.progressChanged(m, x);
 }
 
 void CMSCommunicator::runAnalysis(QGraphDoc &graphDoc) {
-    bool success = m_analysis->run(this);
-    if (success) {
-        graphDoc.SetUpdateFlag(m_successUpdateFlagType, m_successUpdateFlagModified);
-        graphDoc.SetRedrawFlag(m_successRedrawFlagViewType, m_successRedrawFlag, m_successRedrawReason);
+    if (!m_analysis) {
+        throw std::logic_error("No module analysis was configured.");
+    }
+    if (m_analysis->run(this)) {
+        if (m_successUpdateFlagType != -1) {
+            emit graphDoc.m_thread.updateRequested(m_successUpdateFlagType, m_successUpdateFlagModified);
+        }
+        if (m_successRedrawFlag != QGraphDoc::REDRAW_DONE) {
+            emit graphDoc.m_thread.redrawRequested(m_successRedrawFlagViewType, m_successRedrawFlag,
+                                                  m_successRedrawReason);
+        }
     }
 }
 
@@ -84,27 +93,31 @@ void RenderThread::run()
 {
    QGraphDoc *pDoc = (QGraphDoc *) m_parent;
    CMSCommunicator *comm = pDoc->m_communicator;
+   if (!comm) {
+       return;
+   }
    comm->parent_doc = m_parent;
-   MainWindow* pMain = (MainWindow*)pDoc->m_mainFrame;
+   MainWindow *pMain = static_cast<MainWindow *>(pDoc->m_mainFrame);
 
-   if (comm) {
-       // move simple setting to comm
-       comm->simple_version = pMain->m_simpleVersion;
+   QString title;
+   QString message;
+   try {
+      comm->simple_version = pMain->m_simpleVersion;
 
-      int ok;
+      int ok = 1;
       switch (comm->GetFunction()) 
 	  {
       case CMSCommunicator::IMPORT:
          ok = pDoc->m_meta_graph->loadLineData( comm, comm->GetOption() );
          if (ok == 1) {
-			 pDoc->modifiedFlag = true;
+			 emit updateRequested(QGraphDoc::UNDECLARED);
          }
          else if (ok == -1) {
              emit showWarningMessage(tr("Warning"), tr("An error was found in the import file"));
          }
          // This might change the line layers available, alert the layer chooser:
          QApplication::postEvent(pMain, new QmyEvent((enum QEvent::Type)FOCUSGRAPH, (void*)pDoc, QGraphDoc::CONTROLS_LOADDRAWING));
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::IMPORTMIF:
@@ -114,7 +127,7 @@ void RenderThread::run()
              //BUG
             //QMessageBox::warning(0, tr("Warning"), tr("The imported MIF file contains multiple shapes per object.\n Please note that depthmapX has broken these up, so each shape has one row of attribute data.\n Please consult your MapInfo provider for details."), QMessageBox::Ok, QMessageBox::Ok);
         case MINFO_OK:
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+            emit updateRequested(QGraphDoc::NEW_TABLE);
             break;
          case MINFO_HEADER:
             emit showWarningMessage(tr("Warning"), tr("depthmapX had a problem reading the header information in your MIF file."));
@@ -132,30 +145,32 @@ void RenderThread::run()
                                     This may be due to the existance of unsupported shape types in the file."));
             break;
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEPOINTS:
          ok = pDoc->m_meta_graph->makePoints( comm->GetSeedPoint(), comm->GetOption(), comm );
          if (ok) {
-			 pDoc->modifiedFlag = true;
+			 emit updateRequested(QGraphDoc::UNDECLARED);
          }
          QApplication::postEvent(pMain, new QmyEvent((enum QEvent::Type)FOCUSGRAPH, (void*)pDoc, QGraphDoc::CONTROLS_LOADGRAPH));
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEGRAPH:
          ok = pDoc->m_meta_graph->makeGraph( comm, pDoc->m_make_algorithm, pDoc->m_make_maxdist );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+            emit updateRequested(QGraphDoc::NEW_DATA);
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::ANALYSEGRAPH:
          ok = pDoc->m_meta_graph->analyseGraph( comm, pMain->m_options, comm->simple_version);
-         pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         if (ok) {
+            emit updateRequested(QGraphDoc::NEW_DATA);
+         }
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEISOVIST:
@@ -172,11 +187,11 @@ void RenderThread::run()
             ok = pDoc->m_meta_graph->makeIsovist( comm, comm->GetSeedPoint(), ang1, ang2, comm->simple_version );
          }
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+            emit updateRequested(QGraphDoc::NEW_DATA);
          }
          // Tell the sidebar about the new map:
          QApplication::postEvent(pMain, new QmyEvent((enum QEvent::Type)FOCUSGRAPH, (void*)pDoc, QGraphDoc::CONTROLS_LOADGRAPH));
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEISOVISTSFROMFILE: {
@@ -192,11 +207,11 @@ void RenderThread::run()
                   isovistIdx++;
               }
 
-              pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+              emit updateRequested(QGraphDoc::NEW_DATA);
               // Tell the sidebar about the new map:
               QApplication::postEvent(
                   pMain, new QmyEvent((enum QEvent::Type)FOCUSGRAPH, (void *)pDoc, QGraphDoc::CONTROLS_LOADGRAPH));
-              pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA);
+              emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA);
 
           } catch (EntityParsing::EntityParseException &e) {
               emit showWarningMessage(tr("Warning"),
@@ -214,50 +229,52 @@ void RenderThread::run()
 
          // Tell the sidebar about the new map:
          QApplication::postEvent(pMain, new QmyEvent((enum QEvent::Type)FOCUSGRAPH, (void*)pDoc, QGraphDoc::CONTROLS_LOADGRAPH));
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEALLLINEMAP:
          ok = pDoc->m_meta_graph->makeAllLineMap( comm, comm->GetSeedPoint() );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+            emit updateRequested(QGraphDoc::NEW_DATA);
          }
          // Tell the sidebar about the new map:
          QApplication::postEvent(pMain, new QmyEvent((enum QEvent::Type)FOCUSGRAPH, (void*)pDoc, QGraphDoc::CONTROLS_LOADGRAPH));
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEFEWESTLINEMAP:
          ok = pDoc->m_meta_graph->makeFewestLineMap( comm, comm->GetOption() );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+            emit updateRequested(QGraphDoc::NEW_TABLE);
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEDRAWING: {
          // option 1 is: 0 a data map, 1 an axial map
          ok = pDoc->m_meta_graph->convertToDrawing( comm, comm->GetString().toStdString(), (comm->GetOption(1) == 0));
          if (ok) {
-			 pDoc->modifiedFlag = true;
+			 emit updateRequested(QGraphDoc::UNDECLARED);
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No objects currently visible in drawing layers"));
          }
          // Tell the sidebar about the new map:
          QApplication::postEvent(pMain, new QmyEvent((enum QEvent::Type)FOCUSGRAPH, (void*)pDoc, QGraphDoc::CONTROLS_LOADDRAWING));
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_TOTAL, QGraphDoc::NEW_DATA );
          break;
       }
       case CMSCommunicator::MAKEUSERMAP:
          ok = pDoc->m_meta_graph->convertDrawingToAxial( comm, comm->GetString().toStdString());
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+            emit updateRequested(QGraphDoc::NEW_TABLE);
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No objects currently visible in drawing layers"));
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEUSERMAPSHAPE:
@@ -265,27 +282,29 @@ void RenderThread::run()
          if (ok) {
             if (comm->GetOption(0) == 0) {
                // note: there is both a new table and a deleted table, but deleted table leads to a greater redraw:
-               pDoc->SetUpdateFlag(QGraphDoc::DELETED_TABLE);
+               emit updateRequested(QGraphDoc::DELETED_TABLE);
             }
             else {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+               emit updateRequested(QGraphDoc::NEW_TABLE);
             }
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No lines available in current layer to convert to axial lines"));
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEUSERSEGMAP:
          ok = pDoc->m_meta_graph->convertDrawingToSegment( comm, comm->GetString().toStdString() );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+            emit updateRequested(QGraphDoc::NEW_TABLE);
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No objects currently visible in drawing layers"));
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::MAKEUSERSEGMAPSHAPE:
@@ -293,16 +312,17 @@ void RenderThread::run()
          if (ok) {
             if (comm->GetOption(0) == 0) {
                // note: there is both a new table and a deleted table, but deleted table leads to a greater redraw:
-               pDoc->SetUpdateFlag(QGraphDoc::DELETED_TABLE);
+               emit updateRequested(QGraphDoc::DELETED_TABLE);
             }
             else {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+               emit updateRequested(QGraphDoc::NEW_TABLE);
             }
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No lines available in current layer to convert to segments"));
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
       
       case CMSCommunicator::MAKEGATESMAP: {
@@ -317,16 +337,17 @@ void RenderThread::run()
          if (ok) {
             if (comm->GetOption(0) == 0) {
                // note: there is both a new table and a deleted table, but deleted table leads to a greater redraw:
-               pDoc->SetUpdateFlag(QGraphDoc::DELETED_TABLE);
+               emit updateRequested(QGraphDoc::DELETED_TABLE);
             }
             else {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+               emit updateRequested(QGraphDoc::NEW_TABLE);
             }
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No objects currently visible in drawing layers"));
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
       }
       case CMSCommunicator::MAKECONVEXMAP: {
@@ -341,16 +362,17 @@ void RenderThread::run()
          if (ok) {
             if (comm->GetOption(0) == 0) {
                // note: there is both a new table and a deleted table, but deleted table leads to a greater redraw:
-               pDoc->SetUpdateFlag(QGraphDoc::DELETED_TABLE);
+               emit updateRequested(QGraphDoc::DELETED_TABLE);
             }
             else {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+               emit updateRequested(QGraphDoc::NEW_TABLE);
             }
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No polygons currently visible in drawing layers"));
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
       }
       case CMSCommunicator::MAKEBOUNDARYMAP:
@@ -362,48 +384,49 @@ void RenderThread::run()
          if (ok) {
             if (comm->GetOption(0) == 0) {
                // note: there is both a new table and a deleted table, but deleted table leads to a greater redraw:
-               pDoc->SetUpdateFlag(QGraphDoc::DELETED_TABLE);
+               emit updateRequested(QGraphDoc::DELETED_TABLE);
             }
             else {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
+               emit updateRequested(QGraphDoc::NEW_TABLE);
             }
          }
          else {
+            Communicator::checkCancelled(comm);
             emit showWarningMessage(tr("Warning"), tr("No lines exist in map to convert to segments"));
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::AXIALANALYSIS:
          ok = pDoc->m_meta_graph->analyseAxial( comm, pMain->m_options, comm->simple_version );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+            emit updateRequested(QGraphDoc::NEW_DATA);
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::SEGMENTANALYSISTULIP:
          ok = pDoc->m_meta_graph->analyseSegmentsTulip( comm, pMain->m_options );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+            emit updateRequested(QGraphDoc::NEW_DATA);
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::SEGMENTANALYSISANGULAR:
          ok = pDoc->m_meta_graph->analyseSegmentsAngular( comm, pMain->m_options );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+            emit updateRequested(QGraphDoc::NEW_DATA);
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::TOPOMETANALYSIS:
          ok = pDoc->m_meta_graph->analyseTopoMet( comm, pMain->m_options );
          if (ok) {
-            pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+            emit updateRequested(QGraphDoc::NEW_DATA);
          }
-         pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+         emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
          break;
 
       case CMSCommunicator::POINTDEPTH:
@@ -415,9 +438,9 @@ void RenderThread::run()
             
             ok = pDoc->m_meta_graph->analyseGraph( comm, options, comm->simple_version);
             if (ok) {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+               emit updateRequested(QGraphDoc::NEW_DATA);
             }
-            pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
+            emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
          }
          break;     
 
@@ -430,9 +453,9 @@ void RenderThread::run()
 
             ok = pDoc->m_meta_graph->analyseGraph( comm, options, comm->simple_version );
             if (ok) {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+               emit updateRequested(QGraphDoc::NEW_DATA);
             }
-            pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
+            emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
          }
          break;
 
@@ -445,9 +468,9 @@ void RenderThread::run()
 
             ok = pDoc->m_meta_graph->analyseGraph( comm, options, comm->simple_version );
             if (ok) {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+               emit updateRequested(QGraphDoc::NEW_DATA);
             }
-            pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
+            emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
          }
          break;
 
@@ -460,9 +483,9 @@ void RenderThread::run()
 
             ok = pDoc->m_meta_graph->analyseGraph( comm, options, comm->simple_version);
             if (ok) {
-               pDoc->SetUpdateFlag(QGraphDoc::NEW_DATA);
+               emit updateRequested(QGraphDoc::NEW_DATA);
             }
-            pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
+            emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
          }
          break;
 
@@ -470,8 +493,8 @@ void RenderThread::run()
          {
             try {
               pDoc->m_meta_graph->runAgentEngine( comm );
-              pDoc->SetUpdateFlag(QGraphDoc::NEW_TABLE);
-              pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
+              emit updateRequested(QGraphDoc::NEW_TABLE);
+              emit redrawRequested(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_POINTS, QGraphDoc::NEW_DATA );
             } catch (depthmapX::PointMapException const & e) {
               emit runtimeExceptionThrown(e.getErrorType(), e.what());
           }
@@ -483,13 +506,22 @@ void RenderThread::run()
           break;
         }
       }
+      if (ok <= 0 && comm->GetFunction() != CMSCommunicator::IMPORTMIF) {
+         Communicator::checkCancelled(comm);
+      }
 
-      emit closeWaitDialog();
-	  msleep(100);
-      delete pDoc->m_communicator;     // Ensure we delete *the* communicator
-      pDoc->m_communicator = NULL;
-      // REDRAW_TOTAL to REDRAW_GRAPH // recenterView after fill // TV
-      pDoc->SetRedrawFlag(QGraphDoc::VIEW_ALL, QGraphDoc::REDRAW_GRAPH, QGraphDoc::NEW_DATA );
+   } catch (const Communicator::CancelledException &) {
+      title = tr("Analysis cancelled");
+      message = tr("Analysis cancelled.");
+   } catch (const std::exception &error) {
+      title = tr("Analysis failed");
+      message = QString::fromUtf8(error.what());
+      if (message.isEmpty()) {
+         message = tr("An error occurred during analysis.");
+      }
+   } catch (...) {
+      title = tr("Analysis failed");
+      message = tr("An unknown error occurred during analysis.");
    }
-   return;
+   emit analysisCompleted(title, message);
 }

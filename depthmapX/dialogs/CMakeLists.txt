@@ -1,5 +1,5 @@
-target_sources(depthmapX
-    PUBLIC
+target_sources(depthmapXGui
+    PRIVATE
         TopoMetDlg.h
         SegmentAnalysisDlg.h
         RenameObjectDlg.h
@@ -31,7 +31,6 @@ target_sources(depthmapX
         settings/interfacepage.h
         settings/settingspage.h
         settings/settingsdialog.h
-    PRIVATE
         TopoMetDlg.cpp
         SegmentAnalysisDlg.cpp
         RenameObjectDlg.cpp

@@ -1,4 +1,4 @@
-// Copyright (C) 2026 Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017 Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -24,6 +24,17 @@
 
 // Most of these test cases are adapted from salalib/salascript-tests.txt
 // with some added for completeness
+
+TEST_CASE("SalaProgram returns an empty error after a successful parse", "[sala-last-error]") {
+    SalaProgram program{SalaObj()};
+    std::stringstream invalid("return (\n");
+    REQUIRE_FALSE(program.parse(invalid));
+    REQUIRE_FALSE(program.getLastErrorMessage().empty());
+
+    std::stringstream valid("return 1\n");
+    REQUIRE(program.parse(valid));
+    REQUIRE(program.getLastErrorMessage().empty());
+}
 
 TEST_CASE("Trivial scripts") {
 

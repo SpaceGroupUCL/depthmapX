@@ -1,4 +1,5 @@
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,6 +16,7 @@
 
 #pragma once
 
+#include <iosfwd>
 #include <string>
 #include <vector>
 #include <memory>
@@ -28,6 +30,7 @@ class CommandLineParser
 {
 public:
     CommandLineParser(const IModeParserFactory &parserFactory);
+    int execute(int argc, char *argv[], std::ostream &errors);
     void parse(size_t argc, char *argv[]);
 
     const std::string &getFileName() const { return m_fileName; }
@@ -52,7 +55,7 @@ private:
     bool m_valid;
     bool m_printVersionMode;
     bool m_simpleMode;
-    bool m_printProgress;
+    bool m_printProgress = false;
 
     const IModeParserFactory &_parserFactory;
     IModeParser * _modeParser;

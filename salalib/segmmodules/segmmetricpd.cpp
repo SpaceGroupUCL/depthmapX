@@ -1,6 +1,6 @@
 // sala - a component of the depthmapX - spatial network analysis platform
 // Copyright (C) 2000-2010, University College London, Alasdair Turner
-// Copyright (C) 2011-2012, Tasos Varoudis
+// Copyright (C) 2011-2026, Tasos Varoudis
 // Copyright (C) 2017-2018, Petros Koutsolampros
 
 // This program is free software: you can redistribute it and/or modify
@@ -20,7 +20,8 @@
 
 #include "genlib/stringutils.h"
 
-bool SegmentMetricPD::run(Communicator *, ShapeGraph &map, bool) {
+bool SegmentMetricPD::run(Communicator *comm, ShapeGraph &map, bool) {
+    Communicator::checkCancelled(comm);
 
     AttributeTable &attributes = map.getAttributeTable();
 
@@ -32,6 +33,7 @@ bool SegmentMetricPD::run(Communicator *, ShapeGraph &map, bool) {
     std::vector<float> seglengths;
     float maxseglength = 0.0f;
     for (size_t cursor = 0; cursor < map.getShapeCount(); cursor++) {
+        Communicator::checkCancelled(comm);
         AttributeRow &row = map.getAttributeRowFromShapeIndex(cursor);
         axialrefs.push_back(row.getValue("Axial Line Ref"));
         seglengths.push_back(row.getValue("Segment Length"));
@@ -54,9 +56,11 @@ bool SegmentMetricPD::run(Communicator *, ShapeGraph &map, bool) {
     int open = 0;
 
     for (size_t i = 0; i < map.getShapeCount(); i++) {
+        Communicator::checkCancelled(comm);
         seen[i] = 0xffffffff;
     }
     for (auto &cursor : map.getSelSet()) {
+        Communicator::checkCancelled(comm);
         seen[cursor] = 0;
         open++;
         double length = seglengths[cursor];
@@ -71,6 +75,7 @@ bool SegmentMetricPD::run(Communicator *, ShapeGraph &map, bool) {
     int bin = 0;
 
     while (open != 0) {
+        Communicator::checkCancelled(comm);
         while (list[bin].size() == 0) {
             bin++;
             segdepth += 1;

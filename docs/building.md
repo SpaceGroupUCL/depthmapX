@@ -8,6 +8,7 @@ To build depthmapX on your machine, you need the following dependencies:
   - Clang (on MacOS and Linux)
   - g++ (on Linux)
 - Qt 5.7 or later
+- macOS 11.0 or later for macOS builds. If your Qt build requires a newer version, pass `-DCMAKE_OSX_DEPLOYMENT_TARGET` with that version.
 - cmake 3.13 or later - this is a fairly recent version
 
 If these dependencies are available, then building depthmapX should be
