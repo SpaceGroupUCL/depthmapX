@@ -14,6 +14,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+#include <QFocusEvent>
 #include <QMessageBox>
 #include <QString>
 #include <QFile>
@@ -148,7 +149,7 @@ bool QGraphDoc::SetRedrawFlag(int viewtype, int flag, int reason, QWidget *origi
          if (m_redraw_flag[viewtype] < flag) 
 		 {
             m_redraw_flag[viewtype] = flag;
-            QApplication::postEvent(m_view[viewtype], new QEvent(QEvent::FocusIn));
+            QApplication::postEvent(m_view[viewtype], new QFocusEvent(QEvent::FocusIn));
 
          }
          if (flag == REDRAW_DONE) {
@@ -160,7 +161,7 @@ bool QGraphDoc::SetRedrawFlag(int viewtype, int flag, int reason, QWidget *origi
             if (m_view[i] && m_redraw_flag[i] < flag) 
 		    {
                m_redraw_flag[i] = flag;
-               QApplication::postEvent(m_view[i], new QEvent(QEvent::FocusIn));
+               QApplication::postEvent(m_view[i], new QFocusEvent(QEvent::FocusIn));
             }
          }
       }

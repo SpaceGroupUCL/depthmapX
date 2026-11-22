@@ -4,7 +4,6 @@
 #include <catch.hpp>
 
 #include <QEventLoop>
-#include <QMessageBox>
 #include <QPointer>
 #include <QTimer>
 
@@ -30,6 +29,22 @@ class TestAnalysis : public IAnalysis {
     std::string getAnalysisName() const override { return "Test analysis"; }
     bool run(Communicator *) override { return m_run(); }
 };
+
+class TestGraphDoc : public QGraphDoc {
+  public:
+    TestGraphDoc() : QGraphDoc(QString{}, QString{}) {}
+
+    std::vector<QString> messages;
+    bool busyAtWarning = false;
+    bool progressOpenAtWarning = false;
+
+  protected:
+    void messageFromRenderThread(QString, QString message) override {
+        messages.push_back(message);
+        busyAtWarning = m_communicator != nullptr || m_thread.isRunning();
+        progressOpenAtWarning = m_waitdlg != nullptr;
+    }
+};
 } // namespace
 
 TEST_CASE("The document recovers from a throwing module analysis", "[renderthread]") {
@@ -37,14 +52,11 @@ TEST_CASE("The document recovers from a throwing module analysis", "[renderthrea
     MainWindow window(QString{}, settings);
     QWidget mapView;
     std::unique_ptr<MetaGraph> graph;
-    QGraphDoc doc(QString{}, QString{});
+    TestGraphDoc doc;
     graph.reset(doc.m_meta_graph);
     doc.m_mainFrame = &window;
     doc.m_view[QGraphDoc::VIEW_MAP] = &mapView;
 
-    std::vector<QString> messages;
-    bool busyAtWarning = false;
-    bool progressVisibleAtWarning = false;
     auto runAnalysis = [&](std::function<bool()> analysis) {
         REQUIRE(doc.m_communicator == nullptr);
         auto communicator = std::make_unique<CMSCommunicator>();
@@ -60,25 +72,12 @@ TEST_CASE("The document recovers from a throwing module analysis", "[renderthrea
         REQUIRE(progress->isVisible());
 
         QEventLoop loop;
-        QTimer poll;
-        QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
-            if (auto *warning = doc.findChild<QMessageBox *>()) {
-                if (warning->isVisible()) {
-                    messages.push_back(warning->text());
-                    busyAtWarning = doc.m_communicator != nullptr;
-                    progressVisibleAtWarning = progress && progress->isVisible();
-                    warning->accept();
-                }
-            }
-            if (!doc.m_communicator && !doc.m_thread.isRunning()) {
-                loop.quit();
-            }
-        });
+        QObject::connect(&doc.m_thread, &RenderThread::analysisCompleted, &loop, &QEventLoop::quit,
+                         Qt::QueuedConnection);
         QTimer timeout;
         timeout.setSingleShot(true);
         QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
         timeout.start(5000);
-        poll.start(5);
         doc.m_thread.render(&doc);
         loop.exec();
 
@@ -89,28 +88,28 @@ TEST_CASE("The document recovers from a throwing module analysis", "[renderthrea
 
     SECTION("Standard exception") {
         runAnalysis([]() -> bool { throw std::runtime_error("Module analysis failed"); });
-        REQUIRE(messages == std::vector<QString>{"Module analysis failed"});
+        REQUIRE(doc.messages == std::vector<QString>{"Module analysis failed"});
     }
     SECTION("Unknown exception") {
         runAnalysis([]() -> bool { throw 42; });
-        REQUIRE(messages == std::vector<QString>{"An unknown error occurred during analysis."});
+        REQUIRE(doc.messages == std::vector<QString>{"An unknown error occurred during analysis."});
     }
     SECTION("Cancellation") {
         runAnalysis([]() -> bool { throw Communicator::CancelledException(); });
-        REQUIRE(messages == std::vector<QString>{"Analysis cancelled."});
+        REQUIRE(doc.messages == std::vector<QString>{"Analysis cancelled."});
     }
     SECTION("No module analysis configured") {
         runAnalysis({});
-        REQUIRE(messages == std::vector<QString>{"No module analysis was configured."});
+        REQUIRE(doc.messages == std::vector<QString>{"No module analysis was configured."});
     }
 
-    REQUIRE_FALSE(busyAtWarning);
-    REQUIRE_FALSE(progressVisibleAtWarning);
+    REQUIRE_FALSE(doc.busyAtWarning);
+    REQUIRE_FALSE(doc.progressOpenAtWarning);
     REQUIRE_FALSE(doc.modifiedFlag);
     REQUIRE(doc.GetRedrawFlag(QGraphDoc::VIEW_MAP) == QGraphDoc::REDRAW_GRAPH);
-    messages.clear();
+    doc.messages.clear();
     runAnalysis([] { return true; });
-    REQUIRE(messages.empty());
+    REQUIRE(doc.messages.empty());
     REQUIRE(doc.modifiedFlag);
     REQUIRE(doc.GetRedrawFlag(QGraphDoc::VIEW_MAP) == QGraphDoc::REDRAW_TOTAL);
 }

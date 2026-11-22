@@ -192,8 +192,9 @@ class QGraphDoc : public QWidget
 	Q_OBJECT
 private:
     void exceptionThrownInRenderThread(int type, std::string message);
-    void messageFromRenderThread(QString title, QString message);
     void finishAnalysis(const QString &title, const QString &message);
+protected:
+    virtual void messageFromRenderThread(QString title, QString message);
 public:
    QGraphDoc(const QString &author, const QString &organisation);
    CMSCommunicator *m_communicator;
