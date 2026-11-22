@@ -10,7 +10,11 @@ TEST_CASE("A module can insert a submenu before an existing action", "[module-me
     auto *options = tools.addAction("Options");
 
     auto *module = MainWindowHelpers::getOrAddMenu(&tools, "Module", options);
-    REQUIRE(tools.actions() == QList<QAction *>{visibility->menuAction(), module->menuAction(), options});
+    const auto actions = tools.actions();
+    REQUIRE(actions.size() == 3);
+    CHECK(actions.at(0) == visibility->menuAction());
+    CHECK(actions.at(1) == module->menuAction());
+    CHECK(actions.at(2) == options);
     REQUIRE(MainWindowHelpers::getOrAddMenu(&tools, "Module", visibility->menuAction()) == module);
     REQUIRE(tools.actions().at(1) == module->menuAction());
 

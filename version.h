@@ -1,5 +1,6 @@
 // depthmapX - spatial network analysis platform
 // Copyright (C) 2017 Christian Sailer
+// Copyright (C) 2011-2026, Tasos Varoudis
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -21,8 +22,8 @@
 
 // use these to define the depthmap versions
 #define DEPTHMAPX_MAJOR_VERSION 0
-#define DEPTHMAPX_MINOR_VERSION 9
-#define DEPTHMAPX_REVISION_VERSION 1
+#define DEPTHMAPX_MINOR_VERSION 10
+#define DEPTHMAPX_REVISION_VERSION 0
 
 #define DEPTHMAP_MODULE_VERSION 10.04
 

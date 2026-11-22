@@ -10,6 +10,7 @@
 
 #include <functional>
 #include <stdexcept>
+#include <vector>
 
 #include "mainwindow.h"
 
@@ -41,7 +42,7 @@ TEST_CASE("The document recovers from a throwing module analysis", "[renderthrea
     doc.m_mainFrame = &window;
     doc.m_view[QGraphDoc::VIEW_MAP] = &mapView;
 
-    QStringList messages;
+    std::vector<QString> messages;
     bool busyAtWarning = false;
     bool progressVisibleAtWarning = false;
     auto runAnalysis = [&](std::function<bool()> analysis) {
@@ -63,7 +64,7 @@ TEST_CASE("The document recovers from a throwing module analysis", "[renderthrea
         QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
             if (auto *warning = doc.findChild<QMessageBox *>()) {
                 if (warning->isVisible()) {
-                    messages.append(warning->text());
+                    messages.push_back(warning->text());
                     busyAtWarning = doc.m_communicator != nullptr;
                     progressVisibleAtWarning = progress && progress->isVisible();
                     warning->accept();
@@ -88,19 +89,19 @@ TEST_CASE("The document recovers from a throwing module analysis", "[renderthrea
 
     SECTION("Standard exception") {
         runAnalysis([]() -> bool { throw std::runtime_error("Module analysis failed"); });
-        REQUIRE(messages == QStringList{"Module analysis failed"});
+        REQUIRE(messages == std::vector<QString>{"Module analysis failed"});
     }
     SECTION("Unknown exception") {
         runAnalysis([]() -> bool { throw 42; });
-        REQUIRE(messages == QStringList{"An unknown error occurred during analysis."});
+        REQUIRE(messages == std::vector<QString>{"An unknown error occurred during analysis."});
     }
     SECTION("Cancellation") {
         runAnalysis([]() -> bool { throw Communicator::CancelledException(); });
-        REQUIRE(messages == QStringList{"Analysis cancelled."});
+        REQUIRE(messages == std::vector<QString>{"Analysis cancelled."});
     }
     SECTION("No module analysis configured") {
         runAnalysis({});
-        REQUIRE(messages == QStringList{"No module analysis was configured."});
+        REQUIRE(messages == std::vector<QString>{"No module analysis was configured."});
     }
 
     REQUIRE_FALSE(busyAtWarning);
@@ -109,7 +110,7 @@ TEST_CASE("The document recovers from a throwing module analysis", "[renderthrea
     REQUIRE(doc.GetRedrawFlag(QGraphDoc::VIEW_MAP) == QGraphDoc::REDRAW_GRAPH);
     messages.clear();
     runAnalysis([] { return true; });
-    REQUIRE(messages.isEmpty());
+    REQUIRE(messages.empty());
     REQUIRE(doc.modifiedFlag);
     REQUIRE(doc.GetRedrawFlag(QGraphDoc::VIEW_MAP) == QGraphDoc::REDRAW_TOTAL);
 }
