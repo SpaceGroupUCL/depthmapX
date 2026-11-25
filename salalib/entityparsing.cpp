@@ -188,6 +188,91 @@ namespace EntityParsing {
         return points;
     }
 
+    std::pair<std::vector<std::string>, std::vector<Point2f>> parsePointSets(std::istream& stream, char delimiter) {
+
+        std::pair<std::vector<std::string>, std::vector<Point2f>> pointSets;
+
+        std::string inputline;
+        std::getline(stream, inputline);
+
+        std::vector<std::string> strings = dXstring::split(inputline, delimiter);
+
+        if (strings.size() < 2)
+        {
+            throw EntityParseException("Badly formatted header (should contain x and y)");
+        }
+
+        size_t i;
+        for (i = 0; i < strings.size(); i++)
+        {
+           if (!strings[i].empty())
+           {
+               std::transform(strings[i].begin(), strings[i].end(), strings[i].begin(), ::tolower);
+               //strings[i].ltrim('\"');
+               //strings[i].rtrim('\"');
+           }
+        }
+
+        int xcol = -1, ycol = -1, setcol = -1;
+        for (i = 0; i < strings.size(); i++) {
+            if (strings[i] == "x")
+            {
+                xcol = i;
+            }
+            else if (strings[i] == "y")
+            {
+                ycol = i;
+            }
+            else if (strings[i] == "set")
+            {
+                setcol = i;
+            }
+        }
+
+        if(xcol == -1 || ycol == -1)
+        {
+            throw EntityParseException("Badly formatted header (should contain x and y)");
+        }
+
+        Point2f p;
+        std::string setName = "";
+
+        while (!stream.eof()) {
+            std::getline(stream, inputline);
+            if (!inputline.empty()) {
+                strings = dXstring::split(inputline, delimiter);
+                if (!strings.size())
+                {
+                    continue;
+                }
+                if (strings.size() < 2)
+                {
+                    std::stringstream message;
+                    message << "Error parsing line: " << inputline << std::flush;
+                    throw EntityParseException(message.str().c_str());
+                }
+                for (i = 0; i < strings.size(); i++)
+                {
+                    if (i == xcol)
+                    {
+                        p.x = std::atof(strings[i].c_str());
+                    }
+                    else if (i == ycol)
+                    {
+                        p.y = std::atof(strings[i].c_str());
+                    }
+                    else if (i == setcol)
+                    {
+                        setName = strings[i].c_str();
+                    }
+                }
+                pointSets.first.push_back(setName);
+                pointSets.second.push_back(p);
+            }
+        }
+        return pointSets;
+    }
+
     Point2f parsePoint(const std::string &point, char delimiter)
     {
         std::vector<std::string> strings = dXstring::split(point, delimiter);

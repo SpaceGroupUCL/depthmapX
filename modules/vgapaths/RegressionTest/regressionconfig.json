@@ -1,0 +1,37 @@
+{
+    "rundir": "rundir",
+    "basebinlocation": "../../BaselineBinaries",
+    "testbinlocation": "../../../build",
+    "testcases": {
+        "vga_shortest_metric_path": [{
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "VGASHORTESTPATH",
+            "extraArgs": {
+                "-spo":"0.8,7.7",
+                "-spd":"5,5.4",
+                "-spt":"metric"
+            }
+        }],
+        "vga_shortest_angular_path": [{
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "VGASHORTESTPATH",
+            "extraArgs": {
+                "-spo":"0.8,7.7",
+                "-spd":"5,5.4",
+                "-spt":"angular"
+            }
+        }],
+        "vga_shortest_visual_path": [{
+            "infile": "../../../testdata/gallery_connected.graph",
+            "outfile": "out.graph",
+            "mode": "VGASHORTESTPATH",
+            "extraArgs": {
+                "-spo":"0.8,7.7",
+                "-spd":"5,5.4",
+                "-spt":"visual"
+            }
+        }]
+    }
+}
