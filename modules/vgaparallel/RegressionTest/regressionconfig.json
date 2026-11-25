@@ -1,0 +1,14 @@
+{
+    "rundir": "rundir",
+    "basebinlocation": "../../BaselineBinaries",
+    "testbinlocation": "../../../build",
+    "testcases": {
+        "shortest_segment_metric_path": [{
+            "infile": "../../../testdata/barnsbury_extended1_segment.graph",
+            "outfile": "out.graph",
+            "mode": "VGAPARALLEL",
+            "extraArgs": {
+            }
+        }]
+    }
+}

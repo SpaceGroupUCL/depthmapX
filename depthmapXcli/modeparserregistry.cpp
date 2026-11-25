@@ -26,6 +26,7 @@
 #include "stepdepthparser.h"
 #include "mapconvertparser.h"
 #include "modules/segmentshortestpaths/cli/segmentshortestpathparser.h"
+#include "modules/vgaparallel/cli/vgaparallelparser.h"
 
 
 void ModeParserRegistry::populateParsers()
@@ -43,5 +44,6 @@ void ModeParserRegistry::populateParsers()
     REGISTER_PARSER(StepDepthParser);
     REGISTER_PARSER(MapConvertParser);
     REGISTER_PARSER(SegmentShortestPathParser);
+    REGISTER_PARSER(VgaParallelParser)
     // *********
 }
